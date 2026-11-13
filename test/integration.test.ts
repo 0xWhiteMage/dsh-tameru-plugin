@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import { apply, inject, name } from '../src/host/index.ts'
 import { findPython } from '../src/host/python.ts'
 import { alreadyShortened, textOnly } from '../src/host/messages.ts'
-import { bigOutput, load, skip, world } from './helpers/harness.ts'
+import { bigOutput, load, recordCompaction, skip, world } from './helpers/harness.ts'
 
 const python = findPython()?.path ?? process.env.TAMERU_TEST_PYTHON ?? 'python'
 
@@ -118,4 +118,24 @@ test('unloading the plugin stops listening: the waterfall no longer changes the 
   await waterfall(ctx, { id: 'a', session: w.session })
   assert.equal(w.session.seq, seq)
   await ctx.fiber.dispose()
+})
+
+test('after a compaction the pre-step decision carries the Artifact Trail once, and only when the step is admitted', { skip }, async () => {
+  const { w, ctx, agent } = await mounted({ contextWindow: 1_000_000 })
+  try {
+    const run = (kind: 'enter' | 'reject') => ctx.waterfall(ctx, 'agent/pre-step', { agent, signal: new AbortController().signal, messages: [], step: 1 }, async () => (kind === 'enter' ? { kind, messages: [] } : { kind }))
+    assert.deepEqual(await run('enter'), { kind: 'enter', messages: [] }, 'no compaction yet: nothing is added')
+    recordCompaction(w, 1, 8)
+    const rejected: any = await run('reject')
+    assert.deepEqual(rejected, { kind: 'reject' }, 'a rejected step is left exactly as it is')
+    const admitted: any = await run('enter')
+    assert.equal(admitted.messages.length, 1)
+    assert.match(admitted.messages[0].content[0].text, /^\[Tameru Artifact Trail/)
+    assert.equal(admitted.messages[0].source.kind, 'tameru')
+    // the loop admits it into the chat; from then on nothing is owed
+    w.session.append('user/message', admitted.messages[0], { surfaceOp: 'append' })
+    assert.deepEqual(await run('enter'), { kind: 'enter', messages: [] })
+  } finally {
+    await ctx.fiber.dispose()
+  }
 })

@@ -8,6 +8,8 @@ export interface StatusInput {
   python: PythonChoice | undefined
   worker: WorkerStatus | undefined
   chat?: ChatStats | undefined
+  /** How many lines the user has pinned in this chat. */
+  pins?: number
 }
 
 const REASONS: Record<string, string> = {
@@ -36,8 +38,9 @@ export function statusText(input: StatusInput): string {
     return lines.join('\n')
   }
   if (!input.python) {
-    lines.push('Not working yet: no Python was found for the engine, so the Harness is behaving as stock.')
+    lines.push('Shortening is off: no Python was found for the engine (pins and the Artifact Trail still work).')
     lines.push("Set `pythonPath` in Tameru's settings, or let the Harness create its bundled Python runtime.")
+    if (input.pins) lines.push(`${input.pins} pinned line${input.pins === 1 ? '' : 's'} in this chat (/tameru pins).`)
     return lines.join('\n')
   }
   const worker = input.worker
@@ -60,5 +63,6 @@ export function statusText(input: StatusInput): string {
   } else {
     lines.push('Nothing shortened in this chat yet.')
   }
+  if (input.pins) lines.push(`${input.pins} pinned line${input.pins === 1 ? '' : 's'} in this chat (/tameru pins).`)
   return lines.join('\n')
 }

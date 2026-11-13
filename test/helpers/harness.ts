@@ -95,3 +95,17 @@ export function bigOutput(label: string, chars = 20_000): string {
   }
   return lines.join('\n')
 }
+
+/** Record a compaction the way the Harness's backend does: start, summary naming what it replaced, the replacing checkpoint, end. */
+export function recordCompaction(w: World, first: number, last: number, id = `c${Math.random()}`): number {
+  const nodes = [...w.session.surface.nodes]
+  const range = nodes.slice(first, last + 1)
+  const start = w.session.append('compaction/start', { compactionId: id, turn: null, source: 'manual' })
+  const summary = w.session.append('compaction/summary', {
+    compactionId: id, summary: 'earlier work', shadowedRange: { start: range[0], end: range.at(-1) }, shadowedSeqs: range, shadowedTokenCount: 100, provider: 'p', model: 'm',
+  })
+  w.session.append('user/message', { id: `chk${id}`, role: 'user', content: [{ type: 'text', text: '<compacted-summary>earlier work</compacted-summary>' }], source: { kind: 'user' } }, {
+    surfaceOp: { op: 'replace', startSeq: range[0]!, endSeq: range.at(-1)! }, sourceEventSeqs: [start.seq, summary.seq, ...range],
+  })
+  return w.session.append('compaction/end', { compactionId: id, turn: null, source: 'manual' }).seq
+}

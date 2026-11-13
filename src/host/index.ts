@@ -4,10 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { EngineClient } from './engine-client.ts'
 import { harnessWorkerSpawn, type HarnessSubprocess } from './process.ts'
 import type { SessionLike } from './shorten.ts'
-import { findPython } from './python.ts'
+import { dshHome, findPython } from './python.ts'
+import { filePins, pinsSection } from './pins.ts'
+import { scanForTrail, trailMessage } from './trail.ts'
 import { normalizeSettings, type TameruConfig } from './settings.ts'
 import { statusText } from './status.ts'
-import { chatStatsOf, onPreStep, type ChatStats, type StepAgent } from './step.ts'
+import { chatStatsOf, onPreStep, type ChatStats, type StepAgent, type StepDeps } from './step.ts'
 import { runCommand } from './commands.ts'
 import { readOriginalTool } from './tool.ts'
 
@@ -18,7 +20,7 @@ import { readOriginalTool } from './tool.ts'
  * Harness's and DS Bot's, never `prepend`), and with `enabled: false` it adds nothing at all.
  */
 export const name = 'dsh-tameru'
-export const inject = ['commands', 'subprocess', 'tools']
+export const inject = ['commands', 'subprocess', 'tools', 'systemPrompt']
 
 export type { TameruConfig }
 
@@ -40,6 +42,7 @@ interface HostContext {
   /** Look up an optional Harness service by name; undefined when it is not mounted. */
   get?(name: string): any
   tools?: { register(definition: unknown): unknown }
+  systemPrompt?: { section(definition: { name: string; order: number; interpolate: boolean; text: (context: { agent?: { session?: { id?: string } } }) => string }): unknown }
   on?(event: 'agent/pre-step', listener: (payload: { agent: StepAgent; signal?: AbortSignal }, next: () => unknown) => unknown): unknown
 }
 
@@ -77,7 +80,9 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
   const python = findPython(config.pythonPath ? { configured: config.pythonPath } : {})
   const stats = new WeakMap<object, ChatStats>()
   const log = ctx.logger?.('tameru')
+  const pins = filePins(join(dshHome(), 'tameru'))
   let client: EngineClient | undefined
+  let deps: StepDeps | undefined
   if (python) {
     const stop = new AbortController()
     // A request waits on the engine inside a step boundary, so it gets a short deadline: a slow engine must never slow the chat.
@@ -87,7 +92,7 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
       stop.abort()
       void worker.dispose()
     }, 'dsh-tameru: engine worker')
-    const deps = {
+    deps = {
       client: worker,
       meter: () => ctx.get?.('tokenMeter'),
       resolveModelInfo: async (provider: string, model: string, signal?: AbortSignal) => ctx.get?.('llm')?.resolveModelInfo(provider, model, signal),
@@ -96,25 +101,40 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
       stats,
       ...(log ? { log } : {}),
     }
-    // Never `prepend`: the Harness's backend and DS Bot run first. Whatever happens here, the step goes on.
-    ctx.on?.('agent/pre-step', async ({ agent, signal }, next) => {
-      await onPreStep(deps, agent, signal)
-      return next()
-    })
   }
+  // Never `prepend`: the Harness's backend and DS Bot run first. Whatever happens here, the step goes on.
+  ctx.on?.('agent/pre-step', async ({ agent, signal }, next) => {
+    if (deps) await onPreStep(deps, agent, signal)
+    const decision = (await next()) as { kind?: string; messages?: unknown[] } | undefined
+    // After a compaction the Harness's own backend has run (it is ahead of us): add the Artifact Trail once, as a note on this step.
+    try {
+      const owed = agent?.session ? scanForTrail(agent.session, chatStatsOf(stats, agent.session).trail) : undefined
+      if (owed && decision?.kind === 'enter' && Array.isArray(decision.messages)) return { ...decision, messages: [...decision.messages, trailMessage(owed)] }
+    } catch (error) {
+      log?.warn(`dsh-tameru: could not build the Artifact Trail: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    return decision
+  })
+  // The user's pinned lines, word for word, as a section of the system prompt: no compaction replaces the system prompt.
+  ctx.systemPrompt?.section({
+    name: 'tameru:pins',
+    order: 10_100,
+    interpolate: false,
+    text: (context: { agent?: { session?: { id?: string } } }) => pinsSection(pins.list(context.agent?.session?.id ?? '')),
+  })
   if (python) log?.info(`dsh-tameru ${version} loaded (engine Python: ${python.path}, from ${python.source})`)
-  else log?.warn(`dsh-tameru ${version} loaded but no Python was found: the Harness behaves as stock. Set pythonPath in Tameru's settings.`)
+  else log?.warn(`dsh-tameru ${version} loaded but no Python was found: shortening is off (pins and the Artifact Trail still work). Set pythonPath in Tameru's settings.`)
   ctx.commands.register({
     name: 'tameru',
-    description: 'Show what Tameru is doing in this chat; keep, restore or read a shortened result (try /tameru help)',
-    input: { hint: '[help|changes|view|keep|restore|unkeep] [reference]' },
+    description: 'Show what Tameru is doing in this chat; pin lines, keep, restore or read a shortened result (try /tameru help)',
+    input: { hint: '[help|changes|view|keep|restore|unkeep|pin|pins|unpin] ...' },
     handler: async ({ rawInput, agent }) => {
       if (client && !client.status().version) await client.probe()
       const session = agent?.session as SessionLike | undefined
       const chat = session ? stats.get(session) : undefined
-      const status = (): string => statusText({ pluginVersion: version, enabled, python, worker: client?.status(), chat })
+      const status = (): string => statusText({ pluginVersion: version, enabled, python, worker: client?.status(), chat, pins: session?.id ? pins.list(session.id).length : 0 })
       if (!session) return { kind: 'success', text: status() }
-      return runCommand(rawInput, { session, meter: ctx.get?.('tokenMeter'), stats: chatStatsOf(stats, session), status })
+      return runCommand(rawInput, { session, meter: ctx.get?.('tokenMeter'), stats: chatStatsOf(stats, session), pins, status })
     },
   })
   // The model's way back to a shortened result's original. A plain definition: nothing is imported from the Harness at run time.

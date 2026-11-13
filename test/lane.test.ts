@@ -29,7 +29,7 @@ test('the patch inserts one row and disables, overrides or configures nothing el
 
 test('the plugin name and entry id are prefixed and unique to us', () => {
   assert.equal(name, 'dsh-tameru')
-  assert.deepEqual(inject, ['commands', 'subprocess', 'tools'])
+  assert.deepEqual(inject, ['commands', 'subprocess', 'tools', 'systemPrompt'])
 })
 
 test('locale files exist for en and zh with a title and description', () => {

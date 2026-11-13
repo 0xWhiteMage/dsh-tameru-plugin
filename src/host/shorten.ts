@@ -15,6 +15,7 @@ import { RESTORE_REPLIES } from './originals.ts'
 
 /** The parts of the Harness's Session this pass uses. `eventAt` is deprecated for new code but is what the stock pruner uses too. */
 export interface SessionLike {
+  id?: string
   surface: { nodes: readonly number[]; replaceGeneration: number }
   seq: number
   eventAt(seq: number): SessionEvent | undefined

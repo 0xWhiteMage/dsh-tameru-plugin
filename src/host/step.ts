@@ -1,5 +1,6 @@
 import type { EngineClient } from './engine-client.ts'
 import { drainPending, type PendingOp } from './commands.ts'
+import type { TrailState } from './trail.ts'
 import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
 import { compactionIsManagedElsewhere, policyFor, stockThreshold, type BackendLike } from './stock.ts'
 
@@ -18,6 +19,8 @@ export interface ChatStats {
   declined: Set<string>
   /** Keep, restore and unkeep requests made while the agent was working; applied at the next step boundary. */
   pending: PendingOp[]
+  /** Where the Artifact Trail scan has got to in this chat's log, and a trail still owed to the chat. */
+  trail: TrailState
   shortened: number
   freedTokens: number
   passes: number
@@ -41,7 +44,7 @@ export interface StepDeps {
 
 export const chatStatsOf = (store: WeakMap<object, ChatStats>, session: object): ChatStats => {
   let stats = store.get(session)
-  if (!stats) store.set(session, (stats = { declined: new Set(), pending: [], shortened: 0, freedTokens: 0, passes: 0 }))
+  if (!stats) store.set(session, (stats = { declined: new Set(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0 }))
   return stats
 }
 
