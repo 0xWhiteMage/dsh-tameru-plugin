@@ -2,18 +2,20 @@
 
 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): shortens bulky tool output before it fills the context, keeps every error, and lets you pin, keep and restore. Local, deterministic, no extra model calls.
 
-> **Status: early development (0.1.0, unreleased).** The plugin loads, starts the engine and reports on it. **It does not shorten anything yet.** The list below is what exists today and what is planned; nothing planned is claimed as working.
+> **Status: early development (0.1.0, unreleased).** The plugin loads, runs the engine, and shortens large old tool results when the context fills. Reading an original back, Keep and Restore, pins and the sidebar panel are **not built yet**. The lists below say what exists and what is planned; nothing planned is claimed as working. Read [the first measurement against the stock pruner](docs/MEASURED-VS-STOCK.md) before relying on it: it is a per-output measurement, and no session cost saving has been demonstrated.
 
 ## What works today
 
-- `/tameru` shows the plugin version, the engine version and whether the engine is running.
+- **Shortening.** At each step boundary, once the context passes 75% of the point where the Harness itself would start compacting, large old tool results (6,000+ characters, not errors, not the newest four, not anything the model has not read yet) are replaced by the engine's query-aware extract, and only when the engine is at least 70% confident and the change frees at least 35% of the tokens it makes the provider rewrite. The original stays in the session log; the replacement is the same pair of events the Harness's own pruner writes, so the Harness's token meter stays exact.
+- It stands down for any chat whose compaction another plugin (for example DS Bot) manages, while a compaction is running, and whenever the model declares no usable context window.
+- `/tameru` shows the plugin version, the engine version, whether the engine is running, and what was shortened in this chat.
 - The Tameru engine runs as an isolated Python worker on the interpreter the Harness bundles (or one you name), started through the Harness's own managed subprocess service.
 - It fails open: if Python is missing, or the engine is slow, crashes or misbehaves, nothing in your chat changes, and after repeated failures the engine turns itself off until restart.
 - With `enabled: false` the plugin adds nothing at all.
 
 ## Planned, in order
 
-1. Shorten large tool results before the Harness would compact, using Tameru's extract instead of a head-and-tail cut. Every error kept; the original stays in the session.
+1. A whole-session cost comparison against the stock pruner (the first measurement is per output).
 2. Read an original back (`tameru_read_original`); Keep and Restore.
 3. Pins that survive every summary; an Artifact Trail after each summary.
 4. A Tameru tab in the right sidebar (context gauge, every cleanup, a viewer for what was left out) and a settings page.
@@ -28,6 +30,13 @@ Not published yet. For development, see [Development](#development). Requires De
 |---|---|---|
 | `enabled` | `true` | `false` makes the plugin do nothing. |
 | `pythonPath` | the Harness's bundled Python | A Python 3.10+ interpreter for the engine. On Windows there is no fallback to a bare `python`. |
+| `shorten` | `true` | `false` stops shortening but keeps `/tameru`. |
+| `activation` | `0.75` | Start acting at this fraction (0.3 to 0.95) of the Harness's own compaction trigger. |
+| `minConfidence` | `0.7` | The engine must be at least this confident in an extract, or the result is left alone. |
+| `share` | `0.35` | A change must free at least this share of the tokens it makes the provider rewrite. |
+| `protectRecent` | `4` | The newest read tool results always left as they are. |
+| `minResultChars` | `6000` | Results shorter than this are never touched. |
+| `maxPerPass` | `24` | Most results shortened at one step boundary. |
 
 ## How it stays out of the way
 
@@ -40,7 +49,8 @@ Not published yet. For development, see [Development](#development). Requires De
 
 ```bash
 npm install
-npm test                 # 33 tests: protocol, fail-open client, lane checks, real-Harness contract tests
+npm test                 # protocol, fail-open client, shortening against real Harness sessions, event-bus integration, lane checks
+node scripts/compare_stock.ts            # the stock-pruner comparison (add --heldout for the second set)
 npm run build            # bundles src/host to lib/host.js
 python scripts/check_vendored.py --engine <path to tameru-compaction-system>
 ```

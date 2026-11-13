@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- **Shortening at step boundaries.** An `agent/pre-step` listener (never `prepend`) that, above 75% of the Harness's own compaction trigger (computed the way `dsh-compaction-basic` does), replaces large old tool results with the engine's query-aware extract. Results that are errors, spilled to a file, already cut, not text, unread by the model, or among the newest four are never touched. Applied only when the engine's confidence is at least 0.7 and the change frees at least 35% of what it makes the provider rewrite. Writes the same `compaction/prune` + replacing `tool/result` pair the Harness's pruner writes, after re-checking that nothing changed while the engine worked and that no compaction is open.
+- Stands down for chats whose compaction another plugin has taken over (an own `compactIfNeeded`, `compactNow`, `compactRegion` or `summarize` on the backend object, or `auto: false`).
+- `/tameru` reports what was shortened in the chat, or why nothing was.
+- Settings: `shorten`, `activation`, `minConfidence`, `share`, `protectRecent`, `minResultChars`, `maxPerPass`.
+- `docs/MEASURED-VS-STOCK.md`: the first measurement against the stock pruner, with its limits (per output, not per session; no cost claim). `scripts/compare_stock.ts` reproduces it.
 - Skeleton: the plugin loads in DeepSeek Harness, starts the Tameru engine as an isolated Python worker, and `/tameru` reports the plugin and engine versions. Nothing is shortened yet.
 - The worker protocol (version 1): a fixed list of accepted fields, no disk, network or model options, UTF-8 over stdin and stdout, exits when stdin closes.
 - Fail-open engine client: a slow, crashed or misbehaving worker leaves every original untouched and turns itself off after repeated failures.

@@ -1,0 +1,6530 @@
+[
+ {
+  "case": "lexical_distractor",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5716539355695782,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.4369810694121554,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.4369810694121554,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.4369810694121554,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5716539355695782,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.4369810694121554,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.577
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.4369810694121554,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.577
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.4369810694121554,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.577
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5723640583554377,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.4362566312997348,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.4362566312997348,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.4362566312997348,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5723640583554377,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.4362566312997348,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.574
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.4362566312997348,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.574
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.4362566312997348,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.574
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5716183675163995,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.4373494976334801,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.4287137756372996,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.827
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.41360126214398407,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.839
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5716183675163995,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.4373494976334801,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.577
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.4287137756372996,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.577
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.41360126214398407,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.589
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5702981842412127,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.42245543894719306,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.772
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.42245543894719306,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.772
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.42245543894719306,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.772
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5702981842412127,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.42995169082125606,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.582
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.42995169082125606,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.582
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.42995169082125606,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.582
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5721157833623621,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.4206684913328357,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.772
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.4206684913328357,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.772
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.4206684913328357,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.772
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5721157833623621,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.4281330347515966,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.582
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.4281330347515966,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.582
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.4281330347515966,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.582
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.571440438611065,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.41410533311181263,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.782
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.41410533311181263,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.782
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.3989865426150523,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.794
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.571440438611065,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.42158165808273795,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.592
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.42158165808273795,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.592
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.4064628675859777,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.604
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5704770626925318,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5704770626925318,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5705485723799217,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5705485723799217,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5701907856369242,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5701907856369242,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5718672199170125,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5718672199170125,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5703697534976682,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.40023317788141244,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.789
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.36484010659560295,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.793
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.36484010659560295,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.793
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5703697534976682,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.40023317788141244,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.614
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.36484010659560295,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.618
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.36484010659560295,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.618
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5715472136865709,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5715472136865709,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5710841370136348,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5710841370136348,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5722576900754498,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5722576900754498,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5714048350918003,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5714048350918003,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5706557922769641,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5683255659121171,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.701
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.5683255659121171,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.701
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.5683255659121171,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.701
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5706557922769641,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.5782290279627164,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.571
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.5782290279627164,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.571
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.5782290279627164,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.571
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5705843182953221,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5755784917596138,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.69
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.5755784917596138,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.69
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.5755784917596138,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.69
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5705843182953221,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.5854836024637922,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.56
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.5854836024637922,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.56
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.5854836024637922,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.56
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5713336103032821,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5601994183631076,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.703
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.5601994183631076,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.703
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.5450768591607811,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.713
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5713336103032821,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.5700872455338596,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.573
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.5700872455338596,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.573
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.554964686331533,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.583
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.570977130977131,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9558419958419958,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.443
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9558419958419958,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.443
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.9465280665280665,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.443
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.570977130977131,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.6146361746361746,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.725
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.6146361746361746,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.725
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.6146361746361746,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.725
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5719027466600282,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9567670732719277,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.443
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9567670732719277,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.443
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.9475562194008796,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.443
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5719027466600282,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.6076674134926563,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.726
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.6076674134926563,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.726
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.6076674134926563,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.726
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5714760362156326,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9435999667746491,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.664
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9435999667746491,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.664
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.9264058476617659,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.669
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5714760362156326,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.5855968103663095,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.729
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.5855968103663095,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.729
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.568734944762854,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.733
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5715472136865709,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.7236109957644714,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.777
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.7236109957644714,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.777
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.7144755418985134,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.777
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5715472136865709,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.3490573872601943,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.674
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.3490573872601943,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.674
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.3490573872601943,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.674
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5724703737465816,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.716250932294688,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.91
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.716250932294688,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.91
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.7071351620120991,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.91
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5724703737465816,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.38592856550924004,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.67
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.38592856550924004,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.67
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.38592856550924004,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.67
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5703339718497543,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5575081202631798,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.968
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.5575081202631798,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.968
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.5575081202631798,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.968
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5703339718497543,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5704055291864435,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.6040469647764177,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.679
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.5714880506286951,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.679
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.47964026979765173,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.679
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5704055291864435,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5717250539598207,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.3626930101278433,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.777
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.3626930101278433,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.777
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.3626930101278433,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.777
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5717250539598207,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5710128055878929,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.38267087976051883,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.797
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.37077997671711294,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.797
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.37077997671711294,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.797
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5710128055878929,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5701549741709715,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9515080819863356,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.758
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5701549741709715,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.0367438760206632,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.75
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.0367438760206632,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.0367438760206632,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5725412213107963,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9520258513547104,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.758
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5725412213107963,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.036539895600298244,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.75
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.036539895600298244,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.036539895600298244,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5723995026937423,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9520928305014504,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.75
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5723995026937423,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.03439701616245339,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.75
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.03439701616245339,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5709414504324684,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9869427811044578,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.74
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5709414504324684,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5709057639524245,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9869416950844215,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.74
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5709057639524245,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5709057639524245,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9869416950844215,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.74
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9441071280046578,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.775
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5709057639524245,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5704770626925318,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9406377487303306,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.582
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5704770626925318,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5707272424696289,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5242136794807788,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.647
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5707272424696289,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5716894977168949,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5716894977168949,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5717606042998257,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.09861376276251343,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.844
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.09861376276251343,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.844
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.09861376276251343,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.844
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5717606042998257,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.1403668963227359,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.625
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.1403668963227359,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.625
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.1403668963227359,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.625
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5729658140882377,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.06853737273404514,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.895
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.06853737273404514,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.895
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.06853737273404514,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.895
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5729658140882377,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.1399718566343846,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.642
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.1399718566343846,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.642
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.1399718566343846,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.642
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.5707272424696289,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.06889665501747377,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.895
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.06889665501747377,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.895
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.06889665501747377,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.895
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.5707272424696289,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.13354967548676988,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.655
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.13354967548676988,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.655
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.11857214178731901,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.676
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5713336103032821,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.547071042791857,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.85
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5713336103032821,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.570977130977131,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5462785862785863,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.85
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.5462785862785863,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.85
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.5462785862785863,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.85
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.570977130977131,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5708700715355182,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5464149060056562,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.85
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5708700715355182,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5712979890310785,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.353498421140103,
+   "touched": true,
+   "risk": "low",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5712979890310785,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.353498421140103,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.75
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5740587846763541,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.35122192866578594,
+   "touched": true,
+   "risk": "low",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.35122192866578594,
+    "touched": true,
+    "risk": "low",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.35122192866578594,
+    "touched": true,
+    "risk": "low",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5740587846763541,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.35122192866578594,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.75
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.35122192866578594,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.35122192866578594,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.5720802919708029,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.3482913072329131,
+   "touched": true,
+   "risk": "low",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.3482913072329131,
+    "touched": true,
+    "risk": "low",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.5720802919708029,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.3482913072329131,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.75
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.3482913072329131,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.75
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "head",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.7223358449946179,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9834230355220668,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.802
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "head",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.7223358449946179,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.8866523143164693,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.555
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "middle",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.7232741511559299,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8731427345384326,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.807
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8731427345384326,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.807
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8731427345384326,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.807
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "middle",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.7232741511559299,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.884299737166765,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.555
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.884299737166765,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.555
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.884299737166765,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.555
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "tail",
+  "size": 12000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.7224553475360447,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8759414676135141,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.807
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "tail",
+  "size": 12000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.7224553475360447,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.8759414676135141,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.557
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711538461538462,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.14083416583416586,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.14083416583416586,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.14083416583416586,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711538461538462,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.14083416583416586,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.643
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.14083416583416586,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.643
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.14083416583416586,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.643
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712374581939799,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.1393700394349323,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.1393700394349323,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.1393700394349323,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712374581939799,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.1393700394349323,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.639
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.1393700394349323,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.639
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.1393700394349323,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.639
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711860174781523,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.14174781523096125,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "lexical_distractor",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711860174781523,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.14174781523096125,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.643
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710475666758317,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710475666758317,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712631631481759,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712631631481759,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711023385968419,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "multi_hop_chain",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711023385968419,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710411198600175,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8897137857767778,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.723
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8897137857767778,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.723
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8755655543057118,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.728
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710411198600175,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.26879140107486565,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.605
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712856465657044,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8718095855891819,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.705
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8718095855891819,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.705
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8668196901274918,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.708
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712856465657044,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.2808063671066091,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.585
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.2877672712756668,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.585
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711795844986017,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.874675389532561,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.705
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.874675389532561,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.705
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8701807830603276,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.715
+   }
+  }
+ },
+ {
+  "case": "current_value",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711795844986017,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711087792934593,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8879228501474041,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.742
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8879228501474041,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.742
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8897716484285214,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.744
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711087792934593,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.2644531054814371,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.601
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.2644531054814371,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.601
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8713177521139408,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8717916739417825,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.732
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8680252425731461,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.734
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8543812825821256,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.734
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8713177521139408,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.29340749794218157,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.599
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.29340749794218157,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.599
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710926763449189,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8839609205167287,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.733
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8839609205167287,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.733
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.879463281777067,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.743
+   }
+  }
+ },
+ {
+  "case": "negation_override",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710926763449189,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711828010686908,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8971260206247347,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.826
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8971260206247347,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.826
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8728307822916926,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.828
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711828010686908,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711409731241883,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8632980317714057,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.811
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8632980317714057,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.811
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8651963233090219,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.814
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711409731241883,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711216587559331,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8812640519610292,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.826
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8812640519610292,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.826
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8767674244316762,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.834
+   }
+  }
+ },
+ {
+  "case": "no_marker_keeps_both",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711216587559331,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.8826130402198351,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.573
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.8826130402198351,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.573
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.8781164126904821,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.582
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710314484275786,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710314484275786,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711119994004047,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711119994004047,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.87124067187461,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "evidence_chain_holdout",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.87124067187461,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710958972565089,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9867073109789616,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.44
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9867073109789616,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.44
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.9840087951626605,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.44
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710958972565089,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.9673429613712459,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.718
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.9673429613712459,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.718
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.9646444455549448,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.718
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712824351297406,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8596806387225548,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.728
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8596806387225548,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.728
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8401696606786427,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.731
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712824351297406,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.9081087824351297,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.573
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.9081087824351297,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.573
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.8885978043912176,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.576
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.871037896210379,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.8006699330066993,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.482
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.8006699330066993,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.482
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.8007199280071993,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.497
+   }
+  }
+ },
+ {
+  "case": "git_log",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.871037896210379,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.6724077592240776,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.61
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.6724077592240776,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.61
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.6724077592240776,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.61
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711152193464575,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9169081642850005,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.743
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9169081642850005,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.743
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.9141850704506845,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.743
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711152193464575,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9623763365644049,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.667
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9623763365644049,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.667
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.9596532427300889,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.667
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712020971164649,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.852552739982524,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.901
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.852552739982524,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.901
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8250655348895269,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.901
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712020971164649,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.8931219573087006,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.712
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8931219573087006,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.712
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.8656347522157034,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.712
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711216587559331,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.5933300024981264,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.896
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.5933300024981264,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.896
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.5933300024981264,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.896
+   }
+  }
+ },
+ {
+  "case": "npm_log",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711216587559331,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.7069198101423932,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.714
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.7069198101423932,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.714
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.7107169622782913,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.721
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711538461538462,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.817032967032967,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.653
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.8146603396603397,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.656
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.7954295704295704,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.665
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711538461538462,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.13923576423576423,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.825
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711474099605375,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.42517108746690646,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.723
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.4209500974074629,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.723
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.40204305909386084,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.726
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711474099605375,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.13419751236325494,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.821
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.13419751236325494,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.821
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.13419751236325494,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.821
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711280975219824,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.4276079136690647,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.72
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.4240357713828937,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.72
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.4240357713828937,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.72
+   }
+  }
+ },
+ {
+  "case": "jp_musubi",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711280975219824,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.11768085531574746,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.836
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710991180071459,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9854833470754316,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.72
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710991180071459,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.2262948804437448,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.633
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.2601004422457087,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.621
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.2668715488594059,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.621
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711634992383188,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9832679869140674,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.725
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711634992383188,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710926763449189,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9832587891357037,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.724
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "zh_needle",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710926763449189,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.24169810849304119,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.604
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.24169810849304119,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.604
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.24019889557982055,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.604
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711474099605375,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9960787252110495,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.74
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711474099605375,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.25423347819571407,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.601
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.26302512613017637,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.603
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712470987546482,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.996081758965784,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.74
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8712470987546482,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711828010686908,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9960798022422532,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.74
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9808983994606607,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.756
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "ar_needle",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711828010686908,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.23114185123224051,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.618
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.23114185123224051,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.618
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711924498152401,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9821981424148607,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.582
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711924498152401,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711313166637524,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.7021207503809357,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.543
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.7021207503809357,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.543
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.7000224814528014,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.546
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711313166637524,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711667166117271,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.7304964539007093,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.541
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "travis_yaml",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711667166117271,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711634992383188,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.45715855455385457,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.8
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.45715855455385457,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.8
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.46062982294033916,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.803
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8711634992383188,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.22111230427290662,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.621
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.2558249881377519,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.613
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.2558249881377519,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.613
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8714876444798725,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.43575627740135514,
+   "touched": true,
+   "risk": "low",
+   "confidence": 0.813
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.43575627740135514,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.813
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.4237993224392188,
+    "touched": true,
+    "risk": "low",
+    "confidence": 0.815
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8714876444798725,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.20820047827819843,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.624
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.2767287764049422,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.609
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.2767287764049422,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.609
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710572356910773,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.46565858535366156,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.795
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.46565858535366156,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.795
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0.46565858535366156,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.795
+   }
+  }
+ },
+ {
+  "case": "excluded_sample",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": true,
+   "savings": 0.8710572356910773,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.2245438640339915,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.627
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.250462384403899,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.62
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.24596350912271936,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.63
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8710669032564416,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9709344463049508,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.665
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8710669032564416,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711795844986017,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9709598481821814,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.665
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711795844986017,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711409731241883,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9709511439704266,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.664
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "grep_saturated_command",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711409731241883,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0,
+   "touched": false,
+   "risk": "high",
+   "confidence": 1
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 1
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8710894552723638,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9727136431784108,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.826
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8710894552723638,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.9203898050974513,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.563
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8713819151853606,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9727506170377204,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.827
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8713819151853606,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.8612849343072972,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.577
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.8612849343072972,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.577
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.8658223429981801,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.581
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711924498152401,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.971337261559972,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.832
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.971337261559972,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.832
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "pytest_captured_blank_lines",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711924498152401,
+   "touched": true
+  },
+  "tameru": {
+   "kept": true,
+   "savings": 0.9251722760411465,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.574
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0.9251722760411465,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.574
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "head",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711474099605375,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.9726759578400519,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.813
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "head",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711474099605375,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.3966981367700685,
+   "touched": true,
+   "risk": "medium",
+   "confidence": 0.611
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.3966981367700685,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.611
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.3966981367700685,
+    "touched": true,
+    "risk": "medium",
+    "confidence": 0.611
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "middle",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711184391316296,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.9829623522945864,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.806
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "middle",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711184391316296,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.41594843738289744,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.597
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.41594843738289744,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.597
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.41594843738289744,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.597
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "tail",
+  "size": 40000,
+  "query": "question",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711667166117271,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.9829687343921686,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.806
+  },
+  "extra": {
+   "pin 1": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   },
+   "pin 3": {
+    "kept": true,
+    "savings": 0,
+    "touched": false,
+    "risk": "high",
+    "confidence": 0
+   }
+  }
+ },
+ {
+  "case": "numbered_source",
+  "where": "tail",
+  "size": 40000,
+  "query": "task",
+  "stock": {
+   "kept": false,
+   "savings": 0.8711667166117271,
+   "touched": true
+  },
+  "tameru": {
+   "kept": false,
+   "savings": 0.3983867745479972,
+   "touched": true,
+   "risk": "high",
+   "confidence": 0.604
+  },
+  "extra": {
+   "pin 1": {
+    "kept": false,
+    "savings": 0.38999600439516535,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.607
+   },
+   "pin 3": {
+    "kept": false,
+    "savings": 0.38999600439516535,
+    "touched": true,
+    "risk": "high",
+    "confidence": 0.607
+   }
+  }
+ }
+]

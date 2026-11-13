@@ -1,11 +1,31 @@
 import type { WorkerStatus } from '../shared/protocol.ts'
 import type { PythonChoice } from './python.ts'
+import type { ChatStats } from './step.ts'
 
 export interface StatusInput {
   pluginVersion: string
   enabled: boolean
   python: PythonChoice | undefined
   worker: WorkerStatus | undefined
+  chat?: ChatStats | undefined
+}
+
+const REASONS: Record<string, string> = {
+  below_activation: 'the context is still below the point where Tameru starts',
+  no_candidates: 'no old large tool result is eligible yet',
+  not_confident: 'the engine was not confident enough in its extract to risk losing a fact',
+  not_worth_it: 'shortening would not have paid for rewriting the prompt cache',
+  surface_changed: 'the chat changed while the engine worked',
+  compaction_open: 'the Harness is compacting',
+  engine_unavailable: 'the engine did not answer',
+  managed_elsewhere: "another plugin manages this chat's context",
+  no_request_yet: 'the chat has not made a model request yet',
+  no_context_window: 'the model declares no context window',
+  unusable_context_window: "the model's context window is too small for the Harness's own settings",
+  no_token_meter: 'the Harness has no token meter',
+  off: 'shortening is switched off',
+  error: 'an error (see the Harness log)',
+  aborted: 'the turn was cancelled',
 }
 
 /** The text `/tameru` shows. Plain, short, and honest about what is and is not working. */
@@ -31,6 +51,14 @@ export function statusText(input: StatusInput): string {
     lines.push(`The engine stopped after repeated failures (${worker.lastError ?? 'unknown'}); the Harness is behaving as stock.`)
   } else if (worker?.lastError) {
     lines.push(`Last problem: ${worker.lastError}. When the engine fails, the original text is left as it is.`)
+  }
+  const chat = input.chat
+  if (chat && chat.shortened > 0) {
+    lines.push(`In this chat: shortened ${chat.shortened} tool result${chat.shortened === 1 ? '' : 's'}, freeing about ${chat.freedTokens.toLocaleString('en-US')} tokens.`)
+  } else if (chat?.lastSkip) {
+    lines.push(`Nothing shortened in this chat yet: ${REASONS[chat.lastSkip] ?? chat.lastSkip}.`)
+  } else {
+    lines.push('Nothing shortened in this chat yet.')
   }
   return lines.join('\n')
 }
