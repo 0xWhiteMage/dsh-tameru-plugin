@@ -215,3 +215,21 @@ test('an extract the engine is not confident in is never applied', { skip }, asy
   const applied = await shortenPass({ session: w.session, meter: w.meter, client: sure, header: undefined, activationTokens: 0, options })
   assert.equal(applied.kind, 'applied')
 })
+
+test('a result the engine declined is not sent to it again at the next step', { skip }, async () => {
+  const { w } = await longSession()
+  let calls = 0
+  const declining = {
+    compress: async (request: any) => {
+      calls++
+      return { text: request.text, failOpen: true, originalTokens: 1, keptTokens: 1, tokensSavedPct: 0, risk: 'low', confidence: 1, contentType: 'text', reasons: [], sanitized: false }
+    },
+  } as unknown as EngineClient
+  const declined = new Set<string>()
+  const run = () => shortenPass({ session: w.session, meter: w.meter, client: declining, header: undefined, activationTokens: 0, options, declined })
+  await run()
+  const first = calls
+  assert.ok(first >= 1)
+  await run()
+  assert.equal(calls, first, 'the second pass asked the engine nothing')
+})

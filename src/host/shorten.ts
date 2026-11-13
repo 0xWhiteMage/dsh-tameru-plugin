@@ -157,6 +157,16 @@ export interface PassContext {
   activationTokens: number
   options: ShortenOptions
   signal?: AbortSignal
+  /**
+   * Results the engine already declined (too little saved, not confident, would not shrink), kept for the life of the chat so the same
+   * output is not sent to the engine again at every later step. Never filled when the engine itself failed to answer.
+   */
+  declined?: Set<string>
+}
+
+/** Identifies one result and the question it was asked against. A changed question (after a compaction) is a new key. */
+export function declineKey(seq: number, textLength: number, query: string): string {
+  return `${seq}:${textLength}:${query.length}:${query.slice(0, 80)}`
 }
 
 export interface Applied {
@@ -195,23 +205,32 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   let unsure = 0
   await Promise.all(
     candidates.map(async candidate => {
-      const result = await client.compress({
-        text: candidate.text,
-        query: buildQuery(lookup, candidate.index, candidate.callId),
-        minSavingsRatio: 0.25,
-      })
+      const query = buildQuery(lookup, candidate.index, candidate.callId)
+      const key = declineKey(candidate.seq, candidate.text.length, query)
+      if (pass.declined?.has(key)) {
+        answered++
+        return
+      }
+      const result = await client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
       if (!result) return
       answered++
-      if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) return
+      if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) {
+        pass.declined?.add(key)
+        return
+      }
       if (result.confidence === null || result.confidence < options.minConfidence) {
         unsure++
+        pass.declined?.add(key)
         return
       }
       const newText = shortenedText(candidate.text, result.text)
       const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
       const beforeTokens = tokensOf.get(candidate.seq) ?? meter.estimateMessage(candidate.message)
       const afterTokens = meter.estimateMessage(replacement)
-      if (afterTokens >= beforeTokens) return
+      if (afterTokens >= beforeTokens) {
+        pass.declined?.add(key)
+        return
+      }
       planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
     }),
   )

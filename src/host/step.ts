@@ -13,6 +13,8 @@ export const DEFAULT_ACTIVATION = 0.75
 
 /** What the pass did in one chat, for `/tameru`. Kept in memory only. */
 export interface ChatStats {
+  /** Results the engine already declined in this chat (not asked again). */
+  declined: Set<string>
   shortened: number
   freedTokens: number
   passes: number
@@ -36,7 +38,7 @@ export interface StepDeps {
 
 const statsOf = (deps: StepDeps, session: object): ChatStats => {
   let stats = deps.stats.get(session)
-  if (!stats) deps.stats.set(session, (stats = { shortened: 0, freedTokens: 0, passes: 0 }))
+  if (!stats) deps.stats.set(session, (stats = { declined: new Set(), shortened: 0, freedTokens: 0, passes: 0 }))
   return stats
 }
 
@@ -79,6 +81,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       header,
       activationTokens: Math.floor(threshold * (deps.settings.activation ?? DEFAULT_ACTIVATION)),
       options,
+      declined: stats.declined,
       ...(signal ? { signal } : {}),
     })
     stats.passes++

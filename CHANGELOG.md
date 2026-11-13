@@ -7,6 +7,8 @@
 - Stands down for chats whose compaction another plugin has taken over (an own `compactIfNeeded`, `compactNow`, `compactRegion` or `summarize` on the backend object, or `auto: false`).
 - `/tameru` reports what was shortened in the chat, or why nothing was.
 - Settings: `shorten`, `activation`, `minConfidence`, `share`, `protectRecent`, `minResultChars`, `maxPerPass`.
+- A chat remembers results the engine already declined, so the same output is not sent to the engine again at every later step.
+- `docs/REPLAY-VS-STOCK.md`: 160 simulated whole sessions against the stock Harness, with the real session log, token meter, stock pruner, this plugin's pass and the engine. **Result: at the shipped settings Tameru is cost-neutral (it almost never acts); with the confidence gate lowered it acts and sessions cost about 3% more while holding about 0.7 more of 5 needed facts.** No setting tried was cheaper than stock. `scripts/replay.ts` reproduces it.
 - `docs/MEASURED-VS-STOCK.md`: the first measurement against the stock pruner, with its limits (per output, not per session; no cost claim). `scripts/compare_stock.ts` reproduces it.
 - Skeleton: the plugin loads in DeepSeek Harness, starts the Tameru engine as an isolated Python worker, and `/tameru` reports the plugin and engine versions. Nothing is shortened yet.
 - The worker protocol (version 1): a fixed list of accepted fields, no disk, network or model options, UTF-8 over stdin and stdout, exits when stdin closes.

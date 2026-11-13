@@ -2,7 +2,7 @@
 
 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): shortens bulky tool output before it fills the context, keeps every error, and lets you pin, keep and restore. Local, deterministic, no extra model calls.
 
-> **Status: early development (0.1.0, unreleased).** The plugin loads, runs the engine, and shortens large old tool results when the context fills. Reading an original back, Keep and Restore, pins and the sidebar panel are **not built yet**. The lists below say what exists and what is planned; nothing planned is claimed as working. Read [the first measurement against the stock pruner](docs/MEASURED-VS-STOCK.md) before relying on it: it is a per-output measurement, and no session cost saving has been demonstrated.
+> **Status: early development (0.1.0, unreleased).** The plugin loads, runs the engine, and shortens large old tool results when the context fills. Reading an original back, Keep and Restore, pins and the sidebar panel are **not built yet**. The lists below say what exists and what is planned; nothing planned is claimed as working. Read the two measurements before relying on it: [per output](docs/MEASURED-VS-STOCK.md) (Tameru keeps far more needed facts than the stock pruner, removes less) and [whole simulated sessions](docs/REPLAY-VS-STOCK.md) (**no cost saving: cost-neutral at the shipped settings, about 3% dearer when the confidence gate is lowered**).
 
 ## What works today
 
@@ -15,8 +15,7 @@
 
 ## Planned, in order
 
-1. A whole-session cost comparison against the stock pruner (the first measurement is per output).
-2. Read an original back (`tameru_read_original`); Keep and Restore.
+1. Read an original back (`tameru_read_original`); Keep and Restore.
 3. Pins that survive every summary; an Artifact Trail after each summary.
 4. A Tameru tab in the right sidebar (context gauge, every cleanup, a viewer for what was left out) and a settings page.
 

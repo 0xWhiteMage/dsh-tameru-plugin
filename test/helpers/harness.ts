@@ -25,20 +25,21 @@ export interface World {
 let counter = 0
 
 /** A live session with a system prompt and a user message, plus helpers that add the events a real agent loop writes. */
-export async function world(): Promise<World> {
+export async function world(task = 'Find why the build fails and fix it.'): Promise<World> {
   const { Context } = await load('@deepseek-ai/cordis')
   const sessions = await load('@deepseek-ai/dsh-session')
   const ctx = new Context()
   ctx.plugin(sessions.default)
   ctx.plugin((await load('@deepseek-ai/dsh-session-projection')).default)
   ctx.plugin((await load('@deepseek-ai/dsh-token-meter')).default)
+  ctx.plugin((await load('@deepseek-ai/dsh-compaction-tool-result-pruner')).default)   // the Harness's own pruner, for comparisons
   await new Promise(resolve => setTimeout(resolve, 50))
   const session = ctx.sessions.create(`s${++counter}`, { meta: { cwd: root } })
   const model = { provider: 'p', model: 'm' }
   let turn = 0
   let stepNo = 0
   session.append('system/message', { message: { id: `sys${counter}`, role: 'system', content: [{ type: 'text', text: 'You are an agent.' }], source: { kind: 'system-prompt' } } }, { surfaceOp: 'append' })
-  session.append('user/message', { id: `user${counter}`, role: 'user', content: [{ type: 'text', text: 'Find why the build fails and fix it.' }], source: { kind: 'user' } }, { surfaceOp: 'append' })
+  session.append('user/message', { id: `user${counter}`, role: 'user', content: [{ type: 'text', text: task }], source: { kind: 'user' } }, { surfaceOp: 'append' })
   session.append('turn/start', { turn })
   let n = 0
   // one agent-loop step: step/start, the assistant message, whatever the callback adds (tool results), step/end
