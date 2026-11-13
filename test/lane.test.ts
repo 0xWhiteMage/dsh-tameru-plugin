@@ -19,6 +19,7 @@ test('the manifest declares what the Harness reads, and nothing it does not need
   assert.equal(pkg.license, 'Apache-2.0')
   assert.equal(pkg.dependencies, undefined, 'the host half has no runtime dependencies')
   for (const file of pkg.files) assert.ok(!file.startsWith('src'), 'source is not shipped')
+  assert.ok(pkg.files.includes('!**/__pycache__/**') && pkg.files.includes('!**/*.pyc'), 'compiled Python never ships')
 })
 
 test('the patch inserts one row and disables, overrides or configures nothing else', () => {

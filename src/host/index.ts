@@ -35,6 +35,7 @@ interface HostContext {
   subprocess: HarnessSubprocess
   /** Cordis: run `setup` now; the function it returns runs when the plugin is unloaded. */
   effect(setup: () => () => void, label?: string): unknown
+  logger?: (scope: string) => { info(message: string): unknown; warn(message: string): unknown }
 }
 
 /** The folder this package lives in: the nearest ancestor with a package.json named `dsh-tameru`. */
@@ -78,6 +79,9 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
       void worker.dispose()
     }, 'dsh-tameru: engine worker')
   }
+  const log = ctx.logger?.('tameru')
+  if (python) log?.info(`dsh-tameru ${version} loaded (engine Python: ${python.path}, from ${python.source})`)
+  else log?.warn(`dsh-tameru ${version} loaded but no Python was found: the Harness behaves as stock. Set pythonPath in Tameru's settings.`)
   ctx.commands.register({
     name: 'tameru',
     description: 'Show what Tameru is doing in this chat',
