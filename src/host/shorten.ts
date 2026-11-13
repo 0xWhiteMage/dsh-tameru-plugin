@@ -1,5 +1,8 @@
 import type { EngineClient } from './engine-client.ts'
 import {
+  KEPT_PREFIX,
+  READ_TOOL,
+  RESTORED_PREFIX,
   SHORTENED_PREFIX,
   alreadyShortened,
   buildQuery,
@@ -8,6 +11,7 @@ import {
   type Message,
   type SessionEvent,
 } from './messages.ts'
+import { RESTORE_REPLIES } from './originals.ts'
 
 /** The parts of the Harness's Session this pass uses. `eventAt` is deprecated for new code but is what the stock pruner uses too. */
 export interface SessionLike {
@@ -50,6 +54,8 @@ export interface Entry {
 
 export interface Candidate extends Entry {
   index: number
+  /** The seq of the original result: this node's own seq, unless it is a restored result being shortened again. */
+  origin: number
   text: string
   callId: string
   toolName: string
@@ -93,7 +99,7 @@ export function compactionOpen(session: SessionLike): boolean {
  * old enough. Everything after the last assistant message has not been read by the model yet and is never touched, and the
  * newest `protectRecent` results are kept as they are.
  */
-export function findCandidates(entries: Entry[], options: ShortenOptions): Candidate[] {
+export function findCandidates(session: SessionLike, entries: Entry[], options: ShortenOptions): Candidate[] {
   let lastAssistant = -1
   entries.forEach((entry, index) => {
     if (entry.message.role === 'assistant') lastAssistant = index
@@ -104,13 +110,27 @@ export function findCandidates(entries: Entry[], options: ShortenOptions): Candi
   const found: Candidate[] = []
   for (const { entry, index } of eligible) {
     const { message } = entry
-    if (message.isError === true) continue
-    const text = textOnly(message)
-    if (text === undefined || text.length < options.minResultChars) continue
+    if (message.isError === true || message.source?.name === READ_TOOL) continue
+    let text = textOnly(message)
+    if (text === undefined) continue
+    let origin = entry.seq
+    if (text.startsWith(KEPT_PREFIX)) continue
+    if (text.startsWith(RESTORED_PREFIX)) {
+      // a restored result stays in full for a few replies, then is an ordinary candidate again, from its original text
+      // replies counted after the restore itself (event order), not after the result's place in the history
+      const replies = entries.filter(later => later.message.role === 'assistant' && later.seq > entry.seq).length
+      const sources = (entry.event as unknown as { sourceEventSeqs?: number[] }).sourceEventSeqs
+      const original = sources?.[0] === undefined ? undefined : session.eventAt(sources[0])
+      const originalText = original?.data.message ? textOnly(original.data.message) : undefined
+      if (replies < RESTORE_REPLIES || originalText === undefined) continue
+      text = originalText
+      origin = sources![0]!
+    }
+    if (text.length < options.minResultChars) continue
     if (alreadyShortened(text) || hasSpillNotice(text)) continue
     const callId = message.toolCallId ?? message.source?.callId
     if (typeof callId !== 'string' || callId === '') continue
-    found.push({ ...entry, index, text, callId, toolName: message.source?.name ?? '' })
+    found.push({ ...entry, index, origin, text, callId, toolName: message.source?.name ?? '' })
   }
   return found
 }
@@ -124,8 +144,8 @@ export interface Planned {
 }
 
 /** The text the model sees in place of a result: one factual header line, then the engine's extract. */
-export function shortenedText(original: string, extract: string): string {
-  return `${SHORTENED_PREFIX}${original.length.toLocaleString('en-US')} to ${extract.length.toLocaleString('en-US')} characters; the original stays in the session log]\n${extract}`
+export function shortenedText(original: string, extract: string, ref: number): string {
+  return `${SHORTENED_PREFIX}${original.length.toLocaleString('en-US')} to ${extract.length.toLocaleString('en-US')} characters; read the original with ${READ_TOOL}, reference ${ref}]\n${extract}`
 }
 
 /**
@@ -192,7 +212,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (measurement.totalTokens < pass.activationTokens) return { kind: 'skipped', reason: 'below_activation' }
   if (compactionOpen(session)) return { kind: 'skipped', reason: 'compaction_open' }
   const entries = readSurface(session)
-  const candidates = findCandidates(entries, options)
+  const candidates = findCandidates(session, entries, options)
     .sort((a, b) => b.text.length - a.text.length)
     .slice(0, options.maxPerPass)
   if (candidates.length === 0) return { kind: 'skipped', reason: 'no_candidates' }
@@ -223,7 +243,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         pass.declined?.add(key)
         return
       }
-      const newText = shortenedText(candidate.text, result.text)
+      const newText = shortenedText(candidate.text, result.text, candidate.origin)
       const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
       const beforeTokens = tokensOf.get(candidate.seq) ?? meter.estimateMessage(candidate.message)
       const afterTokens = meter.estimateMessage(replacement)
@@ -254,7 +274,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         shadowedSeqs: [seq],
         shadowedTokenCount: meter.estimateMessage(item.candidate.message),
       })
-      const written = session.append('tool/result', { ...event.data, message: item.replacement }, { surfaceOp: { op: 'replace', startSeq: seq, endSeq: seq }, sourceEventSeqs: [seq] })
+      const { origin } = item.candidate
+      const written = session.append('tool/result', { ...event.data, message: item.replacement }, { surfaceOp: { op: 'replace', startSeq: seq, endSeq: seq }, sourceEventSeqs: origin === seq ? [seq] : [origin, seq] })
       applied.push({ originalSeq: seq, replacementSeq: written.seq, toolName: item.candidate.toolName, beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })
     } catch {
       break // what was written is a complete pair; stop before anything half-written

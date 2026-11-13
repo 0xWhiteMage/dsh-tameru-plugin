@@ -3,10 +3,13 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EngineClient } from './engine-client.ts'
 import { harnessWorkerSpawn, type HarnessSubprocess } from './process.ts'
+import type { SessionLike } from './shorten.ts'
 import { findPython } from './python.ts'
 import { normalizeSettings, type TameruConfig } from './settings.ts'
 import { statusText } from './status.ts'
-import { onPreStep, type ChatStats, type StepAgent } from './step.ts'
+import { chatStatsOf, onPreStep, type ChatStats, type StepAgent } from './step.ts'
+import { runCommand } from './commands.ts'
+import { readOriginalTool } from './tool.ts'
 
 /**
  * Tameru for DeepSeek Harness: host half.
@@ -15,7 +18,7 @@ import { onPreStep, type ChatStats, type StepAgent } from './step.ts'
  * Harness's and DS Bot's, never `prepend`), and with `enabled: false` it adds nothing at all.
  */
 export const name = 'dsh-tameru'
-export const inject = ['commands', 'subprocess']
+export const inject = ['commands', 'subprocess', 'tools']
 
 export type { TameruConfig }
 
@@ -36,6 +39,7 @@ interface HostContext {
   logger?: (scope: string) => { info(message: string): unknown; warn(message: string): unknown }
   /** Look up an optional Harness service by name; undefined when it is not mounted. */
   get?(name: string): any
+  tools?: { register(definition: unknown): unknown }
   on?(event: 'agent/pre-step', listener: (payload: { agent: StepAgent; signal?: AbortSignal }, next: () => unknown) => unknown): unknown
 }
 
@@ -102,11 +106,17 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
   else log?.warn(`dsh-tameru ${version} loaded but no Python was found: the Harness behaves as stock. Set pythonPath in Tameru's settings.`)
   ctx.commands.register({
     name: 'tameru',
-    description: 'Show what Tameru is doing in this chat',
-    handler: async ({ agent }) => {
+    description: 'Show what Tameru is doing in this chat; keep, restore or read a shortened result (try /tameru help)',
+    input: { hint: '[help|changes|view|keep|restore|unkeep] [reference]' },
+    handler: async ({ rawInput, agent }) => {
       if (client && !client.status().version) await client.probe()
-      const chat = agent?.session ? stats.get(agent.session) : undefined
-      return { kind: 'success', text: statusText({ pluginVersion: version, enabled, python, worker: client?.status(), chat }) }
+      const session = agent?.session as SessionLike | undefined
+      const chat = session ? stats.get(session) : undefined
+      const status = (): string => statusText({ pluginVersion: version, enabled, python, worker: client?.status(), chat })
+      if (!session) return { kind: 'success', text: status() }
+      return runCommand(rawInput, { session, meter: ctx.get?.('tokenMeter'), stats: chatStatsOf(stats, session), status })
     },
   })
+  // The model's way back to a shortened result's original. A plain definition: nothing is imported from the Harness at run time.
+  if (python) ctx.tools?.register(readOriginalTool())
 }

@@ -126,7 +126,7 @@ async function main(): Promise<void> {
             const run = async (extra: { pinRecent?: number }): Promise<Arm> => {
               const result = await client.compress({ text, query, minSavingsRatio: 0.25, ...extra })
               const touched = !!result && !result.failOpen && result.text.length < text.length && !result.sanitized
-              const after = touched ? shortenedText(text, result!.text) : text
+              const after = touched ? shortenedText(text, result!.text, 0) : text
               return { kept: keeps(after, c), savings: savings(text, after), touched, risk: result?.risk ?? null, confidence: result?.confidence ?? null }
             }
             const extra: Record<string, Arm> = {}

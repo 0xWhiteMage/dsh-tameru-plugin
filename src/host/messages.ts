@@ -27,6 +27,12 @@ export interface SessionEvent {
 
 /** The prefix of every result Tameru shortened. It is how a result already shortened by us is recognised. */
 export const SHORTENED_PREFIX = '[Tameru: shortened from '
+/** The headers of a result the user asked to see in full again: for a few replies, or until they let go. */
+export const RESTORED_PREFIX = '[Tameru: restored in full '
+export const KEPT_PREFIX = '[Tameru: kept in full '
+
+/** The tool the model reads originals back with. Its own results are never shortened. */
+export const READ_TOOL = 'tameru_read_original'
 
 /** The marker the Harness's own pruner leaves in the middle of a result it trimmed. */
 export const STOCK_PRUNE_MARKER = '[... tool result middle pruned ...]'
@@ -51,6 +57,11 @@ export function hasSpillNotice(text: string): boolean {
 
 export function alreadyShortened(text: string): boolean {
   return text.startsWith(SHORTENED_PREFIX) || text.includes(STOCK_PRUNE_MARKER)
+}
+
+/** True for any result Tameru has written: shortened, restored or kept. */
+export function touchedByTameru(text: string): boolean {
+  return text.startsWith(SHORTENED_PREFIX) || text.startsWith(RESTORED_PREFIX) || text.startsWith(KEPT_PREFIX)
 }
 
 /** The tool call (name and arguments) that produced a result, found among the assistant messages before it. */

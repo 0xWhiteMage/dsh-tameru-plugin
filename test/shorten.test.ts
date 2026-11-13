@@ -119,6 +119,7 @@ test('errors, already shortened, spilled and stock-pruned results are never touc
   w.step({ name: 'bash', args: {} }, big)
   w.finish()
   const found = findCandidates(
+    w.session,
     w.session.surface.nodes.map(seq => ({ seq, event: w.session.eventAt(seq)!, message: w.session.deriveEventMessage(w.session.eventAt(seq)!)! })) as Entry[],
     { ...options, protectRecent: 1 },
   )

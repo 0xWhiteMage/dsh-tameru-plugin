@@ -23,6 +23,8 @@ async function harness(): Promise<{ ctx: any; handles: any[] }> {
   const { Context } = await load('@deepseek-ai/cordis')
   const { LocalSubprocessRuntime } = await load('@deepseek-ai/dsh-subprocess-local')
   const ctx = new Context()
+  ctx.plugin((await load('@deepseek-ai/dsh-system-prompt')).default)
+  ctx.plugin((await load('@deepseek-ai/dsh-tools')).default)
   ctx.plugin(LocalSubprocessRuntime)
   await new Promise(resolve => setTimeout(resolve, 100))
   const handles: any[] = []

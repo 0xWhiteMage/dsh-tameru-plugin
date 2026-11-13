@@ -1,4 +1,5 @@
 import type { EngineClient } from './engine-client.ts'
+import { drainPending, type PendingOp } from './commands.ts'
 import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
 import { compactionIsManagedElsewhere, policyFor, stockThreshold, type BackendLike } from './stock.ts'
 
@@ -15,6 +16,8 @@ export const DEFAULT_ACTIVATION = 0.75
 export interface ChatStats {
   /** Results the engine already declined in this chat (not asked again). */
   declined: Set<string>
+  /** Keep, restore and unkeep requests made while the agent was working; applied at the next step boundary. */
+  pending: PendingOp[]
   shortened: number
   freedTokens: number
   passes: number
@@ -36,23 +39,25 @@ export interface StepDeps {
   log?: { info(message: string): unknown; warn(message: string): unknown }
 }
 
-const statsOf = (deps: StepDeps, session: object): ChatStats => {
-  let stats = deps.stats.get(session)
-  if (!stats) deps.stats.set(session, (stats = { declined: new Set(), shortened: 0, freedTokens: 0, passes: 0 }))
+export const chatStatsOf = (store: WeakMap<object, ChatStats>, session: object): ChatStats => {
+  let stats = store.get(session)
+  if (!stats) store.set(session, (stats = { declined: new Set(), pending: [], shortened: 0, freedTokens: 0, passes: 0 }))
   return stats
 }
 
 /** The outcome of the pass, or the reason it did not run. Never throws: a problem here must never cost the user a turn. */
 export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: AbortSignal): Promise<PassOutcome | { kind: 'skipped'; reason: string }> {
-  const stats = statsOf(deps, agent.session)
+  const stats = chatStatsOf(deps.stats, agent.session)
   const skip = (reason: string) => {
     stats.lastSkip = reason
     return { kind: 'skipped' as const, reason }
   }
   try {
-    if (deps.settings.shorten === false) return skip('off')
     const meter = deps.meter()
     if (!meter) return skip('no_token_meter')
+    // what the user asked for while the agent was working (keep, restore, unkeep) is done first, even with shortening switched off
+    for (const failure of drainPending(agent.session, meter, stats)) deps.log?.warn(`dsh-tameru: could not ${failure.op.op} reference ${failure.op.ref}: ${failure.reason}`)
+    if (deps.settings.shorten === false) return skip('off')
     const backend = deps.backendFor(agent)
     if (compactionIsManagedElsewhere(backend)) return skip('managed_elsewhere')
     const header = agent.session.requestHeader()

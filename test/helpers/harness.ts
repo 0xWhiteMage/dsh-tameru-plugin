@@ -33,6 +33,8 @@ export async function world(task = 'Find why the build fails and fix it.'): Prom
   ctx.plugin((await load('@deepseek-ai/dsh-session-projection')).default)
   ctx.plugin((await load('@deepseek-ai/dsh-token-meter')).default)
   ctx.plugin((await load('@deepseek-ai/dsh-compaction-tool-result-pruner')).default)   // the Harness's own pruner, for comparisons
+  ctx.plugin((await load('@deepseek-ai/dsh-system-prompt')).default)                    // the real prompt assembler and tool registry
+  ctx.plugin((await load('@deepseek-ai/dsh-tools')).default)
   await new Promise(resolve => setTimeout(resolve, 50))
   const session = ctx.sessions.create(`s${++counter}`, { meta: { cwd: root } })
   const model = { provider: 'p', model: 'm' }

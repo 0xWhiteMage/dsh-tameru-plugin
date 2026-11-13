@@ -53,6 +53,13 @@ test('a pre-step waterfall shortens old large results through the real services 
     const reply = await registered[0].handler({ agent })
     assert.match(reply.text, /In this chat: shortened \d+ tool results?/)
     assert.match(reply.text, /Engine 1\.9\.0/)
+    // the model's way back is in the Harness's own tool registry, and the user's verbs work through the registered command
+    assert.ok(ctx.tools.definitions().some((definition: { name: string }) => definition.name === 'tameru_read_original'))
+    const changes = await registered[0].handler({ agent, rawInput: 'changes' })
+    assert.match(changes.text, /Results Tameru shortened/)
+    const ref = Number(/^\s*(\d+)/.exec(changes.text.split('\n')[1] ?? '')?.[1])
+    assert.ok(Number.isInteger(ref))
+    assert.match((await registered[0].handler({ agent, rawInput: `view ${ref}` })).text, /\[characters 0-3000 of \d+/)
   } finally {
     await ctx.fiber.dispose()
   }
