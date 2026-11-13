@@ -48,6 +48,47 @@ export const chatStatsOf = (store: WeakMap<object, ChatStats>, session: object):
   return stats
 }
 
+export interface Pressure {
+  header: NonNullable<ReturnType<StepAgent['session']['requestHeader']>>
+  /** Tokens the chat holds now, as the Harness's own meter prices it. */
+  tokens: number
+  contextWindow: number
+  /** The point at which the Harness's own backend would start compacting. */
+  stockTrigger: number
+  /** The point at which Tameru starts shortening. */
+  startsAt: number
+}
+
+/** How full the chat is against the Harness's own trigger, or why that cannot be said. Used by the pass and by the panel's gauge. */
+export async function pressureOf(deps: StepDeps, agent: StepAgent, signal?: AbortSignal): Promise<{ ok: true; pressure: Pressure } | { ok: false; reason: string }> {
+  const meter = deps.meter()
+  if (!meter) return { ok: false, reason: 'no_token_meter' }
+  const backend = deps.backendFor(agent)
+  if (compactionIsManagedElsewhere(backend)) return { ok: false, reason: 'managed_elsewhere' }
+  const header = agent.session.requestHeader()
+  if (!header?.config.provider || !header.config.model) return { ok: false, reason: 'no_request_yet' }
+  const { provider, model } = header.config
+  const info = await deps.resolveModelInfo(provider, model, signal)
+  const contextWindow = info?.context?.contextWindow
+  if (contextWindow === undefined) return { ok: false, reason: 'no_context_window' }
+  const stockTrigger = stockThreshold({
+    contextWindow,
+    reservedCompletionTokens: header.config.maxTokens ?? info?.defaultMaxTokens ?? 0,
+    ...policyFor(backend, provider, model),
+  })
+  if (stockTrigger === undefined) return { ok: false, reason: 'unusable_context_window' }
+  return {
+    ok: true,
+    pressure: {
+      header,
+      tokens: meter.measure(agent.session, header).totalTokens,
+      contextWindow,
+      stockTrigger,
+      startsAt: Math.floor(stockTrigger * (deps.settings.activation ?? DEFAULT_ACTIVATION)),
+    },
+  }
+}
+
 /** The outcome of the pass, or the reason it did not run. Never throws: a problem here must never cost the user a turn. */
 export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: AbortSignal): Promise<PassOutcome | { kind: 'skipped'; reason: string }> {
   const stats = chatStatsOf(deps.stats, agent.session)
@@ -61,20 +102,9 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
     // what the user asked for while the agent was working (keep, restore, unkeep) is done first, even with shortening switched off
     for (const failure of drainPending(agent.session, meter, stats)) deps.log?.warn(`dsh-tameru: could not ${failure.op.op} reference ${failure.op.ref}: ${failure.reason}`)
     if (deps.settings.shorten === false) return skip('off')
-    const backend = deps.backendFor(agent)
-    if (compactionIsManagedElsewhere(backend)) return skip('managed_elsewhere')
-    const header = agent.session.requestHeader()
-    if (!header?.config.provider || !header.config.model) return skip('no_request_yet')
-    const { provider, model } = header.config
-    const info = await deps.resolveModelInfo(provider, model, signal)
-    const contextWindow = info?.context?.contextWindow
-    if (contextWindow === undefined) return skip('no_context_window')
-    const threshold = stockThreshold({
-      contextWindow,
-      reservedCompletionTokens: header.config.maxTokens ?? info?.defaultMaxTokens ?? 0,
-      ...policyFor(backend, provider, model),
-    })
-    if (threshold === undefined) return skip('unusable_context_window')
+    const found = await pressureOf(deps, agent, signal)
+    if (!found.ok) return skip(found.reason)
+    const { pressure } = found
     const options: ShortenOptions = {
       protectRecent: deps.settings.protectRecent ?? DEFAULT_SHORTEN.protectRecent,
       minResultChars: deps.settings.minResultChars ?? DEFAULT_SHORTEN.minResultChars,
@@ -86,8 +116,8 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       session: agent.session,
       meter,
       client: deps.client,
-      header,
-      activationTokens: Math.floor(threshold * (deps.settings.activation ?? DEFAULT_ACTIVATION)),
+      header: pressure.header,
+      activationTokens: pressure.startsAt,
       options,
       declined: stats.declined,
       ...(signal ? { signal } : {}),
@@ -97,7 +127,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       stats.shortened += outcome.applied.length
       stats.freedTokens += outcome.freedTokens
       delete stats.lastSkip
-      deps.log?.info(`dsh-tameru: shortened ${outcome.applied.length} tool result(s), about ${outcome.freedTokens} tokens (Harness compaction would start at ${threshold})`)
+      deps.log?.info(`dsh-tameru: shortened ${outcome.applied.length} tool result(s), about ${outcome.freedTokens} tokens (Harness compaction would start at ${pressure.stockTrigger})`)
     } else {
       stats.lastSkip = outcome.reason
     }

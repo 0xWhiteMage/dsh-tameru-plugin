@@ -15,6 +15,8 @@ test('the manifest declares what the Harness reads, and nothing it does not need
   assert.ok(pkg.keywords.includes('dsh-plugin'))
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(pkg.dsh.manifestVersion, 1)
+  assert.deepEqual(pkg.dsh.client, { platform: 'web' }, 'the browser half is declared')
+  assert.equal(pkg.exports['./client'], './lib/client.js')
   assert.equal(pkg.engines.dsh, readFileSync(join(root, 'DSH_PIN'), 'utf8').trim(), 'engines.dsh and DSH_PIN name the same tested version')
   assert.equal(pkg.license, 'Apache-2.0')
   assert.equal(pkg.dependencies, undefined, 'the host half has no runtime dependencies')
@@ -29,7 +31,7 @@ test('the patch inserts one row and disables, overrides or configures nothing el
 
 test('the plugin name and entry id are prefixed and unique to us', () => {
   assert.equal(name, 'dsh-tameru')
-  assert.deepEqual(inject, ['commands', 'subprocess', 'tools', 'systemPrompt'])
+  assert.deepEqual(inject, ['commands', 'subprocess', 'tools', 'systemPrompt', 'connection'])
 })
 
 test('locale files exist for en and zh with a title and description', () => {

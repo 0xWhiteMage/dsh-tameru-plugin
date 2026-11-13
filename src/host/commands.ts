@@ -63,6 +63,23 @@ function parseRef(word: string | undefined): number | undefined {
   return Number(word)
 }
 
+/**
+ * Keep, restore or unkeep one result, for the command and for the panel alike: now when the agent is idle, queued for the next step
+ * boundary when it is working. Validates first, and never throws.
+ */
+export function requestHold(env: Pick<CommandEnv, 'session' | 'meter' | 'stats'>, op: PendingOp): CommandReply {
+  const known = listItems(env.session).find(item => item.ref === op.ref)
+  if (!known) return { kind: 'error', text: `No result shortened by Tameru has reference ${op.ref} in this chat.` }
+  const done = op.op === 'keep' ? 'is now kept in full until you unkeep it' : op.op === 'restore' ? 'is back in full for the next few replies' : 'is shortened again'
+  if (!env.meter) return { kind: 'error', text: 'The Harness has no token meter, so Tameru cannot change this chat.' }
+  if (turnOpen(env.session) || compactionOpen(env.session)) {
+    env.stats.pending.push(op)
+    return { kind: 'success', text: `Queued: reference ${op.ref} will be changed before the agent's next step, because it is working now.` }
+  }
+  const result = applyOp(env.session, env.meter, op)
+  return result.ok ? { kind: 'success', text: `Reference ${op.ref} ${done}.` } : { kind: 'error', text: result.reason }
+}
+
 /** `/tameru ...`: everything the user can ask for. A write waits for the next step boundary when the agent is mid-turn. */
 export function runCommand(rawInput: string | undefined, env: CommandEnv): CommandReply {
   const words = (rawInput ?? '').trim().split(/\s+/).filter(Boolean)
@@ -85,17 +102,7 @@ export function runCommand(rawInput: string | undefined, env: CommandEnv): Comma
   }
   if (verb === 'keep' || verb === 'restore' || verb === 'unkeep') {
     if (ref === undefined) return { kind: 'error', text: `Usage: /tameru ${verb} REF. See /tameru changes for references.` }
-    const known = listItems(env.session).find(item => item.ref === ref)
-    if (!known) return { kind: 'error', text: `No result shortened by Tameru has reference ${ref} in this chat.` }
-    const op: PendingOp = { op: verb, ref }
-    const done = verb === 'keep' ? 'is now kept in full until you /tameru unkeep it' : verb === 'restore' ? 'is back in full for the next few replies' : 'is shortened again'
-    if (!env.meter) return { kind: 'error', text: 'The Harness has no token meter, so Tameru cannot change this chat.' }
-    if (turnOpen(env.session) || compactionOpen(env.session)) {
-      env.stats.pending.push(op)
-      return { kind: 'success', text: `Queued: reference ${ref} will be changed before the agent's next step, because it is working now.` }
-    }
-    const result = applyOp(env.session, env.meter, op)
-    return result.ok ? { kind: 'success', text: `Reference ${ref} ${done}.` } : { kind: 'error', text: result.reason }
+    return requestHold(env, { op: verb, ref })
   }
   return { kind: 'error', text: `Unknown option "${verb}".\n${HELP}` }
 }

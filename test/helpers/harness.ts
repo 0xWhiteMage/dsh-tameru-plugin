@@ -11,8 +11,16 @@ export const skip = harnessAvailable ? false : 'run `python scripts/extract_harn
 
 export const load = (pkg: string): Promise<any> => import(pathToFileURL(join(modules, pkg, 'lib', 'index.js')).href)
 
+export interface Route {
+  path: string
+  methods: string[]
+  fetch: (request: Request) => Promise<Response>
+}
+
 export interface World {
   ctx: any
+  /** Routes plugins registered on the stand-in `connection` service, by path. */
+  routes: Map<string, Route>
   session: SessionLike & { deriveMessages(): any[] }
   meter: MeterLike & { measure(session: any, header?: any): any }
   step(call: { name: string; args: unknown }, output: string, options?: { isError?: boolean }): { callId: string; resultSeq: number }
@@ -35,6 +43,10 @@ export async function world(task = 'Find why the build fails and fix it.'): Prom
   ctx.plugin((await load('@deepseek-ai/dsh-compaction-tool-result-pruner')).default)   // the Harness's own pruner, for comparisons
   ctx.plugin((await load('@deepseek-ai/dsh-system-prompt')).default)                    // the real prompt assembler and tool registry
   ctx.plugin((await load('@deepseek-ai/dsh-tools')).default)
+  // the Harness's HTTP channel, reduced to what a plugin uses: register a route, get a disposer
+  const routes = new Map<string, Route>()
+  ctx.provide('connection')
+  ctx.set('connection', { fetch: { register: (route: Route) => { routes.set(route.path, route); return () => routes.delete(route.path) } } })
   await new Promise(resolve => setTimeout(resolve, 50))
   const session = ctx.sessions.create(`s${++counter}`, { meta: { cwd: root } })
   const model = { provider: 'p', model: 'm' }
@@ -57,6 +69,7 @@ export async function world(task = 'Find why the build fails and fix it.'): Prom
     session.append('tool/result', { message: { id: `r${counter}-${++n}`, role: 'tool', toolCallId: callId, content: [{ type: 'text', text: output }], ...(isError ? { isError: true } : {}), source: { kind: 'tool', callId, name } } }, { surfaceOp: 'append' }).seq
   return {
     ctx,
+    routes,
     session,
     meter: ctx.tokenMeter,
     step(call, output, options = {}) {

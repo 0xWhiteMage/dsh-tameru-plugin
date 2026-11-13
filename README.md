@@ -11,6 +11,7 @@
 - **Keep and Restore.** `/tameru keep N` shows the model the full original until you `/tameru unkeep N`; `/tameru restore N` shows it in full for the model's next 3 replies, after which Tameru may shorten it again. Nothing is stored outside the chat: a result's state is in the chat log itself, so it survives a restart and a fork. If the agent is working when you ask, the change is queued and made before its next step.
 - **Pins.** `/tameru pin TEXT` keeps a line of yours (up to 5, 300 characters each) in front of the model on every request, word for word. Pins are a section of the system prompt, which no compaction replaces, so they survive every summary. They are only ever text you typed: no tool lets the model pin, and text that looks like a credential is refused (a heuristic, not a guarantee). `{{curly braces}}` in a pin are kept literally. Pins are saved in `<Harness home>/tameru/pins.json`, which `/tameru purge` empties; removing the plugin leaves that folder.
 - **Artifact Trail.** After the Harness compacts a chat, one short note is added listing the files touched, the commands run (and which failed) and the distinct errors in what the summary replaced, so the agent knows what it already did. It is built only from tool-call names, path and command arguments and error flags, each line capped and stripped of markup, never from the body of any output, and it says it is data. It carries forward through later compactions.
+- **The Tameru tab.** In the right sidebar's new-tab guide, **Tameru** opens a panel for the chat it sits in: a context gauge against the point where the Harness compacts (with where Tameru starts), the list of results Tameru shortened with their sizes, a viewer for each (the original, or what the model sees, in pages), Keep, Restore and Shorten again buttons, your pinned lines, and a settings drawer (shorten on or off, where to start, how confident the engine must be) with its measured trade-off written next to it. Changes made while the agent is working are queued and shown as such. English and Chinese, light and dark. Settings you change are saved in `<Harness home>/tameru/settings.json` and apply at once.
 - It stands down for any chat whose compaction another plugin (for example DS Bot) manages, while a compaction is running, and whenever the model declares no usable context window.
 - `/tameru` shows the plugin version, the engine version, whether the engine is running, and what was shortened in this chat.
 - The Tameru engine runs as an isolated Python worker on the interpreter the Harness bundles (or one you name), started through the Harness's own managed subprocess service.
@@ -19,7 +20,7 @@
 
 ## Planned, in order
 
-1. A Tameru tab in the right sidebar (context gauge, every cleanup, a viewer for what was left out) and a settings page.
+Nothing planned is outstanding; what is left is verification against a real model (see Status) and publishing, which is the author's call.
 
 ## Install
 

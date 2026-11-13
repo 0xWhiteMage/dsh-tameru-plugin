@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Added
+- **The Tameru tab** (right sidebar): gauge, cleanups with viewer, Keep and Restore, pins and a settings drawer, from a bundled React client (`lib/client.js`, 27 KB, only the Harness's shared modules) over an authenticated route `POST /api/tameru` (state, hold, view, pin, unpin, settings) that reuses the `/tameru` command code. It reaches only chats that are open and validates every payload. Settings changed there are saved in `<Harness home>/tameru/settings.json`. Found by running the real Harness web client: guide entries need `title` and `description` as functions, a tab body receives `sessionId`, and an undeclared service silently fails a plugin; each is now covered by a test.
+- `scripts/dev_harness.py`: serves the installed Harness against a throwaway home with a stub model and this plugin installed, to try the interface in a browser without touching a real profile.
 - **Pins** (`/tameru pin`, `pins`, `unpin`, `purge`): a `tameru:pins` section of the system prompt (not interpolated), five lines of 300 characters, credential-shaped text refused, saved atomically in `<Harness home>/tameru/pins.json`, per chat.
 - **Artifact Trail**: after a finished compaction, one user-role notice (source kind `tameru`, form `notice`) of typed, capped, sanitised facts about the replaced messages, added to the pre-step decision only when the step is admitted, derived entirely from the log so a restart repeats nothing, merged forward through later compactions.
 - The plugin now declares `systemPrompt` and `tools` as required services. Using a Harness service that is not declared makes Cordis fail the plugin silently; a test now mounts the plugin on the real services to catch that.

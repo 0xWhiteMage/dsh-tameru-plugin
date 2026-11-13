@@ -7,9 +7,11 @@ import type { SessionLike } from './shorten.ts'
 import { dshHome, findPython } from './python.ts'
 import { filePins, pinsSection } from './pins.ts'
 import { scanForTrail, trailMessage } from './trail.ts'
+import { handleApi, type ApiEnv } from './api.ts'
+import { readSaved, writeSaved } from './saved-settings.ts'
 import { normalizeSettings, type TameruConfig } from './settings.ts'
 import { statusText } from './status.ts'
-import { chatStatsOf, onPreStep, type ChatStats, type StepAgent, type StepDeps } from './step.ts'
+import { chatStatsOf, onPreStep, pressureOf, type ChatStats, type StepAgent, type StepDeps, type TameruSettings } from './step.ts'
 import { runCommand } from './commands.ts'
 import { readOriginalTool } from './tool.ts'
 
@@ -20,7 +22,7 @@ import { readOriginalTool } from './tool.ts'
  * Harness's and DS Bot's, never `prepend`), and with `enabled: false` it adds nothing at all.
  */
 export const name = 'dsh-tameru'
-export const inject = ['commands', 'subprocess', 'tools', 'systemPrompt']
+export const inject = ['commands', 'subprocess', 'tools', 'systemPrompt', 'connection']
 
 export type { TameruConfig }
 
@@ -42,6 +44,7 @@ interface HostContext {
   /** Look up an optional Harness service by name; undefined when it is not mounted. */
   get?(name: string): any
   tools?: { register(definition: unknown): unknown }
+  connection?: { fetch: { register(route: { path: string; methods: string[]; requestBody: string; fetch: (request: Request) => Promise<Response> }): unknown } }
   systemPrompt?: { section(definition: { name: string; order: number; interpolate: boolean; text: (context: { agent?: { session?: { id?: string } } }) => string }): unknown }
   on?(event: 'agent/pre-step', listener: (payload: { agent: StepAgent; signal?: AbortSignal }, next: () => unknown) => unknown): unknown
 }
@@ -76,13 +79,29 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
   if (!enabled) return
   const dir = packageDir()
   const version = pluginVersion(dir)
-  const settings = normalizeSettings(config)
+  const stateDir = join(dshHome(), 'tameru')
+  // what the profile says, then what the user changed in the Tameru panel; one live object the panel edits in place
+  const settings: TameruSettings = { ...normalizeSettings(config), ...readSaved(stateDir) }
   const python = findPython(config.pythonPath ? { configured: config.pythonPath } : {})
   const stats = new WeakMap<object, ChatStats>()
   const log = ctx.logger?.('tameru')
-  const pins = filePins(join(dshHome(), 'tameru'))
+  const pins = filePins(stateDir)
   let client: EngineClient | undefined
   let deps: StepDeps | undefined
+  const baseDeps = {
+    meter: () => ctx.get?.('tokenMeter'),
+    resolveModelInfo: async (provider: string, model: string, signal?: AbortSignal) => ctx.get?.('llm')?.resolveModelInfo(provider, model, signal),
+    backendFor: (agent: StepAgent) => {
+      try {
+        return ctx.get?.('agentPresets')?.serviceFor?.(agent, 'compaction') ?? ctx.get?.('compaction')
+      } catch {
+        return ctx.get?.('compaction')
+      }
+    },
+    settings,
+    stats,
+    ...(log ? { log } : {}),
+  }
   if (python) {
     const stop = new AbortController()
     // A request waits on the engine inside a step boundary, so it gets a short deadline: a slow engine must never slow the chat.
@@ -92,15 +111,7 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
       stop.abort()
       void worker.dispose()
     }, 'dsh-tameru: engine worker')
-    deps = {
-      client: worker,
-      meter: () => ctx.get?.('tokenMeter'),
-      resolveModelInfo: async (provider: string, model: string, signal?: AbortSignal) => ctx.get?.('llm')?.resolveModelInfo(provider, model, signal),
-      backendFor: (agent: StepAgent) => ctx.get?.('agentPresets')?.serviceFor?.(agent, 'compaction') ?? ctx.get?.('compaction'),
-      settings,
-      stats,
-      ...(log ? { log } : {}),
-    }
+    deps = { ...baseDeps, client: worker }
   }
   // Never `prepend`: the Harness's backend and DS Bot run first. Whatever happens here, the step goes on.
   ctx.on?.('agent/pre-step', async ({ agent, signal }, next) => {
@@ -122,6 +133,38 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
     interpolate: false,
     text: (context: { agent?: { session?: { id?: string } } }) => pinsSection(pins.list(context.agent?.session?.id ?? '')),
   })
+  // The Tameru panel's route. The Harness authenticates the browser; the panel only reaches chats that are open.
+  const api: ApiEnv = {
+    version,
+    sessionFor: id => ctx.get?.('sessions')?.get?.(id),
+    meter: () => ctx.get?.('tokenMeter'),
+    stats,
+    pins,
+    settings,
+    saveSettings: next => writeSaved(stateDir, next),
+    engine: () => client?.status(),
+    pythonPath: () => python?.path,
+    pressure: session => pressureOf({ ...baseDeps, client: undefined as never }, { session } as unknown as StepAgent),
+  }
+  ctx.effect(
+    () =>
+      ctx.connection?.fetch.register({
+        path: '/api/tameru',
+        methods: ['POST'],
+        requestBody: 'buffered',
+        fetch: async request => {
+          let body: { endpoint?: unknown; payload?: unknown } = {}
+          try {
+            body = await request.json()
+          } catch {
+            return new Response(JSON.stringify({ ok: false, error: 'bad request' }), { status: 400, headers: { 'content-type': 'application/json' } })
+          }
+          const result = await handleApi(typeof body.endpoint === 'string' ? body.endpoint : '', body.payload, api)
+          return new Response(JSON.stringify(result), { status: 200, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
+        },
+      }) ?? (() => {}),
+    'dsh-tameru: panel route',
+  )
   if (python) log?.info(`dsh-tameru ${version} loaded (engine Python: ${python.path}, from ${python.source})`)
   else log?.warn(`dsh-tameru ${version} loaded but no Python was found: shortening is off (pins and the Artifact Trail still work). Set pythonPath in Tameru's settings.`)
   ctx.commands.register({

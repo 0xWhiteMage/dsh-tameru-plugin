@@ -24,7 +24,8 @@
   "main": "lib/host.js",
   "exports": {
     ".": "./lib/host.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./client": "./lib/client.js"
   },
   "files": [
     "lib/",
@@ -53,6 +54,9 @@
     "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
     }
   },
   "devDependencies": {
