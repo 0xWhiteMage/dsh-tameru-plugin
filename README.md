@@ -40,7 +40,7 @@ Not published yet. For development, see [Development](#development). Requires De
 
 ```bash
 npm install
-npm test                 # 31 tests: protocol, fail-open client, lane checks
+npm test                 # 33 tests: protocol, fail-open client, lane checks, real-Harness contract tests
 npm run build            # bundles src/host to lib/host.js
 python scripts/check_vendored.py --engine <path to tameru-compaction-system>
 ```

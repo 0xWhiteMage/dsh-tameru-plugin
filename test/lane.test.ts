@@ -82,7 +82,7 @@ function fakeCtx() {
     ctx: {
       commands: { register: (definition: any) => registered.push(definition) },
       subprocess: { spawn: () => assert.fail('the skeleton must not start a worker until /tameru asks') },
-      on: (_event: 'dispose', listener: () => void) => disposers.push(listener),
+      effect: (setup: () => () => void) => disposers.push(setup()),
     },
   }
 }

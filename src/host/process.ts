@@ -72,7 +72,7 @@ export interface HarnessSubprocess {
 }
 
 export interface HarnessProcessHandle {
-  stdin: { write(chunk: string): unknown; end?(): unknown }
+  stdin: { write(chunk: string): unknown; end?(): unknown; on?(event: 'error', listener: () => void): unknown }
   stdout: NodeJS.ReadableStream | ReadableStream<Uint8Array>
   done: Promise<unknown>
   terminate(): unknown
@@ -97,6 +97,8 @@ export function harnessWorkerSpawn(subprocess: HarnessSubprocess, python: string
       exited = true
       exitListener()
     }
+    // A write after the process ended comes back as an 'error' event on the pipe; unhandled, it would take the whole Harness down.
+    handle.stdin.on?.('error', () => {})
     const feed = (chunk: Uint8Array | string): void => splitter.push(chunk, line => lineListener(line))
     const stream = handle.stdout as { on?: (event: string, cb: (chunk: Buffer) => void) => unknown; getReader?: () => ReadableStreamDefaultReader<Uint8Array> }
     if (typeof stream.on === 'function') {

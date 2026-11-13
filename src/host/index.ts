@@ -33,7 +33,8 @@ interface CommandsService {
 interface HostContext {
   commands: CommandsService
   subprocess: HarnessSubprocess
-  on(event: 'dispose', listener: () => void): unknown
+  /** Cordis: run `setup` now; the function it returns runs when the plugin is unloaded. */
+  effect(setup: () => () => void, label?: string): unknown
 }
 
 /** The folder this package lives in: the nearest ancestor with a package.json named `dsh-tameru`. */
@@ -71,10 +72,11 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
   if (python) {
     const stop = new AbortController()
     client = new EngineClient(harnessWorkerSpawn(ctx.subprocess, python.path, join(dir, 'vendor', 'run_worker.py'), dir, stop.signal))
-    ctx.on('dispose', () => {
+    const worker = client
+    ctx.effect(() => () => {
       stop.abort()
-      void client?.dispose()
-    })
+      void worker.dispose()
+    }, 'dsh-tameru: engine worker')
   }
   ctx.commands.register({
     name: 'tameru',
