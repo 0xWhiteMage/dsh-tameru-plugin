@@ -54,7 +54,7 @@ test('a pre-step waterfall shortens old large results through the real services 
     assert.match(reply.text, /In this chat: shortened \d+ tool results?/)
     assert.match(reply.text, /Engine 1\.9\.0/)
   } finally {
-    await ctx.stop?.()
+    await ctx.fiber.dispose()
   }
 })
 
@@ -68,7 +68,7 @@ test('a chat whose compaction another plugin manages is not touched by the water
     assert.equal(w.session.seq, seq)
     assert.equal(shortened(w), 0)
   } finally {
-    await ctx.stop?.()
+    await ctx.fiber.dispose()
   }
 })
 
@@ -79,7 +79,7 @@ test('below the activation point the waterfall changes nothing, and a second pas
     await big.fire()
     assert.equal(big.w.session.seq, seq)
   } finally {
-    await big.ctx.stop?.()
+    await big.ctx.fiber.dispose()
   }
   const { w, ctx, fire } = await mounted()
   try {
@@ -88,7 +88,7 @@ test('below the activation point the waterfall changes nothing, and a second pas
     await fire()
     assert.equal(w.session.seq, seq, 'already shortened results are not shortened again')
   } finally {
-    await ctx.stop?.()
+    await ctx.fiber.dispose()
   }
 })
 
@@ -110,5 +110,5 @@ test('unloading the plugin stops listening: the waterfall no longer changes the 
   const seq = w.session.seq
   await waterfall(ctx, { id: 'a', session: w.session })
   assert.equal(w.session.seq, seq)
-  await ctx.stop?.()
+  await ctx.fiber.dispose()
 })

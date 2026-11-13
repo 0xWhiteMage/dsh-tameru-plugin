@@ -52,7 +52,7 @@ test('the real subprocess service runs the worker, and dispose reaps it', { skip
     await client.dispose()
   }
   assert.equal(await settled(handles[0].done), true, 'the worker process ended after dispose')
-  await ctx.stop?.()
+  await ctx.fiber.dispose()
 })
 
 test('mounted as a Cordis plugin, the plugin registers one command, and unloading it reaps the worker', { skip }, async () => {
@@ -69,5 +69,5 @@ test('mounted as a Cordis plugin, the plugin registers one command, and unloadin
   assert.equal(handles.length, 1)
   fiber.dispose()
   assert.equal(await settled(handles[0].done), true, 'unloading the plugin ended the worker')
-  await ctx.stop?.()
+  await ctx.fiber.dispose()
 })
