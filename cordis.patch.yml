@@ -1,0 +1,5 @@
+# dsh-tameru adds exactly one row. It disables, replaces and re-configures nothing that belongs to the Harness or to another
+# plugin, so turning this bundle Off (or removing it) returns the Harness to its stock composition.
+- insert:
+    - id: tameru
+      name: dsh-tameru
