@@ -1,6 +1,6 @@
 """Run the installed DeepSeek Harness against a THROWAWAY home with this plugin installed, to try the interface in a browser.
 
-    python scripts/dev_harness.py up      # create the home (first time), pack and install the plugin, serve; prints the URL
+    python scripts/dev_harness.py up [--with-ds-bot]   # create the home (first time), pack and install the plugin, serve; prints the URL
     python scripts/dev_harness.py down    # stop the server (the home is kept so state survives)
     python scripts/dev_harness.py clean   # stop the server and delete the throwaway home
 
@@ -42,7 +42,7 @@ def run(args: list[str], env: dict[str, str], cwd: Path | None = None, timeout: 
     return subprocess.run(args, env=env, cwd=cwd, capture_output=True, text=True, timeout=timeout)
 
 
-def setup(dsh_home: Path) -> dict[str, str]:
+def setup(dsh_home: Path, with_ds_bot: bool = False) -> dict[str, str]:
     env = {**os.environ, "DSH_HOME": str(dsh_home), "TAMERU_STUB_KEY": "stub-not-a-secret"}
     profile = dsh_home / "profiles" / PROFILE
     if not profile.exists():
@@ -66,6 +66,18 @@ def setup(dsh_home: Path) -> dict[str, str]:
         sys.exit(f"install failed: {added.stderr[:400] or added.stdout[-400:]}")
     manifest = json.loads((profile / "package.json").read_text(encoding="utf-8"))
     bundles = manifest["dsh"]["profile"]["bundles"]
+    if with_ds_bot:
+        # a copy of the DS Bot package from the user's own profile, read only: used to check the two plugins coexist
+        source = Path.home() / ".dsh" / "profiles" / "desktop" / "node_modules" / "ds-bot"
+        if not source.exists():
+            sys.exit("DS Bot is not installed in the default profile")
+        installed = run([str(node), str(pnpm), "add", str(source), "--ignore-workspace", "--offline"], env, profile, 240)
+        if installed.returncode != 0:
+            sys.exit(f"DS Bot install failed: {installed.stderr[:400] or installed.stdout[-400:]}")
+        manifest = json.loads((profile / "package.json").read_text(encoding="utf-8"))
+        bundles = manifest["dsh"]["profile"]["bundles"]
+        if "ds-bot" not in bundles:
+            bundles.append("ds-bot")
     if "dsh-tameru" not in bundles:
         bundles.append("dsh-tameru")
     (profile / "package.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -104,7 +116,7 @@ def setup(dsh_home: Path) -> dict[str, str]:
 
 def up() -> None:
     dsh_home = home()
-    env = setup(dsh_home)
+    env = setup(dsh_home, with_ds_bot='--with-ds-bot' in sys.argv)
     down(quiet=True)
     log = dsh_home / "serve.log"
     handle = log.open("w")

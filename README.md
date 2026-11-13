@@ -26,6 +26,18 @@ Nothing planned is outstanding; what is left is verification against a real mode
 
 Not published yet. For development, see [Development](#development). Requires DeepSeek Harness **0.2.2-rc.1** (the version this plugin is tested on; the Harness refuses to enable it on other versions) and Python 3.10+ (bundled with the Harness).
 
+## What it looks like
+
+The Tameru tab, in the sidebar's new-tab guide, in the Harness's own dark theme (the Harness follows light and dark; the panel inherits its colours).
+
+![The Tameru tab: a context gauge, five shortened results with Keep, Restore and Shorten again, one summarised away by a compaction, and pinned lines](docs/images/panel-sample-data.jpg)
+
+![A shortened result opened in the viewer, with Original and What the model sees, and paging](docs/images/viewer-sample-data.jpg)
+
+![Pinned lines, the refusal of a credential-shaped pin, and the settings drawer with its sliders](docs/images/settings-and-pins.jpg)
+
+*The first two images show sample data fed to the page: the stub model used for these screenshots cannot run tools, so there was nothing real to shorten. The third is the real panel against the real server.*
+
 ## Settings
 
 | Setting | Default | Meaning |
@@ -56,6 +68,8 @@ node scripts/compare_stock.ts            # the stock-pruner comparison (add --he
 npm run build            # bundles src/host to lib/host.js
 python scripts/check_vendored.py --engine <path to tameru-compaction-system>
 ```
+
+How it fits the Harness: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). What has and has not been verified: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md). Release checklist: [docs/RELEASING.md](docs/RELEASING.md). `scripts/dev_harness.py up [--with-ds-bot]` serves the installed Harness against a throwaway home with this plugin installed, for trying the interface.
 
 `vendor/tameru/` is the engine, byte for byte; `VENDORED_FROM` in its `__init__.py` names the commit and `check_vendored.py` proves the copy is identical. The engine is [harness-agnostic](https://github.com/0xWhiteMage/tameru-compaction-system/blob/main/docs/REPOSITORIES.md); this repository owns only what is specific to DeepSeek Harness.
 

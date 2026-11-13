@@ -1,0 +1,21 @@
+{
+  "_comment": "A template, not a submission. Replace every FILL_IN before use. Format: the Harness's plugin market index, format 1 (dsh-plugin-market-index). Nothing here has been published.",
+  "name": "dsh-tameru",
+  "title": { "en": "Tameru", "zh": "Tameru" },
+  "description": {
+    "en": "Shortens bulky tool output before it fills the context, keeps your pinned lines through every compaction, and lets you read, keep or restore anything it shortened. Local; no extra model calls.",
+    "zh": "在工具输出占满上下文之前将其缩短，让你固定的话在每次压缩中保留，并可读取、保留或恢复被缩短的内容。本地运行，不额外调用模型。"
+  },
+  "author": "Benjamin Ang",
+  "homepage": "https://github.com/0xWhiteMage/dsh-tameru-plugin#readme",
+  "repository": "https://github.com/0xWhiteMage/dsh-tameru-plugin",
+  "metadata": { "categories": ["context"], "labels": [], "sortKeys": {} },
+  "versions": [
+    {
+      "version": "FILL_IN (the published version)",
+      "publishTimestamp": 0,
+      "source": { "type": "npm" },
+      "engines": { "dsh": "0.2.2-rc.1" }
+    }
+  ]
+}
