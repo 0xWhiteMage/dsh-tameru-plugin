@@ -16,8 +16,8 @@
 ## Planned, in order
 
 1. Read an original back (`tameru_read_original`); Keep and Restore.
-3. Pins that survive every summary; an Artifact Trail after each summary.
-4. A Tameru tab in the right sidebar (context gauge, every cleanup, a viewer for what was left out) and a settings page.
+2. Pins that survive every summary; an Artifact Trail after each summary.
+3. A Tameru tab in the right sidebar (context gauge, every cleanup, a viewer for what was left out) and a settings page.
 
 ## Install
 
