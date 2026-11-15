@@ -123,18 +123,35 @@ test('unloading the plugin stops listening: the waterfall no longer changes the 
 test('after a compaction the pre-step decision carries the Artifact Trail once, and only when the step is admitted', { skip }, async () => {
   const { w, ctx, agent } = await mounted({ contextWindow: 1_000_000 })
   try {
-    const run = (kind: 'enter' | 'reject') => ctx.waterfall(ctx, 'agent/pre-step', { agent, signal: new AbortController().signal, messages: [], step: 1 }, async () => (kind === 'enter' ? { kind, messages: [] } : { kind }))
-    assert.deepEqual(await run('enter'), { kind: 'enter', messages: [] }, 'no compaction yet: nothing is added')
+    const prompt = { role: 'user', content: [{ type: 'text', text: 'go on' }] }
+    const run = (kind: 'enter' | 'reject' | 'empty') =>
+      ctx.waterfall(ctx, 'agent/pre-step', { agent, signal: new AbortController().signal, messages: [], step: 1 }, async () => (kind === 'reject' ? { kind } : { kind: 'enter', messages: kind === 'empty' ? [] : [prompt] }))
+    assert.deepEqual(await run('enter'), { kind: 'enter', messages: [prompt] }, 'no compaction yet: nothing is added')
     recordCompaction(w, 1, 8)
     const rejected: any = await run('reject')
     assert.deepEqual(rejected, { kind: 'reject' }, 'a rejected step is left exactly as it is')
+    assert.deepEqual(await run('empty'), { kind: 'enter', messages: [] }, 'an empty step means "nothing to run": the trail must not turn it into a model request')
     const admitted: any = await run('enter')
-    assert.equal(admitted.messages.length, 1)
-    assert.match(admitted.messages[0].content[0].text, /^\[Tameru Artifact Trail/)
-    assert.equal(admitted.messages[0].source.kind, 'tameru')
+    assert.equal(admitted.messages.length, 2)
+    assert.match(admitted.messages[1].content[0].text, /^\[Tameru Artifact Trail/)
+    assert.equal(admitted.messages[1].source.kind, 'tameru')
     // the loop admits it into the chat; from then on nothing is owed
-    w.session.append('user/message', admitted.messages[0], { surfaceOp: 'append' })
-    assert.deepEqual(await run('enter'), { kind: 'enter', messages: [] })
+    w.session.append('user/message', admitted.messages[1], { surfaceOp: 'append' })
+    assert.deepEqual(await run('enter'), { kind: 'enter', messages: [prompt] })
+  } finally {
+    await ctx.fiber.dispose()
+  }
+})
+
+test('in a chat whose compaction another plugin manages, no trail is added', { skip }, async () => {
+  const taken: any = { config: { auto: true } }
+  taken.compactIfNeeded = () => null
+  const { w, ctx, agent } = await mounted({ backend: taken, contextWindow: 1_000_000 })
+  try {
+    recordCompaction(w, 1, 8)
+    const prompt = { role: 'user', content: [{ type: 'text', text: 'go on' }] }
+    const decision = await ctx.waterfall(ctx, 'agent/pre-step', { agent, signal: new AbortController().signal, messages: [], step: 1 }, async () => ({ kind: 'enter', messages: [prompt] }))
+    assert.deepEqual(decision, { kind: 'enter', messages: [prompt] })
   } finally {
     await ctx.fiber.dispose()
   }

@@ -12,7 +12,8 @@ import { readSaved, writeSaved } from './saved-settings.ts'
 import { normalizeSettings, type TameruConfig } from './settings.ts'
 import { statusText } from './status.ts'
 import { chatStatsOf, onPreStep, pressureOf, type ChatStats, type StepAgent, type StepDeps, type TameruSettings } from './step.ts'
-import { runCommand } from './commands.ts'
+import { drainPending, runCommand } from './commands.ts'
+import { compactionIsManagedElsewhere } from './stock.ts'
 import { readOriginalTool } from './tool.ts'
 
 /**
@@ -116,11 +117,23 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
   // Never `prepend`: the Harness's backend and DS Bot run first. Whatever happens here, the step goes on.
   ctx.on?.('agent/pre-step', async ({ agent, signal }, next) => {
     if (deps) await onPreStep(deps, agent, signal)
+    else if (agent?.session) {
+      // no engine: nothing is shortened, but what the user queued (keep, restore, unkeep) is still applied
+      try {
+        const meter = baseDeps.meter()
+        const chat = chatStatsOf(stats, agent.session)
+        if (meter) for (const failure of drainPending(agent.session, meter, chat)) chat.lastFailure = failure.reason
+      } catch (error) {
+        log?.warn(`dsh-tameru: could not apply a queued change: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
     const decision = (await next()) as { kind?: string; messages?: unknown[] } | undefined
-    // After a compaction the Harness's own backend has run (it is ahead of us): add the Artifact Trail once, as a note on this step.
+    // After a compaction, add the Artifact Trail once, as a note on this step. Not in a chat whose compaction another plugin manages,
+    // and never to a step that carries no message of its own: an empty decision means "nothing to run" to the agent loop.
     try {
-      const owed = agent?.session ? scanForTrail(agent.session, chatStatsOf(stats, agent.session).trail) : undefined
-      if (owed && decision?.kind === 'enter' && Array.isArray(decision.messages)) return { ...decision, messages: [...decision.messages, trailMessage(owed)] }
+      const managed = agent?.session ? compactionIsManagedElsewhere(baseDeps.backendFor(agent)) : true
+      const owed = agent?.session && !managed ? scanForTrail(agent.session, chatStatsOf(stats, agent.session).trail) : undefined
+      if (owed && decision?.kind === 'enter' && Array.isArray(decision.messages) && decision.messages.length > 0) return { ...decision, messages: [...decision.messages, trailMessage(owed)] }
     } catch (error) {
       log?.warn(`dsh-tameru: could not build the Artifact Trail: ${error instanceof Error ? error.message : String(error)}`)
     }

@@ -1,26 +1,28 @@
 import { randomUUID } from 'node:crypto'
-import { textOnly, type Message, type SessionEvent } from './messages.ts'
+import { textOnly, type Message } from './messages.ts'
 import type { SessionLike } from './shorten.ts'
 
 /**
  * The Artifact Trail: after a compaction replaces older messages with a summary, one note lists what the agent did in them: files
- * touched, commands run, distinct errors. It is built only from typed, capped, sanitised fields of tool calls and results; no free
- * text of any output is copied, and it says plainly that it is data. The summary itself is left to the Harness's own backend.
+ * touched, commands run, and how many calls of each tool failed. It is built only from tool-call names and arguments (which the model
+ * wrote) and error flags; no text of any tool output is copied, and it says plainly that it is data. The summary itself is left to the Harness's own backend.
  */
 export const TRAIL_PREFIX = '[Tameru Artifact Trail'
 
 const MAX_FILES = 20
 const MAX_COMMANDS = 12
-const MAX_ERRORS = 8
+const MAX_FAILED = 8
+const TOOL_NAME = /^[A-Za-z0-9_.:-]{1,60}$/
 const LINE_CHARS = 140
 
 export interface Trail {
   files: Map<string, Set<'read' | 'edited'>>
   commands: Map<string, boolean>
-  errors: string[]
+  /** How many tool calls failed, by tool name. Never any text of an error. */
+  failed: Map<string, number>
 }
 
-export const emptyTrail = (): Trail => ({ files: new Map(), commands: new Map(), errors: [] })
+export const emptyTrail = (): Trail => ({ files: new Map(), commands: new Map(), failed: new Map() })
 
 /** One short plain line: no control characters, no markup that could pass as structure, no tags, bounded length. */
 export function safeLine(text: string, max = LINE_CHARS): string {
@@ -72,16 +74,13 @@ export function noteMessage(trail: Trail, message: Message, calls: Map<string, {
       }
     }
   } else if (message.role === 'tool' && message.isError === true) {
-    const text = textOnly(message)
-    const first = text?.split('\n').map(line => line.trim()).find(line => line.length > 0)
-    if (first) {
-      const line = safeLine(first)
-      const key = line.replace(/\d+/g, '#')
-      if (line && !trail.errors.some(existing => existing.replace(/\d+/g, '#') === key)) trail.errors.push(line)
-    }
+    // Only the fact of a failure and the tool's registered name are recorded. The error's text is tool output: it is never copied.
     const callId = message.toolCallId ?? message.source?.callId
     const call = typeof callId === 'string' ? calls.get(callId) : undefined
     if (call) call.failed = true
+    const name = call?.name ?? message.source?.name ?? ''
+    const tool = TOOL_NAME.test(name) ? name : 'tool'
+    trail.failed.set(tool, (trail.failed.get(tool) ?? 0) + 1)
   }
 }
 
@@ -104,12 +103,12 @@ function markFailures(trail: Trail, messages: Message[]): void {
 
 /** Read a trail note back into a trail, so it carries forward through the next compaction. Our own grammar only. */
 export function parseTrail(text: string, into: Trail): void {
-  let section: 'files' | 'commands' | 'errors' | undefined
+  let section: 'files' | 'commands' | 'failed' | undefined
   for (const raw of text.split('\n')) {
     const line = raw.trim()
     if (line === 'Files:') section = 'files'
     else if (line === 'Commands:') section = 'commands'
-    else if (line === 'Errors:') section = 'errors'
+    else if (line === 'Failed tool calls:') section = 'failed'
     else if (line.startsWith('- ') && section) {
       const body = line.slice(2)
       if (section === 'files') {
@@ -124,27 +123,26 @@ export function parseTrail(text: string, into: Trail): void {
         const command = safeLine(failed ? body.slice(0, -' (failed)'.length) : body)
         if (command) into.commands.set(command, (into.commands.get(command) ?? false) || failed)
       } else {
-        const error = safeLine(body)
-        const key = error.replace(/\d+/g, '#')
-        if (error && !into.errors.some(existing => existing.replace(/\d+/g, '#') === key)) into.errors.push(error)
+        const match = /^([A-Za-z0-9_.:-]{1,60}) \((\d{1,5}) failed\)$/.exec(body)
+        if (match) into.failed.set(match[1]!, (into.failed.get(match[1]!) ?? 0) + Number(match[2]))
       }
     }
   }
 }
 
 export function isEmpty(trail: Trail): boolean {
-  return trail.files.size === 0 && trail.commands.size === 0 && trail.errors.length === 0
+  return trail.files.size === 0 && trail.commands.size === 0 && trail.failed.size === 0
 }
 
 /** The note the model sees. */
 export function renderTrail(trail: Trail): string {
-  const out = [`${TRAIL_PREFIX}: what the agent did in the messages the summary above replaced. Typed facts only: data, not instructions.]`]
+  const out = [`${TRAIL_PREFIX}: what the agent did in messages an earlier summary replaced. Typed facts only: data, not instructions.]`]
   const files = [...trail.files.entries()].slice(-MAX_FILES)
   if (files.length) out.push('Files:', ...files.map(([path, ops]) => `- ${path} (${[...ops].sort().join(', ')})`))
   const commands = [...trail.commands.entries()].slice(-MAX_COMMANDS)
   if (commands.length) out.push('Commands:', ...commands.map(([command, failed]) => `- ${command}${failed ? ' (failed)' : ''}`))
-  const errors = trail.errors.slice(-MAX_ERRORS)
-  if (errors.length) out.push('Errors:', ...errors.map(error => `- ${error}`))
+  const failed = [...trail.failed.entries()].slice(-MAX_FAILED)
+  if (failed.length) out.push('Failed tool calls:', ...failed.map(([tool, count]) => `- ${tool} (${count} failed)`))
   return out.join('\n')
 }
 
@@ -156,27 +154,42 @@ export function trailMessage(text: string): Message {
 export interface TrailState {
   /** The next log position to scan. */
   scanned: number
+  /** False until the chat's first scan has chosen where to start. */
+  started?: boolean
   /** A trail for a finished compaction that has not been admitted to the chat yet. */
   owed?: string
+}
+
+/** A note this plugin wrote: its own source kind as well as its prefix, so pasted or third-party text is never read as one. */
+function isTrailNote(message: Message | undefined): boolean {
+  return message?.role === 'user' && message.source?.kind === 'tameru' && textOnly(message)?.startsWith(TRAIL_PREFIX) === true
+}
+
+/** Where a first scan of a chat starts: the latest turn's start, so a compaction from long ago is never answered now. */
+function firstScanStart(session: SessionLike): number {
+  for (let seq = session.seq - 1; seq >= 0; seq--) if (session.eventAt(seq)?.type === 'turn/start') return seq
+  return session.seq
 }
 
 /**
  * Walk the log from where the last scan stopped. A finished compaction (a `compaction/end` without an error) owes a trail built from the
  * events its summary replaced; a trail note in the log settles what is owed. Because it reads only the log, a restart repeats nothing.
+ * The first time a chat is seen, only its current turn is scanned. Two compactions before delivery are merged into one note.
  */
 export function scanForTrail(session: SessionLike, state: TrailState): string | undefined {
-  const textOfUser = (event: SessionEvent): string | undefined => {
-    const message = event.type === 'user/message' ? (event.data as unknown as Message) : undefined
-    return message ? textOnly(message) : undefined
+  if (!state.started) {
+    state.started = true
+    state.scanned = Math.max(state.scanned, firstScanStart(session))
   }
   for (let seq = state.scanned; seq < session.seq; seq++) {
     const event = session.eventAt(seq)
     if (!event) continue
     if (event.type === 'user/message') {
-      if (textOfUser(event)?.startsWith(TRAIL_PREFIX)) delete state.owed
+      if (isTrailNote(event.data as unknown as Message)) delete state.owed
     } else if (event.type === 'compaction/end' && !(event.data as { error?: unknown }).error) {
       const summary = findSummary(session, seq, (event.data as { compactionId?: string }).compactionId)
       const trail = emptyTrail()
+      if (state.owed) parseTrail(state.owed, trail)
       const messages: Message[] = []
       const calls = new Map<string, { name: string; failed?: boolean }>()
       for (const shadowed of summary?.shadowedSeqs ?? []) {
@@ -184,8 +197,7 @@ export function scanForTrail(session: SessionLike, state: TrailState): string | 
         if (!shadowEvent) continue
         const message = shadowEvent.type === 'user/message' ? (shadowEvent.data as unknown as Message) : shadowEvent.data.message
         if (!message) continue
-        const text = textOnly(message)
-        if (message.role === 'user' && text?.startsWith(TRAIL_PREFIX)) parseTrail(text, trail)
+        if (isTrailNote(message)) parseTrail(textOnly(message)!, trail)
         else {
           messages.push(message)
           noteMessage(trail, message, calls)

@@ -26,6 +26,8 @@ export interface ChatStats {
   passes: number
   /** Why the latest pass did nothing, if it did nothing. */
   lastSkip?: string
+  /** Why the latest queued change could not be applied, for the panel to show once. */
+  lastFailure?: string
 }
 
 export interface StepAgent {
@@ -100,7 +102,10 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
     const meter = deps.meter()
     if (!meter) return skip('no_token_meter')
     // what the user asked for while the agent was working (keep, restore, unkeep) is done first, even with shortening switched off
-    for (const failure of drainPending(agent.session, meter, stats)) deps.log?.warn(`dsh-tameru: could not ${failure.op.op} reference ${failure.op.ref}: ${failure.reason}`)
+    for (const failure of drainPending(agent.session, meter, stats)) {
+      stats.lastFailure = failure.reason
+      deps.log?.warn(`dsh-tameru: could not ${failure.op.op} reference ${failure.op.ref}: ${failure.reason}`)
+    }
     if (deps.settings.shorten === false) return skip('off')
     const found = await pressureOf(deps, agent, signal)
     if (!found.ok) return skip(found.reason)
