@@ -11,7 +11,7 @@
 - **Keep and Restore.** `/tameru keep N` shows the model the full original until you `/tameru unkeep N`; `/tameru restore N` shows it in full for the model's next 3 replies, after which Tameru may shorten it again. Nothing is stored outside the chat: a result's state is in the chat log itself, so it survives a restart and a fork. If the agent is working when you ask, the change is queued and made before its next step.
 - **Pins.** `/tameru pin TEXT` keeps a line of yours (up to 5, 300 characters each) in front of the model on every request, word for word. Pins are a section of the system prompt, which no compaction replaces, so they survive every summary. They are only ever text you typed: no tool lets the model pin, and text that looks like a credential is refused (a heuristic, not a guarantee). `{{curly braces}}` in a pin are kept literally. Pins are saved in `<Harness home>/tameru/pins.json`, which `/tameru purge` empties; removing the plugin leaves that folder.
 - **Artifact Trail.** After the Harness compacts a chat, one short note is added listing the files touched, the commands run (and which failed) and the distinct errors in what the summary replaced, so the agent knows what it already did. It is built only from tool-call names, path and command arguments and error flags, each line capped and stripped of markup, never from the body of any output, and it says it is data. It carries forward through later compactions.
-- **The Tameru tab.** In the right sidebar's new-tab guide, **Tameru** opens a panel for the chat it sits in: a context gauge against the point where the Harness compacts (with where Tameru starts), the list of results Tameru shortened with their sizes, a viewer for each (the original, or what the model sees, in pages), Keep, Restore and Shorten again buttons, your pinned lines, and a settings drawer (shorten on or off, where to start, how confident the engine must be) with its measured trade-off written next to it. Changes made while the agent is working are queued and shown as such. English and Chinese, light and dark. Settings you change are saved in `<Harness home>/tameru/settings.json` and apply at once.
+- **One compact bar.** Above the message box, **Tameru** is a single thin line: a state mark, a context gauge (with a tick where Tameru starts and one where the Harness compacts), one phrase such as `3 shortened` or `Starts at 59%`, and a pin count. It is closed by default and remembers if you open it. Opened, it grows a fixed-height panel with three sections: **Results** (each shortened result as `20.0K → 1.2K`, one **Keep** switch per row, and a viewer for the original or what the model sees, with a button to show it in full for its next 3 replies), **Pins**, and **Settings** (shortening on or off, and three named choices for how sure the engine must be, each with its measured consequence written next to it). A dot marks results that are new since you last looked; changes made while the agent is working are marked as waiting. English and Chinese, light and dark, keyboard and screen-reader operable. Settings you change are saved in `<Harness home>/tameru/settings.json`, only the ones you changed, and apply at once.
 - It stands down for any chat whose compaction another plugin (for example DS Bot) manages, while a compaction is running, and whenever the model declares no usable context window.
 - `/tameru` shows the plugin version, the engine version, whether the engine is running, and what was shortened in this chat.
 - The Tameru engine runs as an isolated Python worker on the interpreter the Harness bundles (or one you name), started through the Harness's own managed subprocess service.
@@ -28,15 +28,15 @@ Not published yet. For development, see [Development](#development). Requires De
 
 ## What it looks like
 
-The Tameru tab, in the sidebar's new-tab guide, in the Harness's own dark theme (the Harness follows light and dark; the panel inherits its colours).
+The bar closed, open on Results, and open on Settings, in the Harness's own dark theme (it follows light and dark and your theme's colours).
 
-![The Tameru tab: a context gauge, five shortened results with Keep, Restore and Shorten again, one summarised away by a compaction, and pinned lines](docs/images/panel-sample-data.jpg)
+![The closed bar: state mark, name, context gauge, 55%, 3 shortened, pin count](docs/images/bar-closed-sample-data.png)
 
-![A shortened result opened in the viewer, with Original and What the model sees, and paging](docs/images/viewer-sample-data.jpg)
+![The bar open on Results: sizes such as 52.3K to 2.1K, a Keep switch on each row, one kept in full, one summarised away by a compaction](docs/images/bar-open-sample-data.png)
 
-![Pinned lines, the refusal of a credential-shaped pin, and the settings drawer with its sliders](docs/images/settings-and-pins.jpg)
+![The bar open on Settings: shortening switch and the three named choices, Balanced selected](docs/images/bar-settings-sample-data.png)
 
-*The first two images show sample data fed to the page: the stub model used for these screenshots cannot run tools, so there was nothing real to shorten. The third is the real panel against the real server.*
+*These images show sample data fed to the page: the stub model used for the screenshots cannot run tools, so there was nothing real to shorten. The bar itself is the real client in the real Harness.*
 
 ## Settings
 

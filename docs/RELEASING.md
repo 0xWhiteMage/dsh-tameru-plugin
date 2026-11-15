@@ -8,7 +8,7 @@ Nothing here has been done. Publishing is the author's decision; this is the che
 4. **Vendored engine.** `python scripts/check_vendored.py --engine <engine checkout>` must report the commit named in `vendor/tameru/__init__.py`. To take a newer engine: sync with the engine repository's `scripts/sync_to_harness.py` (without `--manifest`), update `VENDORED_FROM`, re-run everything.
 5. **Tests.** `python scripts/extract_harness.py` once, then `npm test` (all pass, none skipped) and `node scripts/compare_stock.ts` / `node scripts/replay.ts` if the engine or the policy changed.
 6. **Pack and inspect.** `npm pack` must list `lib/host.js`, `lib/client.js`, `vendor/`, `locale/`, `cordis.patch.yml` and the notices, and no `src/`, `test/`, `dev/` or Python bytecode. A test guards the bytecode.
-7. **Try the package as a user would.** `python scripts/dev_harness.py up` installs the packed file into a throwaway Harness; open the tab, pin a line, change a setting, run `/tameru`. Then `python scripts/dev_harness.py clean`.
+7. **Try the package as a user would.** `python scripts/dev_harness.py up` installs the packed file into a throwaway Harness; open the bar, pin a line, change a setting, run `/tameru`. Then `python scripts/dev_harness.py clean`.
 8. **Publish** to npm (`npm publish`; the name `dsh-tameru` was free when last checked) and tag the commit.
 9. **Plugin market (optional).** Fill the placeholders of `docs/PLUGIN-MARKET-ENTRY.json` (the commit, the publish time) and submit it to the market index the Harness is configured with. The index format is the Harness's own (`dsh-plugin-market-index`, format 1).
 

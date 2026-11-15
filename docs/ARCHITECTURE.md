@@ -5,8 +5,8 @@ dsh-tameru is a host plugin and a browser plugin in one npm package. It adds to 
 ```
                  DeepSeek Harness (host, Node)                         browser
   ┌─────────────────────────────────────────────────────┐     ┌─────────────────────────┐
-  │ agent loop ── agent/pre-step ──► our listener        │     │ right sidebar           │
-  │                 (after the Harness's own backend     │     │   └─ Tameru tab (React)  │
+  │ agent loop ── agent/pre-step ──► our listener        │     │ input dock (above chat)  │
+  │                 (after the Harness's own backend     │     │   └─ Tameru bar (React)  │
   │                  and DS Bot; never `prepend`)        │     │        │ POST api/tameru │
   │   │ 1 apply queued Keep/Restore                      │ ◄───┼────────┘                 │
   │   │ 2 shorten old large results  ──► worker (Python) │     └─────────────────────────┘
@@ -31,7 +31,7 @@ dsh-tameru is a host plugin and a browser plugin in one npm package. It adds to 
 | Artifact Trail | a note added to the `agent/pre-step` decision | `src/host/trail.ts` |
 | `/tameru` | `ctx.commands` | `src/host/commands.ts` |
 | The panel's data | `ctx.connection.fetch` route `POST /api/tameru` | `src/host/api.ts` |
-| The Tameru tab | `ctx.sidebarRightTabs` and the `sidebar.right.pane.tab` slot | `src/client/` |
+| The Tameru bar | the `conversation.input.dock` slot (a list slot: our entry sits after the Harness goal and queue docks) | `src/client/` |
 
 ## The rules the design follows
 
@@ -44,4 +44,4 @@ dsh-tameru is a host plugin and a browser plugin in one npm package. It adds to 
 
 ## Names
 
-Everything we add is called `tameru`: the plugin row `tameru`, the command `/tameru`, the tool `tameru_read_original`, the prompt section `tameru:pins`, the route `/api/tameru`, the tab id `dsh-tameru/panel`, the CSS classes `tameru-*`, the folder `<Harness home>/tameru`. A test checks that the patch file inserts one row and nothing else.
+Everything we add is called `tameru`: the plugin row `tameru`, the command `/tameru`, the tool `tameru_read_original`, the prompt section `tameru:pins`, the route `/api/tameru`, the dock entry id `dsh-tameru`, the CSS classes `tameru-*`, the folder `<Harness home>/tameru`. A test checks that the patch file inserts one row and nothing else.

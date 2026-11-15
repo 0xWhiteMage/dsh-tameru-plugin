@@ -67,8 +67,9 @@ const STYLE = `
 .tameru-add input { flex: 1; min-width: 0; font: inherit; color: inherit; background: transparent; border: 1px solid var(--t-line); border-radius: 6px; padding: 3px 8px; min-height: 26px; }
 .tameru-add button { border: 1px solid var(--t-line); padding: 2px 10px; min-height: 26px; }
 .tameru-error { color: var(--t-warn); margin-top: 6px; }
-.tameru-radio { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 5px 8px; border: 1px solid transparent; }
-.tameru-radio[aria-checked="true"] { border-color: var(--t-accent); }
+.tameru .tameru-radio { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 5px 8px; border: 1px solid transparent; }
+.tameru .tameru-radio[aria-checked="true"] { border-color: var(--t-accent); }
+.tameru .tameru-radio[aria-checked="true"] strong::after { content: ' ✓'; color: var(--t-accent); }
 .tameru-radio strong { color: var(--t-fg1); font-weight: 600; }
 .tameru-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .tameru-h { margin: 8px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--t-fg2); }
@@ -128,11 +129,14 @@ function Viewer({ item, sessionId, act, t }: { item: Json; sessionId: string; ac
 
 function Row({ item, fresh, sessionId, act, t }: { item: Json; fresh: boolean; sessionId: string; act: (op: string, ref: number) => void; t: Copy }) {
   const [open, setOpen] = useState(false)
+  const line = useRef<HTMLDivElement | null>(null)
+  // an opened row brings its details into view inside the fixed-height panel
+  useEffect(() => { if (open) line.current?.parentElement?.scrollIntoView?.({ block: 'nearest' }) }, [open])
   const tool = item.tool || t.tool
   const kept = item.state === 'kept'
   const gone = !item.onSurface
   return h('div', { className: 'tameru-row', style: gone ? { opacity: 0.6 } : undefined },
-    h('div', { className: 'tameru-row-line' },
+    h('div', { className: 'tameru-row-line', ref: line },
       h('button', { type: 'button', className: 'tameru-row-toggle', 'aria-expanded': open, 'aria-label': t.detailsLabel(tool, item.ref), disabled: gone, onClick: () => setOpen(!open) },
         fresh ? h('span', { className: 'tameru-fresh', title: t.fresh }) : null,
         h('span', { className: 'tameru-tool' }, tool),
@@ -154,7 +158,7 @@ function Results({ state, seen, sessionId, act, notice, t }: { state: Json; seen
     items.length === 0
       ? h('div', { className: 'tameru-note' }, state.gauge ? t.emptyStarts(Math.round((state.gauge.startsAt / state.gauge.contextWindow) * 100)) : t.gaugeReason(state.gaugeUnavailable),
           state.chat.lastSkip ? ` ${t.skipReason(state.chat.lastSkip)}` : '')
-      : h('div', { className: 'tameru-list' }, [...items].reverse().map(item => h(Row, { key: item.ref, item, fresh: item.ref > seen && item.onSurface, sessionId, act, t }))))
+      : h('div', { className: 'tameru-list' }, [...items].reverse().sort((a, b) => Number(b.onSurface) - Number(a.onSurface)).map(item => h(Row, { key: item.ref, item, fresh: item.ref > seen && item.onSurface, sessionId, act, t }))))
 }
 
 function Pins({ state, sessionId, refresh, t }: { state: Json; sessionId: string; refresh: () => void; t: Copy }) {
