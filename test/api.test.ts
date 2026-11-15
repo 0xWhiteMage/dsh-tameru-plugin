@@ -196,3 +196,18 @@ test('saved settings are read when the plugin starts, over the profile\'s values
     rmSync(home, { recursive: true, force: true })
   }
 })
+
+test('only what the user changed in the panel is saved: the profile\'s values are not copied into the saved file, and reset returns to the profile', { skip }, async () => {
+  const p = await panel({ settings: { share: 0.5 } })
+  try {
+    assert.equal((await p.call('settings')).settings.values.share, 0.5)
+    await p.call('settings', { patch: { activation: 0.6 } })
+    assert.deepEqual(JSON.parse(readFileSync(join(p.home, 'tameru', 'settings.json'), 'utf8')), { version: 1, settings: { activation: 0.6 } })
+    await p.call('settings', { patch: { share: 0.2 } })
+    assert.equal((await p.call('settings')).settings.values.share, 0.2)
+    const reset = await p.call('settings', { patch: { share: null } })
+    assert.equal(reset.settings.values.share, 0.5, 'reset goes back to the profile\'s value, not the built-in default')
+  } finally {
+    await p.close()
+  }
+})

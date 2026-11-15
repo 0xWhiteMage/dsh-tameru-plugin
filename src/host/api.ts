@@ -17,6 +17,9 @@ export interface ApiEnv {
   pins: PinStore
   /** The settings the plugin runs on right now; the route changes them in place. */
   settings: TameruSettings
+  /** What the profile's patch file says, and what the user changed in the panel on top of it. Only `saved` is ever written. */
+  profile: TameruSettings
+  saved: TameruSettings
   saveSettings(settings: TameruSettings): string | undefined
   engine(): WorkerStatus | undefined
   pythonPath(): string | undefined
@@ -39,8 +42,8 @@ export function effectiveSettings(settings: TameruSettings): { values: Record<st
   return { values, defaults }
 }
 
-function describe(item: Item): Record<string, unknown> {
-  return { ref: item.ref, tool: item.toolName, state: item.state, originalChars: item.originalChars, shownChars: item.shownChars, onSurface: item.onSurface }
+function describe(item: Item, queued: Set<number>): Record<string, unknown> {
+  return { ref: item.ref, tool: item.toolName, state: item.state, originalChars: item.originalChars, shownChars: item.shownChars, onSurface: item.onSurface, cutByHarness: item.cutByHarness, queued: queued.has(item.ref) }
 }
 
 /** One panel request. `endpoint` and `payload` come from the browser: nothing in them is trusted beyond its validated shape. */
@@ -102,6 +105,10 @@ async function stateEndpoint(session: SessionLike, env: ApiEnv): Promise<ApiResu
     ? { tokens: found.pressure.tokens, contextWindow: found.pressure.contextWindow, stockTrigger: found.pressure.stockTrigger, startsAt: found.pressure.startsAt }
     : undefined
   const items = listItems(session)
+  const queued = new Set(stats.pending.map(op => op.ref))
+  // a queued change that could not be applied is reported once
+  const failure = stats.lastFailure ?? null
+  delete stats.lastFailure
   return {
     ok: true,
     live: true,
@@ -112,7 +119,8 @@ async function stateEndpoint(session: SessionLike, env: ApiEnv): Promise<ApiResu
     gauge: gauge ?? null,
     gaugeUnavailable: found.ok ? null : found.reason,
     chat: { shortened: stats.shortened, freedTokens: stats.freedTokens, passes: stats.passes, lastSkip: stats.lastSkip ?? null, pending: stats.pending.length },
-    items: items.map(describe),
+    items: items.map(item => describe(item, queued)),
+    failure,
     pins: session.id ? env.pins.list(session.id) : [],
     limits: { pins: MAX_PINS, pinChars: MAX_PIN_CHARS, view: VIEW_CHARS, read: MAX_READ_CHARS },
     settings: effectiveSettings(env.settings),
@@ -122,10 +130,11 @@ async function stateEndpoint(session: SessionLike, env: ApiEnv): Promise<ApiResu
 function settingsEndpoint(body: Record<string, unknown>, env: ApiEnv): ApiResult {
   const patch = isObject(body.patch) ? body.patch : undefined
   if (patch) {
-    const next: Record<string, unknown> = { ...(env.settings as Record<string, unknown>) }
+    const next: Record<string, unknown> = { ...(env.saved as Record<string, unknown>) }
     for (const [key, value] of Object.entries(patch)) {
       if (!(SETTING_KEYS as readonly string[]).includes(key)) return fail(`unknown setting "${key.slice(0, 40)}"`)
       if (value === null) {
+        // back to what the profile (or the default) says
         delete next[key]
         continue
       }
@@ -135,8 +144,10 @@ function settingsEndpoint(body: Record<string, unknown>, env: ApiEnv): ApiResult
     }
     const failure = env.saveSettings(next as TameruSettings)
     if (failure) return fail(`could not save the settings: ${failure}`)
+    for (const key of Object.keys(env.saved)) delete (env.saved as Record<string, unknown>)[key]
+    Object.assign(env.saved, next)
     for (const key of Object.keys(env.settings)) delete (env.settings as Record<string, unknown>)[key]
-    Object.assign(env.settings, next)
+    Object.assign(env.settings, env.profile, env.saved)
   }
   return { ok: true, settings: effectiveSettings(env.settings) }
 }

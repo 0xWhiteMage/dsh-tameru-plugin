@@ -82,7 +82,9 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
   const version = pluginVersion(dir)
   const stateDir = join(dshHome(), 'tameru')
   // what the profile says, then what the user changed in the Tameru panel; one live object the panel edits in place
-  const settings: TameruSettings = { ...normalizeSettings(config), ...readSaved(stateDir) }
+  const profile: TameruSettings = normalizeSettings(config)
+  const saved: TameruSettings = readSaved(stateDir)
+  const settings: TameruSettings = { ...profile, ...saved }
   const python = findPython(config.pythonPath ? { configured: config.pythonPath } : {})
   const stats = new WeakMap<object, ChatStats>()
   const log = ctx.logger?.('tameru')
@@ -154,6 +156,8 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
     stats,
     pins,
     settings,
+    profile,
+    saved,
     saveSettings: next => writeSaved(stateDir, next),
     engine: () => client?.status(),
     pythonPath: () => python?.path,
