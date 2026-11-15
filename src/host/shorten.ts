@@ -120,14 +120,17 @@ export function findCandidates(session: SessionLike, entries: Entry[], options: 
     let text = textOnly(message)
     if (text === undefined) continue
     let origin = entry.seq
-    if (text.startsWith(KEPT_PREFIX)) continue
-    if (text.startsWith(RESTORED_PREFIX)) {
+    // A header counts only on a replacement the Harness recorded as made from a tool result; a tool's own output that merely begins
+    // with our words is ordinary text.
+    const sources = (entry.event as unknown as { sourceEventSeqs?: number[] }).sourceEventSeqs
+    const ours = sources?.[0] !== undefined && session.eventAt(sources[0])?.type === 'tool/result'
+    if (ours && text.startsWith(KEPT_PREFIX)) continue
+    if (ours && text.startsWith(RESTORED_PREFIX)) {
       // a restored result stays in full for a few replies, then is an ordinary candidate again, from its original text
       // replies counted after the restore itself (event order), not after the result's place in the history
       const replies = entries.filter(later => later.message.role === 'assistant' && later.seq > entry.seq).length
-      const sources = (entry.event as unknown as { sourceEventSeqs?: number[] }).sourceEventSeqs
       const original = sources?.[0] === undefined ? undefined : session.eventAt(sources[0])
-      const originalText = original?.data.message ? textOnly(original.data.message) : undefined
+      const originalText = original?.type === 'tool/result' && original.data.message ? textOnly(original.data.message) : undefined
       if (replies < RESTORE_REPLIES || originalText === undefined) continue
       text = originalText
       origin = sources![0]!
