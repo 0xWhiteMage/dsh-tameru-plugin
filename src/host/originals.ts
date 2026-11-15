@@ -1,4 +1,4 @@
-import { KEPT_PREFIX, RESTORED_PREFIX, SHORTENED_PREFIX, textOnly } from './messages.ts'
+import { KEPT_PREFIX, RESTORED_PREFIX, SHORTENED_PREFIX, STOCK_PRUNE_MARKER, textOnly } from './messages.ts'
 import type { MeterLike, SessionLike } from './shorten.ts'
 
 /**
@@ -22,6 +22,34 @@ export interface Item {
   onSurface: boolean
   /** The node this one replaced, when there was one besides the original. */
   previousSeq?: number
+  /** True when the Harness's own pruner has since cut the middle out of the node that stands for the result. */
+  cutByHarness: boolean
+}
+
+const sourcesOf = (session: SessionLike, seq: number): number[] | undefined => (session.eventAt(seq) as unknown as { sourceEventSeqs?: number[] } | undefined)?.sourceEventSeqs
+
+/** The first result in a chain of replacements: the original output. A stock cut cites the node it cut, so the chain is followed back. */
+function rootOf(session: SessionLike, seq: number): number {
+  let at = seq
+  for (let hops = 0; hops < 8; hops++) {
+    const first = sourcesOf(session, at)?.[0]
+    if (first === undefined || session.eventAt(first)?.type !== 'tool/result') break
+    at = first
+  }
+  return at
+}
+
+/** The Tameru-written node behind a node the Harness may have cut since: the one that cites both the original and its predecessor. */
+function tameruNodeOf(session: SessionLike, seq: number): number {
+  let at = seq
+  for (let hops = 0; hops < 8; hops++) {
+    const message = session.eventAt(at)?.data.message
+    const text = message ? textOnly(message) : undefined
+    const first = sourcesOf(session, at)?.[0]
+    if (text === undefined || !text.includes(STOCK_PRUNE_MARKER) || first === undefined || sourcesOf(session, at)!.length !== 1) break
+    at = first
+  }
+  return at
 }
 
 /** How many model replies a restored result stays in full before Tameru may shorten it again. */
@@ -55,7 +83,8 @@ export function listItems(session: SessionLike): Item[] {
     const text = message ? textOnly(message) : undefined
     const state = text === undefined ? undefined : stateOf(text)
     if (!message || text === undefined || !state) continue
-    const ref = sources[0]!
+    const ref = rootOf(session, seq)
+    if (ref === seq) continue
     const original = session.eventAt(ref)
     const originalText = original?.type === 'tool/result' && original.data.message ? textOnly(original.data.message) : undefined
     if (originalText === undefined) continue
@@ -67,7 +96,8 @@ export function listItems(session: SessionLike): Item[] {
       originalChars: originalText.length,
       shownChars: text.length,
       onSurface: surface.has(seq),
-      ...(sources[1] !== undefined ? { previousSeq: sources[1] } : {}),
+      cutByHarness: text.includes(STOCK_PRUNE_MARKER),
+      ...(sourcesOf(session, tameruNodeOf(session, seq))?.[1] !== undefined ? { previousSeq: sourcesOf(session, tameruNodeOf(session, seq))![1]! } : {}),
     })
   }
   return [...latest.values()].sort((a, b) => a.ref - b.ref)

@@ -228,3 +228,28 @@ test('while the agent is working a request is queued, then applied at the next s
     await client.dispose()
   }
 })
+
+test('a kept result the Harness\'s own pruner cut later still resolves to its original, and can be let go', { skip }, async () => {
+  const { w, client, items } = await shortenedChat()
+  try {
+    const item = items()[0]!
+    const kept = hold(w.session, w.meter, item.ref, 'keep')
+    assert.ok(kept.ok)
+    const keptSeq = (kept as { replacementSeq: number }).replacementSeq
+    // what the stock pruner does: a price event, then a replacement citing the node it cut, with the middle removed
+    const node = w.session.eventAt(keptSeq)!
+    const text = fullText(w, keptSeq)
+    const cut = `${text.slice(0, 4096)}\n\n[... tool result middle pruned ...]\n\n${text.slice(-1024)}`
+    w.session.append('compaction/prune', { shadowedRange: { start: keptSeq, end: keptSeq }, shadowedSeqs: [keptSeq], shadowedTokenCount: w.meter.estimateMessage(node.data.message) })
+    w.session.append('tool/result', { ...node.data, message: { ...node.data.message, content: [{ type: 'text', text: cut }] } }, { surfaceOp: { op: 'replace', startSeq: keptSeq, endSeq: keptSeq }, sourceEventSeqs: [keptSeq] })
+    const after = items().find(candidate => candidate.ref === item.ref)!
+    assert.equal(after.state, 'kept')
+    assert.equal(after.cutByHarness, true)
+    assert.equal(items().filter(candidate => candidate.ref === item.ref).length, 1, 'one row per original')
+    assert.equal(readOriginal(w.session, item.ref, 0, 50).ok, true, 'the original, not the cut node, is read')
+    assert.ok(unkeep(w.session, w.meter, item.ref).ok, 'letting go finds the shortened version behind the cut')
+    assert.equal(items().find(candidate => candidate.ref === item.ref)!.state, 'shortened')
+  } finally {
+    await client.dispose()
+  }
+})
