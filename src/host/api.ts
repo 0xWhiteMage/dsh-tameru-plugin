@@ -35,11 +35,11 @@ const VIEW_CHARS = 3000
 export const SETTING_KEYS = ['shorten', 'activation', 'minConfidence', 'share', 'protectRecent', 'minResultChars', 'maxPerPass'] as const
 
 /** The settings in effect, with the default each one falls back to. */
-export function effectiveSettings(settings: TameruSettings): { values: Record<string, unknown>; defaults: Record<string, unknown> } {
+export function effectiveSettings(settings: TameruSettings, saved?: TameruSettings): { values: Record<string, unknown>; defaults: Record<string, unknown>; saved: boolean } {
   const defaults: Record<string, unknown> = { shorten: true, activation: DEFAULT_ACTIVATION, ...DEFAULT_SHORTEN }
   const values: Record<string, unknown> = {}
   for (const key of SETTING_KEYS) values[key] = (settings as Record<string, unknown>)[key] ?? defaults[key]
-  return { values, defaults }
+  return { values, defaults, saved: saved !== undefined && Object.keys(saved).length > 0 }
 }
 
 function describe(item: Item, queued: Set<number>): Record<string, unknown> {
@@ -123,7 +123,7 @@ async function stateEndpoint(session: SessionLike, env: ApiEnv): Promise<ApiResu
     failure,
     pins: session.id ? env.pins.list(session.id) : [],
     limits: { pins: MAX_PINS, pinChars: MAX_PIN_CHARS, view: VIEW_CHARS, read: MAX_READ_CHARS },
-    settings: effectiveSettings(env.settings),
+    settings: effectiveSettings(env.settings, env.saved),
   }
 }
 
@@ -149,5 +149,5 @@ function settingsEndpoint(body: Record<string, unknown>, env: ApiEnv): ApiResult
     for (const key of Object.keys(env.settings)) delete (env.settings as Record<string, unknown>)[key]
     Object.assign(env.settings, env.profile, env.saved)
   }
-  return { ok: true, settings: effectiveSettings(env.settings) }
+  return { ok: true, settings: effectiveSettings(env.settings, env.saved) }
 }

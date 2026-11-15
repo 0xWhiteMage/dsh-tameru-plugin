@@ -30,13 +30,13 @@ test('the bundle is in the Harness loader format and asks only for modules the w
   assert.match(source, /window\.__ModuleLoader__\.load\(\{\s*id: "dsh-tameru"/)
   const { definition, required } = load()
   const exports = definition.factory(() => ({}))
-  assert.deepEqual(exports.inject, ['slots', 'sidebarRightTabs'])
+  assert.deepEqual(exports.inject, ['slots'])
   assert.equal(typeof exports.apply, 'function')
   for (const name of new Set(required)) assert.ok(['react', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives'].includes(name), `unexpected module request: ${name}`)
   assert.ok(!/@deepseek-ai\/dsh-(?!client-ui-primitives)/.test(source.replace(/\/\/.*$/gm, '').match(/require\("[^"]+"\)/g)?.join('\n') ?? ''), 'no other Harness package is required')
 })
 
-test('applying it registers one tab type and one body, with function titles, and removes them all when unloaded', () => {
+test('applying it registers one dock bar in the input dock, and removes it and its style when unloaded', () => {
   const { definition } = load()
   const exports = definition.factory(() => ({}))
   const styles: any[] = []
@@ -45,55 +45,61 @@ test('applying it registers one tab type and one body, with function titles, and
     head: { appendChild: (element: unknown) => styles.push(element) },
     documentElement: { lang: 'en' },
   }
-  const types: any[] = []
-  const bodies: any[] = []
+  const registered: any[] = []
+  const injected: string[] = []
   const disposers: Array<() => void> = []
-  const removed: string[] = []
   exports.apply({
-    effect: (setup: () => unknown, label?: string) => {
+    effect: (setup: () => unknown) => {
       const dispose = setup()
       disposers.push(() => {
-        removed.push(label ?? '')
         if (typeof dispose === 'function') dispose()
       })
     },
-    sidebarRightTabs: { register: (type: unknown) => (types.push(type), () => types.splice(types.indexOf(type), 1)) },
-    slots: { register: (key: unknown, body: unknown) => (bodies.push({ key, body }), () => bodies.splice(0)) },
+    slots: {
+      inject: (slot: string, factory: () => () => void) => {
+        injected.push(slot)
+        const remove = factory()
+        return () => remove()
+      },
+      register: (definition: unknown, body: unknown) => {
+        registered.push({ definition, body })
+        return () => registered.splice(0)
+      },
+    },
   })
-  assert.equal(types.length, 1)
-  const type = types[0]
-  assert.equal(type.id, 'dsh-tameru/panel')
-  assert.equal(type.kind, 'tameru')
-  assert.equal(typeof type.title, 'function')
-  assert.equal(type.title(), 'Tameru')
-  assert.equal(type.guide.length, 1)
-  for (const entry of type.guide) {
-    assert.equal(typeof entry.title, 'function', 'a string title crashes the Harness guide')
-    assert.equal(typeof entry.description, 'function', 'a string description crashes the Harness guide')
-    assert.ok(entry.title().length > 0 && entry.description().length > 0)
-  }
-  assert.deepEqual(bodies.map(b => b.key), [{ name: 'sidebar.right.pane.tab', key: 'dsh-tameru/panel' }])
-  assert.equal(typeof bodies[0].body, 'function')
+  assert.deepEqual(injected, ['conversation.input.dock'])
+  assert.equal(registered.length, 1)
+  const { definition: dock, body } = registered[0]
+  assert.equal(dock.name, 'conversation.input.dock')
+  assert.equal(dock.id, 'dsh-tameru')
+  assert.ok(typeof dock.order === 'number' && dock.order > 20, 'it sits after the Harness goal (10) and queue (20) docks')
+  assert.deepEqual(dock.inject('chat-1'), { sessionId: 'chat-1' }, 'the bar is told which chat it is in')
+  assert.equal(typeof body, 'function')
   assert.equal(styles.length, 1, 'one style element was added')
   for (const dispose of disposers.reverse()) dispose()
-  assert.equal(types.length, 0)
-  assert.equal(bodies.length, 0)
+  assert.equal(registered.length, 0)
   assert.equal(styles.length, 0, 'the style element was removed')
 })
 
-test('the panel\'s words exist in English and Chinese, every string non-empty', () => {
-  for (const language of ['en', 'zh-CN']) {
-    ;(globalThis as any).document = { documentElement: { lang: language } }
-    const text: Record<string, unknown> = copy() as never
-    for (const [key, value] of Object.entries(text)) {
-      if (typeof value === 'string') assert.ok(value.length > 0, `${language}.${key}`)
-      else assert.equal(typeof value, 'function', `${language}.${key}`)
-    }
-  }
-  ;(globalThis as any).document = { documentElement: { lang: 'zh-CN' } }
-  assert.notEqual(copy().cleanups, (void ((globalThis as any).document = { documentElement: { lang: 'en' } }), copy().cleanups))
+test('the bar words exist in English and Chinese with the same keys, and every phrase the bar can show is written', () => {
+  const shapes = (value: unknown): unknown =>
+    typeof value === 'function' ? 'function' : typeof value === 'object' && value !== null ? Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, shapes(inner)])) : typeof value
+  ;(globalThis as any).document = { documentElement: { lang: 'en' } }
   const en = copy()
-  assert.match(en.engine('on', '1.9.0'), /1\.9\.0/)
+  ;(globalThis as any).document = { documentElement: { lang: 'zh-CN' } }
+  const zh = copy()
+  assert.deepEqual(shapes(zh), shapes(en), 'the same keys and kinds in both languages')
+  assert.notEqual(zh.tabs.results, en.tabs.results)
+  const statuses: any[] = [
+    { tone: 'off', key: 'loading' }, { tone: 'off', key: 'notOpen' }, { tone: 'off', key: 'unreachable' }, { tone: 'off', key: 'shorteningOff' },
+    { tone: 'warn', key: 'noPython' }, { tone: 'warn', key: 'enginePaused' }, { tone: 'warn', key: 'failure', text: 'x' },
+    { tone: 'idle', key: 'waiting', count: 2 }, { tone: 'ok', key: 'shortened', count: 3, fresh: 1 }, { tone: 'ok', key: 'shortened', count: 3, fresh: 0 },
+    { tone: 'idle', key: 'startsAt', percent: 56 }, { tone: 'idle', key: 'watching' },
+  ]
+  for (const language of [en, zh]) for (const status of statuses) assert.ok(language.status(status).length > 0, status.key)
   assert.match(en.gaugeReason('no_context_window'), /context window/)
   assert.match(en.gaugeReason('anything else'), /not available/)
+  // nothing in the bar words may promise a saving
+  const everything = JSON.stringify([en.presets, en.shorteningHelp, en.footer('1'), en.empty, en.status({ tone: 'ok', key: 'shortened', count: 2, fresh: 0 })])
+  assert.ok(!/\bsav(e|ed|ing|ings)\b|\bfreed?\b|cheaper/i.test(everything))
 })
