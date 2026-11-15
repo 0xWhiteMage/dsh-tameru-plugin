@@ -27,6 +27,10 @@ export interface EngineClientOptions {
   /** This many failures within `windowMs` turns the worker off until `reset()`. */
   maxFailures?: number
   windowMs?: number
+  /** Extra time the first request to a newly started worker gets (interpreter start and engine import). */
+  startupMs?: number
+  /** How long the engine rests after it was turned off by repeated failures before it is tried again. */
+  cooldownMs?: number
   now?: () => number
 }
 
@@ -53,6 +57,10 @@ export class EngineClient {
   private disposed = false
   private lastError: string | undefined
   private version: WorkerVersion | undefined
+  private tail: Promise<unknown> = Promise.resolve()
+  private disabledAt = 0
+  private readonly startupMs: number
+  private readonly cooldownMs: number
 
   private readonly spawn: Spawn
 
@@ -62,6 +70,8 @@ export class EngineClient {
     this.maxFailures = options.maxFailures ?? 3
     this.windowMs = options.windowMs ?? 60_000
     this.now = options.now ?? Date.now
+    this.startupMs = options.startupMs ?? 15_000
+    this.cooldownMs = options.cooldownMs ?? 300_000
   }
 
   status(): WorkerStatus {
@@ -121,8 +131,22 @@ export class EngineClient {
     }
   }
 
-  private async call(build: (id: number) => Record<string, unknown>): Promise<Record<string, unknown> | undefined> {
-    if (this.disposed || this.disabled) return undefined
+  /**
+   * Requests go to the worker one at a time: it answers one at a time anyway, and this way each request's deadline covers only its own
+   * work, so one slow request cannot fail the ones queued behind it.
+   */
+  private call(build: (id: number) => Record<string, unknown>): Promise<Record<string, unknown> | undefined> {
+    const run = this.tail.then(() => this.callNow(build))
+    this.tail = run.then(() => undefined, () => undefined)
+    return run
+  }
+
+  private async callNow(build: (id: number) => Record<string, unknown>): Promise<Record<string, unknown> | undefined> {
+    if (this.disposed) return undefined
+    // after repeated failures the engine rests, then is tried again: a bad minute must not switch it off until the Harness restarts
+    if (this.disabled && this.now() - this.disabledAt >= this.cooldownMs) this.reset()
+    if (this.disabled) return undefined
+    const fresh = this.worker === undefined
     const worker = await this.ensureWorker()
     if (!worker) return undefined
     const id = this.nextId++
@@ -132,7 +156,7 @@ export class EngineClient {
         this.note('timeout', true)
         this.drop(worker)
         resolve(undefined)
-      }, this.timeoutMs)
+      }, this.timeoutMs + (fresh ? this.startupMs : 0))
       this.pending.set(id, { resolve, timer })
       try {
         worker.send(JSON.stringify(build(id)))
@@ -179,9 +203,12 @@ export class EngineClient {
     }
     if (typeof reply !== 'object' || reply === null) return
     const record = reply as Record<string, unknown>
-    const pending = typeof record.id === 'number' ? this.pending.get(record.id) : undefined
-    if (!pending) return
-    this.pending.delete(record.id as number)
+    // The worker answers a line it could not read (bad JSON, too large) with no id. Requests are serial, so that reply belongs to the
+    // one request in flight: it fails alone and at once, instead of waiting out its deadline and taking the worker with it.
+    const id = typeof record.id === 'number' ? record.id : record.id === null && record.ok === false && this.pending.size === 1 ? [...this.pending.keys()][0] : undefined
+    const pending = id === undefined ? undefined : this.pending.get(id)
+    if (!pending || id === undefined) return
+    this.pending.delete(id)
     clearTimeout(pending.timer)
     pending.resolve(record)
   }
@@ -216,6 +243,9 @@ export class EngineClient {
     if (!countsAsFailure) return
     const at = this.now()
     this.failures = [...this.failures.filter(time => at - time < this.windowMs), at]
-    if (this.failures.length >= this.maxFailures) this.disabled = true
+    if (this.failures.length >= this.maxFailures && !this.disabled) {
+      this.disabled = true
+      this.disabledAt = at
+    }
   }
 }

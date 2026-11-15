@@ -45,6 +45,11 @@ export interface ShortenOptions {
  * `minConfidence` 0.7: on the engine's own task cases (see docs/MEASURED-VS-STOCK.md) extracts the engine was less than 70% sure of lost
  * a required fact in a large share of cases, while those it was surer of rarely did. It trades savings for not silently losing facts.
  */
+/** The most time one pass spends asking the engine. */
+export const PASS_BUDGET_MS = 6000
+/** A result longer than this is left alone: the engine's request limit is 16 MB and a text this size is not worth a step's wait. */
+export const MAX_ENGINE_CHARS = 2_000_000
+
 export const DEFAULT_SHORTEN: ShortenOptions = { protectRecent: 4, minResultChars: 6000, share: 0.35, maxPerPass: 24, minConfidence: 0.7 }
 
 export interface Entry {
@@ -127,7 +132,7 @@ export function findCandidates(session: SessionLike, entries: Entry[], options: 
       text = originalText
       origin = sources![0]!
     }
-    if (text.length < options.minResultChars) continue
+    if (text.length < options.minResultChars || text.length > MAX_ENGINE_CHARS) continue
     if (alreadyShortened(text) || hasSpillNotice(text)) continue
     const callId = message.toolCallId ?? message.source?.callId
     if (typeof callId !== 'string' || callId === '') continue
@@ -224,8 +229,11 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   const planned: Planned[] = []
   let answered = 0
   let unsure = 0
-  await Promise.all(
-    candidates.map(async candidate => {
+  // One at a time, within a time budget: a step boundary must not wait long, and what is not reached now is reached at a later step.
+  const started = Date.now()
+  for (const candidate of candidates) {
+    if (Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
+    await (async () => {
       const query = buildQuery(lookup, candidate.index, candidate.callId)
       const key = declineKey(candidate.seq, candidate.text.length, query)
       if (pass.declined?.has(key)) {
@@ -253,8 +261,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         return
       }
       planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
-    }),
-  )
+    })()
+  }
   if (answered === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
   if (planned.length === 0) return { kind: 'skipped', reason: unsure > 0 ? 'not_confident' : 'no_candidates' }
   const batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)

@@ -126,6 +126,20 @@ test('errors, already shortened, spilled and stock-pruned results are never touc
   assert.equal(found.length, 1, 'only the one plain old large result is eligible')
 })
 
+test('a result too large for the worker is left as it is', { skip }, async () => {
+  const w = await world()
+  w.step({ name: 'bash', args: {} }, 'x'.repeat(2_000_001))
+  w.step({ name: 'bash', args: {} }, bigOutput('y'))
+  w.step({ name: 'bash', args: {} }, bigOutput('z'))
+  w.finish()
+  const found = findCandidates(
+    w.session,
+    w.session.surface.nodes.map(seq => ({ seq, event: w.session.eventAt(seq)!, message: w.session.deriveEventMessage(w.session.eventAt(seq)!)! })) as Entry[],
+    { ...options, protectRecent: 1 },
+  )
+  assert.equal(found.length, 1, 'only the ordinary large result is a candidate')
+})
+
 test('an engine that is down leaves the session exactly as it was', { skip }, async () => {
   const { w } = await longSession()
   const client = new EngineClient(() => {

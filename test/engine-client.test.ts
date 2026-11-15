@@ -143,3 +143,47 @@ test('a write to a dead worker fails open', async () => {
   assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined)
   assert.equal(client.status().lastError, 'write_failed')
 })
+
+test('requests are sent one at a time, so a slow one cannot fail the ones queued behind it', async () => {
+  let inFlight = 0
+  let peak = 0
+  const worker = fake((request, push) => {
+    inFlight++
+    peak = Math.max(peak, inFlight)
+    setTimeout(() => {
+      inFlight--
+      push(ok(request.id, compressed))
+    }, 30)
+  })
+  const client = new EngineClient(() => worker.process, { timeoutMs: 100, startupMs: 0 })
+  const results = await Promise.all([1, 2, 3, 4].map(() => client.compress({ text: 'x', query: 'q' })))
+  assert.equal(peak, 1)
+  assert.ok(results.every(result => result?.text === 'short'), 'four 30 ms requests all finish under a 100 ms deadline each')
+  await client.dispose()
+})
+
+test('after repeated failures the engine rests, then is tried again', async () => {
+  let clock = 0
+  let starts = 0
+  const bad = () => fake()
+  const good = fake((request, push) => push(ok(request.id, compressed)))
+  const client = new EngineClient(() => (starts++ < 3 ? bad().process : good.process), { timeoutMs: 5, startupMs: 0, maxFailures: 3, cooldownMs: 1000, now: () => clock })
+  for (let i = 0; i < 3; i++) assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined)
+  assert.equal(client.status().state, 'disabled')
+  assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined, 'resting: no new worker is started')
+  assert.equal(starts, 3)
+  clock = 1500
+  assert.equal((await client.compress({ text: 'x', query: 'q' }))?.text, 'short')
+  assert.equal(client.status().state, 'running')
+  await client.dispose()
+})
+
+test('a reply with a null id (a line the worker could not read) fails only the request in flight, at once', async () => {
+  const worker = fake((_request, push) => push(JSON.stringify({ id: null, ok: false, error: 'too_large' })))
+  const client = new EngineClient(() => worker.process, { timeoutMs: 5000, startupMs: 0 })
+  const started = Date.now()
+  assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined)
+  assert.ok(Date.now() - started < 1000, 'it did not wait out the deadline')
+  assert.equal(worker.killed(), false, 'the worker is kept')
+  await client.dispose()
+})
