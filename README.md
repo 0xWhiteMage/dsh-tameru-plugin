@@ -24,7 +24,7 @@ Verification with a real model that declares a context window, and publishing, w
 
 ## Install
 
-Not published yet. For development, see [Development](#development). Requires DeepSeek Harness **0.2.2-rc.1** (the version this plugin is tested on; the Harness refuses to enable it on other versions) and Python 3.10+ (bundled with the Harness).
+Not published yet. For development, see [Development](#development). Requires DeepSeek Harness **0.2.2-rc.3** (the version this plugin is tested on; the Harness refuses to enable it on other versions) and Python 3.10+ (bundled with the Harness).
 
 ## What it looks like
 

@@ -2,7 +2,7 @@
 
 ## Tested against
 
-- **DeepSeek Harness 0.2.2-rc.1** (desktop app 44.7.0). `package.json` `engines.dsh` and `DSH_PIN` name exactly that version; the Harness refuses to enable the plugin on any other, and the Harness is a release candidate whose internals can change. Move the pin only after running the whole suite and the in-Harness checks on the new version.
+- **DeepSeek Harness 0.2.2-rc.3.** It was first built and measured on 0.2.2-rc.1; when the desktop app updated to rc.3 the Harness skipped the plugin (`incompatible with dsh 0.2.2-rc.3`), so it was re-tested on rc.3 and the pin moved. `package.json` `engines.dsh` and `DSH_PIN` name exactly that version; the Harness refuses to enable the plugin on any other, and the Harness is a release candidate whose internals can change. Move the pin only after running the whole suite and the in-Harness checks on the new version.
 - **Python 3.12.14** (the interpreter the Harness bundles) and 3.13 for the tests. The engine needs 3.10 or later.
 - **Node 24** (the Harness's own runtime).
 - **Windows 11.** The code paths are platform-neutral, but nothing here has been run on macOS or Linux.
@@ -30,6 +30,9 @@ A plugin must declare every Harness service it uses in `inject`, or Cordis fails
 - Together with **DS Bot** installed: 199 rows composed with no duplicate id, both browser bundles load, no console error, and the Tameru bar shows and opens inside DS Bot's layout.
 
 ## Not verified
+
+- **The measurements on rc.3.** [MEASURED-VS-STOCK.md](MEASURED-VS-STOCK.md) and [REPLAY-VS-STOCK.md](REPLAY-VS-STOCK.md) were run on 0.2.2-rc.1. The stock trigger formula and the stock pruner's constants (8,192 / 4,096 / 1,024) are identical in rc.3, but the replay was not re-run.
+- **Staying compatible as the Harness updates.** The Harness refuses a plugin whose `engines.dsh` is not its exact version, and the desktop app updates itself, so every release candidate needs this plugin re-tested and re-pinned before it loads.
 
 - **A real model.** Nothing has run a real model through the plugin. The `local-ai` model on the author's PC declares no context window, so the Harness assumes 1,000,000 tokens and would not reach any trigger; live use needs a model with a declared `contextWindow`.
 - **A DS Bot Bot session under pressure.** The stand-down for chats whose compaction another plugin manages is a documented-behaviour test (an own `compactIfNeeded`, `compactNow`, `compactRegion` or `summarize`), checked against DS Bot's source and by unit test, not against a running Bot with a long chat.
