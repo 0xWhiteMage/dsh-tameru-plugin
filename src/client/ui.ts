@@ -59,21 +59,26 @@ export interface Anchored {
   maxHeight: number
 }
 
-/** Where a card goes: above its anchor, as wide as `width` allows, never off the screen. Recomputed on resize and scroll. */
+/** Where a card goes: above its anchor with their right edges level, as wide as `width` allows, never off the screen. While the card is open
+ *  the anchor is watched every frame: a collapsing sidebar or a growing message box moves it without any resize or scroll event. */
 export function useAnchor(open: boolean, anchor: { current: HTMLElement | null }, width: number): Anchored | undefined {
   const [at, setAt] = useState<Anchored | undefined>(undefined)
   useLayoutEffect(() => {
     if (!open) { setAt(undefined); return }
+    let frame = 0
+    let last = ''
     const place = () => {
       const rect = anchor.current?.getBoundingClientRect()
-      if (!rect) return
-      const w = Math.min(width, window.innerWidth - 24)
-      setAt({ width: w, left: Math.max(12, Math.min(rect.left, window.innerWidth - w - 12)), bottom: window.innerHeight - rect.top + 8, maxHeight: Math.max(160, rect.top - 24) })
+      if (rect) {
+        const w = Math.min(width, window.innerWidth - 24)
+        const next = { width: w, left: Math.max(12, Math.min(rect.right - w, window.innerWidth - w - 12)), bottom: Math.round(window.innerHeight - rect.top + 8), maxHeight: Math.max(160, Math.round(rect.top - 24)) }
+        const key = `${next.width}|${Math.round(next.left)}|${next.bottom}|${next.maxHeight}`
+        if (key !== last) { last = key; setAt(next) }
+      }
+      frame = window.requestAnimationFrame(place)
     }
     place()
-    window.addEventListener('resize', place)
-    window.addEventListener('scroll', place, true)
-    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true) }
+    return () => window.cancelAnimationFrame(frame)
   }, [open, anchor, width])
   return at
 }

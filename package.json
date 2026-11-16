@@ -1,6 +1,6 @@
 {
   "name": "dsh-tameru",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tameru for DeepSeek Harness: shortens bulky tool output before it fills the context, keeps every error, and lets you pin, keep and restore. Local, no extra model calls.",
   "keywords": [
     "dsh-plugin",

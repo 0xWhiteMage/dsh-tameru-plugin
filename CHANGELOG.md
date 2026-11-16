@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Changed
+- **0.1.2: the interface is rebuilt.** A solid bar drawn like the Harness's own goal bar (it had no background, so the chat scrolled visibly under it and long text appeared to bleed into it), branded Tameru (ためる), with the **mode**, **pause** and **pins** in the bar and no settings screen. Details open as a **floating card** above the bar with **two icon tabs** (results, pins) instead of an inline panel with three; the chat never moves. Rows are `20.0K → 1.2K` with one eye icon to keep or release; state is shown by small icons with hover cards instead of sentences. Far fewer words, in English and Chinese. Uses the Harness's own hover cards, status dot and icons from its shared UI module, each with a plain fallback, because that module is not a documented contract. The card follows the bar when the layout moves, and Esc or a click outside closes it. Measured with a 315-character status and a 3,000-character unbroken line: the bar stays one 32 px line and nothing exceeds its container.
+- Modes are named **Shorten more / Balanced / Keep detail** (the gates 0.55 / 0.7 / 0.85), with the measured consequence in the hover card.
+- Whether the card is open is no longer remembered; only the chosen tab is.
+
+### Changed
 - **0.1.1: pinned to DeepSeek Harness 0.2.2-rc.3.** The desktop app updated itself from rc.1 to rc.3 and the Harness skipped the plugin as incompatible (`engines.dsh` must equal the running version). Re-tested: the full suite (111 tests, including the real session log, token meter and event bus) passes on rc.3, the stock trigger and pruner constants are unchanged, and the bar loads in a throwaway rc.3 Harness with the same bundle list as the author's profile and DS Bot. The replay and per-output measurements were not re-run.
 
 ### Added

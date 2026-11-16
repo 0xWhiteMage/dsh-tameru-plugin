@@ -57,6 +57,7 @@ const STYLE = `
 .tameru-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 6px 8px; }
 .tameru-note { display: flex; align-items: flex-start; gap: 6px; margin: 4px 4px 6px; color: var(--t-fg3); overflow-wrap: anywhere; }
 .tameru-note.warn { color: var(--t-warn); } .tameru-note svg { flex: none; margin-top: 3px; }
+.tameru-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
 .tameru-row { display: flex; align-items: center; gap: 2px; border-radius: 8px; } .tameru-row:hover { background: var(--t-hover); }
 .tameru-rowmain { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px; border-radius: 8px; text-align: left; }
 .tameru-rowmain:disabled { cursor: default; opacity: .6; }
@@ -69,7 +70,7 @@ const STYLE = `
 .tameru-viewtitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-fg1); font-weight: 500; }
 .tameru-seg { flex: none; display: inline-flex; border-radius: 8px; background: var(--t-hover); padding: 2px; }
 .tameru-seg button { height: 22px; padding: 0 9px; border-radius: 6px; font-size: 12px; color: var(--t-fg3); } .tameru-seg button[aria-pressed="true"] { background: var(--dsw-specific-menu, Canvas); color: var(--t-fg1); box-shadow: 0 0 0 1px var(--t-line); }
-.tameru-pre { margin: 0; max-height: 220px; overflow: auto; padding: 8px; border-radius: 8px; background: var(--t-hover); color: var(--t-fg1); font: 11.5px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
+.tameru-pre { margin: 0; max-height: min(220px, 32vh); overflow: auto; padding: 8px; border-radius: 8px; background: var(--t-hover); color: var(--t-fg1); font: 11.5px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
 .tameru-pager { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--t-fg3); font-variant-numeric: tabular-nums; } .tameru-pager .tameru-grow { text-align: center; }
 .tameru-link { margin-top: 6px; padding: 2px 6px !important; min-height: 24px; border-radius: 6px; color: var(--t-fg2); text-decoration: underline; text-underline-offset: 2px; } .tameru-link:hover { color: var(--t-fg1); }
 .tameru-pin { display: flex; align-items: flex-start; gap: 2px; padding: 2px 0 2px 8px; border-radius: 8px; } .tameru-pin:hover { background: var(--t-hover); }
@@ -284,7 +285,7 @@ function Bar(props: Json) {
   const body = !state ? h('div', { className: 'tameru-note' }, failed ? t.unreachable : t.loading)
     : !live ? h('div', { className: 'tameru-note' }, t.status({ tone: 'off', key: 'notOpen' }))
     : h(Fragment, null,
-        status.tone === 'warn' ? h('div', { className: 'tameru-note warn', role: 'status' }, h(Icon, { name: 'warn', size: 13 }), phrase) : null,
+        status.tone === 'warn' ? h('div', { className: 'tameru-note warn', role: 'status' }, h(Icon, { name: 'warn', size: 13 }), h('span', { className: 'tameru-clamp', title: phrase }, phrase)) : null,
         tab === 'pins' ? h(Pins, { state, sessionId: sessionId!, refresh: () => void load(), t })
           : viewed ? h(Viewer, { item: viewed, sessionId: sessionId!, act, onBack: () => { setViewing(null); setTimeout(() => document.getElementById('tameru-tab-results')?.focus(), 0) }, t })
           : h(Results, { state, seen, onOpen: setViewing, act, notice, t }))

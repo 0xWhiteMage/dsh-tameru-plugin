@@ -19,6 +19,7 @@
 | `compaction/prune` + replacing `tool/result` (`surfaceOp` replace, `sourceEventSeqs`) | every write | documented in the compaction packages; the Session enforces that a replacement changes only the content |
 | `ctx.subprocess.spawn` | the engine worker | documented; piped `stdin` and `stdout` on the handle |
 | `ctx.tools.register`, `ctx.commands.register`, `ctx.systemPrompt.section`, `ctx.connection.fetch.register` | tool, command, pins, panel route | documented |
+| `@deepseek-ai/dsh-client-ui-primitives` (`Tooltip`, `StateDot`, `Icon*`), a module the web shell shares with plugin bundles | the bar's hover cards, status dot and icons | **not documented**: found by reading the shipped client. Every part is looked up by name with a plain fallback (`src/client/ui.ts`), and a test renders the bar with none of them present |
 | `ctx.slots.inject` / `ctx.slots.register`, slot `conversation.input.dock` | the bar | the Harness registers its own goal and queue docks the same way; a dock component receives `useProjection`, `useSession` and what our `inject(sessionId)` returns (found by reading the shipped client) |
 
 A plugin must declare every Harness service it uses in `inject`, or Cordis fails it silently: the plugin declares `commands`, `subprocess`, `tools`, `systemPrompt` and `connection`.

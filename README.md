@@ -2,7 +2,7 @@
 
 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): shortens bulky tool output before it fills the context, keeps every error, and lets you pin, keep and restore. Local, deterministic, no extra model calls.
 
-> **Status: early development (0.1.1, unreleased).** Every feature below is built and tested against the real Harness packages, and the interface was exercised in the real Harness web client (also beside DS Bot), but **no real model has run through it yet** and nothing is published. Read the two measurements before relying on it: [per output](docs/MEASURED-VS-STOCK.md) (Tameru keeps far more needed facts than the stock pruner, removes less) and [whole simulated sessions](docs/REPLAY-VS-STOCK.md) (**no cost saving: cost-neutral at the shipped settings, about 3% dearer when the confidence gate is lowered**).
+> **Status: early development (0.1.2, unreleased).** Every feature below is built and tested against the real Harness packages, and the interface was exercised in the real Harness web client (also beside DS Bot), but **no real model has run through it yet** and nothing is published. Read the two measurements before relying on it: [per output](docs/MEASURED-VS-STOCK.md) (Tameru keeps far more needed facts than the stock pruner, removes less) and [whole simulated sessions](docs/REPLAY-VS-STOCK.md) (**no cost saving: cost-neutral at the shipped settings, about 3% dearer when the confidence gate is lowered**).
 
 ## What works today
 
@@ -11,7 +11,9 @@
 - **Keep and Restore.** `/tameru keep N` shows the model the full original until you `/tameru unkeep N`; `/tameru restore N` shows it in full for the model's next 3 replies, after which Tameru may shorten it again. Nothing is stored outside the chat: a result's state is in the chat log itself, so it survives a restart and a fork. If the agent is working when you ask, the change is queued and made before its next step.
 - **Pins.** `/tameru pin TEXT` keeps a line of yours (up to 5, 300 characters each and 1,500 together) in front of the model on every request, word for word. Pins are a section of the system prompt, which no compaction replaces, so they survive every summary. They are only ever text you typed: no tool lets the model pin, and text that looks like a credential is refused (a heuristic, not a guarantee). `{{curly braces}}` in a pin are kept literally. Pins are saved in `<Harness home>/tameru/pins.json`, which `/tameru purge` empties; removing the plugin leaves that folder.
 - **Artifact Trail.** After the Harness compacts a chat, one short note is added listing the files touched, the commands run (and which failed) and the distinct errors in what the summary replaced, so the agent knows what it already did. It is built only from tool-call names, path and command arguments and error flags, each line capped and stripped of markup, never from the body of any output, and it says it is data. It carries forward through later compactions.
-- **One compact bar.** Above the message box, **Tameru** is a single thin line: a state mark, a context gauge (with a tick where Tameru starts and one where the Harness compacts), one phrase such as `3 shortened` or `Starts at 59%`, and a pin count. It is closed by default and remembers if you open it. Opened, it grows a fixed-height panel with three sections: **Results** (each shortened result as `20.0K → 1.2K`, one **Keep** switch per row, and a viewer for the original or what the model sees, with a button to show it in full for its next 3 replies), **Pins**, and **Settings** (shortening on or off, and three named choices for how sure the engine must be, each with a line about what the replay measured: Balanced and the looser setting carry its numbers, Cautious says it was not measured separately). A dot marks results that are new since you last looked; changes made while the agent is working are marked as waiting. English and Chinese, light and dark, keyboard and screen-reader operable. Settings you change are saved in `<Harness home>/tameru/settings.json`, only the ones you changed, and apply at once.
+- **One bar, one card.** Above the message box, **Tameru (ためる)** is a single solid line, drawn the way the Harness's own goal bar is, so it lines up with the message box and nothing shows through it. Left to right: a status dot, the name, the **mode** (Shorten more / Balanced / Keep detail), one short status phrase (`1 new`, `3 shortened`, `Starts at 59%`), the context gauge, **pause**, **pins** with a count, and a chevron. Mode and pause are in the bar, so there is no settings screen. Every icon has a hover card.
+- **The card.** The chevron opens a card that floats above the bar, so the chat and the message box never move; it closes on Esc, a click elsewhere or the close icon. It has two icon tabs: **shortened results** and **pinned lines**. A result row reads `20.0K → 1.2K` with one eye icon: click it to show that result to the model in full, click again to shorten it again. Click the row itself to read it in the card, **Original** or **Shortened**, in pages, with a link to show it in full for 3 replies. Small icons mark a result that is waiting for the next step, was also trimmed by the Harness, or was summarised away. A problem (no Python, a failed change) shows as a warning line at the top of the card.
+- English and Chinese, light and dark, keyboard operable (arrows move between tabs). The mode and pause apply at once and are saved in `<Harness home>/tameru/settings.json`, only the ones you changed.
 - It stands down for any chat whose compaction another plugin (for example DS Bot) manages, while a compaction is running, and whenever the model declares no usable context window.
 - `/tameru` shows the plugin version, the engine version, whether the engine is running, and what was shortened in this chat.
 - The Tameru engine runs as an isolated Python worker on the interpreter the Harness bundles (or one you name), started through the Harness's own managed subprocess service.
@@ -28,13 +30,15 @@ Not published yet. For development, see [Development](#development). Requires De
 
 ## What it looks like
 
-The bar closed, open on Results, and open on Settings, in the Harness's own dark theme (it follows light and dark and your theme's colours).
+In the Harness's own dark theme at a narrow width (it follows light and dark and your theme's colours). Closed, then open on results, on a result's text, and on pins.
 
-![The closed bar: state mark, name, context gauge, 55%, 3 shortened, pin count](docs/images/bar-closed-sample-data.png)
+![The closed bar: status dot, Tameru (ためる), mode, status phrase, gauge, pause, pins and chevron](docs/images/bar-closed-sample-data.png)
 
-![The bar open on Results: sizes such as 52.3K to 2.1K, a Keep switch on each row, one kept in full, one summarised away by a compaction](docs/images/bar-open-sample-data.png)
+![The card on results: sizes such as 52.3K to 2.1K, an eye icon on each row, one kept in full, small icons for waiting, trimmed and summarised away](docs/images/bar-card-sample-data.png)
 
-![The bar open on Settings: shortening switch and the three named choices, Balanced selected](docs/images/bar-settings-sample-data.png)
+![A result opened in the card: Original and Shortened, the text wrapped inside the card](docs/images/bar-viewer-sample-data.png)
+
+![The pins tab: two pinned lines, an input and a short note](docs/images/bar-pins-sample-data.png)
 
 *These images show sample data fed to the page: the stub model used for the screenshots cannot run tools, so there was nothing real to shorten. The bar itself is the real client in the real Harness.*
 
