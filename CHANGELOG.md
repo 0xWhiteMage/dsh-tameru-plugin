@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- **0.1.1: pinned to DeepSeek Harness 0.2.2-rc.3.** The desktop app updated itself from rc.1 to rc.3 and the Harness skipped the plugin as incompatible (`engines.dsh` must equal the running version). Re-tested: the full suite (111 tests, including the real session log, token meter and event bus) passes on rc.3, the stock trigger and pruner constants are unchanged, and the bar loads in a throwaway rc.3 Harness with the same bundle list as the author's profile and DS Bot. The replay and per-output measurements were not re-run.
+
 ### Added
 - **One compact bar** in the input dock (`conversation.input.dock`), closed to a single ~30 px line, opening to Results, Pins and Settings: gauge, cleanups with viewer, one Keep switch per row, pins and three named confidence choices, from a bundled React client (`lib/client.js`, about 42 KB, only the Harness's shared modules) over an authenticated route `POST /api/tameru` (state, hold, view, pin, unpin, settings) that reuses the `/tameru` command code. It reaches only chats that are open and validates every payload. Settings changed there are saved in `<Harness home>/tameru/settings.json`. Found by running the real Harness web client: guide entries need `title` and `description` as functions, a dock component receives what the slot's `inject(sessionId)` returns, and an undeclared service silently fails a plugin; each is now covered by a test.
 - `scripts/dev_harness.py`: serves the installed Harness against a throwaway home with a stub model and this plugin installed, to try the interface in a browser without touching a real profile.

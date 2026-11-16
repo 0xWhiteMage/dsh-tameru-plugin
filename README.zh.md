@@ -2,7 +2,7 @@
 
 适用于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system)：在工具输出占满上下文之前将其缩短，保留每一条错误，并支持固定、保留与恢复。本地、确定性，不额外调用模型。
 
-> **状态：早期开发（0.1.0，未发布）。** 完整说明与已验证范围见[英文 README](README.md)。**尚未证明能降低成本**：在模拟会话中，默认设置下成本持平，放宽置信度门槛后约高 3%，同时多保留约 0.7/5 个所需事实（见 [docs/REPLAY-VS-STOCK.md](docs/REPLAY-VS-STOCK.md)）。
+> **状态：早期开发（0.1.1，未发布）。** 完整说明与已验证范围见[英文 README](README.md)。**尚未证明能降低成本**：在模拟会话中，默认设置下成本持平，放宽置信度门槛后约高 3%，同时多保留约 0.7/5 个所需事实（见 [docs/REPLAY-VS-STOCK.md](docs/REPLAY-VS-STOCK.md)）。
 
 ## 功能
 
