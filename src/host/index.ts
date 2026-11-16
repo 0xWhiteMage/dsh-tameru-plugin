@@ -20,7 +20,7 @@ import { readOriginalTool } from './tool.ts'
  * Tameru for DeepSeek Harness: host half.
  *
  * Nothing stock is replaced, disabled or wrapped. This plugin adds a command and one `agent/pre-step` listener (registered after the
- * Harness's and DS Bot's, never `prepend`), and with `enabled: false` it adds nothing at all.
+ * Harness's and DS Bot's, never `prepend`), and with `enabled: false` the host half does nothing.
  */
 export const name = 'dsh-tameru'
 export const inject = ['commands', 'subprocess', 'tools', 'systemPrompt', 'connection']

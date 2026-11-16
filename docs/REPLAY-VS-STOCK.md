@@ -4,7 +4,7 @@
 
 ## What was run
 
-`scripts/replay.ts` (rows and tables: `docs/results/replay-full.json`, `replay-full.md`). 160 simulated sessions of 60 steps: 10 seeds × 2 context windows (128K, 200K) × 2 query styles, each run once as stock and under three Tameru settings on identical tool outputs (6,000 to 30,000 characters each, mixed log, compiler and test-runner style, with 5 needed configuration values buried one per output among distractors and stale values).
+`scripts/replay.ts` (rows and tables: `docs/results/replay-full.json`, `replay-full.md`). 40 simulated sessions of 60 steps (160 runs in all, each session run as stock and under three Tameru settings): 10 seeds × 2 context windows (128K, 200K) × 2 query styles, each run once as stock and under three Tameru settings on identical tool outputs (6,000 to 30,000 characters each, mixed log, compiler and test-runner style, with 5 needed configuration values buried one per output among distractors and stale values).
 
 - **Real:** the Harness's session log, token meter and tool-result pruner (0.2.2-rc.1); this plugin's own step-boundary pass; the Tameru engine through the worker.
 - **Stock behaviour:** at the Harness's own trigger (`min(0.8 W, W − 8,000 − 65,536)`, 54,464 tokens at 128K) the stock pruner shortens every result over 8,192 characters to 5,120, and if the prompt is still over the trigger a summary compaction follows.
@@ -34,7 +34,7 @@ By cell, gate 0.5: 128K +0.8% to +1.2%; 200K **+4.1% to +5.9%** (facts held 3.2 
 
 ## What this does not show
 
-- **Real model behaviour.** No model ran. A fact "held" is present in the prompt; whether a model uses it, or would have found it by reading the original back (which this plugin cannot yet do), is not measured.
+- **Real model behaviour.** No model ran. A fact "held" is present in the prompt; whether a model uses it, or would have found it by reading the original back, is not measured: the replay model never read originals back, so the fact counts do not include that recovery (the plugin can now do it; it was not part of this replay).
 - **Summaries that keep some facts.** Real summaries retain some of what they cover. With them the stock arm would hold more facts than shown, which would narrow the fact advantage.
 - **Real outputs and tasks.** The sessions are synthetic and the evidence is five one-line facts. Real outputs have near-miss lines and facts that need several lines.
 - **Cache behaviour beyond the model above** (expiry, provider-specific rules, minimum cacheable length).
@@ -42,4 +42,4 @@ By cell, gate 0.5: 128K +0.8% to +1.2%; 200K **+4.1% to +5.9%** (facts held 3.2 
 
 ## Decision
 
-The defaults stay as they are: they cost nothing and risk nothing, and the plugin does not claim a saving. Lowering `minConfidence` is documented as a trade of roughly 3% cost for more facts kept, not as an optimisation. The work that could change the picture is giving the model a way to **read an original back** (so a shortened result no longer means a lost fact) and letting the user Keep and Restore results; those are the next steps, and they should be judged on facts recoverable per extra cost, not on cost alone.
+The defaults stay as they are: they cost nothing and risk nothing, and the plugin does not claim a saving. Lowering `minConfidence` is documented as a trade of roughly 3% cost for more facts kept, not as an optimisation. The work that could change the picture is giving the model a way to **read an original back** (so a shortened result no longer means a lost fact) and letting the user Keep and Restore results; those now exist in the plugin but were not part of this replay, and they should be judged on facts recoverable per extra cost, not on cost alone.

@@ -26,7 +26,7 @@ A plugin must declare every Harness service it uses in `inject`, or Cordis fails
 ## Verified
 
 - A unit and integration suite against the **real Harness packages** (session log, token meter, prompt assembler, tool registry, subprocess service, Cordis event bus), extracted by `scripts/extract_harness.py`. It skips when the Harness is absent.
-- The packed plugin installs into a throwaway Harness home, the composed configuration differs from stock by exactly one row, the plugin loads, `/tameru` runs, the worker starts on the bundled Python and is gone when the Harness stops, and the tab works against the real route (`scripts/dev_harness.py`).
+- The packed plugin installs into a throwaway Harness home, the composed configuration differs from stock by exactly one row, the plugin loads, `/tameru` runs, the worker starts on the bundled Python and is gone when the Harness stops, and the bar loads in the input dock, with its Results, Pins and Settings sections working against the real route (`scripts/dev_harness.py`).
 - Together with **DS Bot** installed: 199 rows composed with no duplicate id, both browser bundles load, no console error, and the Tameru bar shows and opens inside DS Bot's layout.
 
 ## Not verified
