@@ -31,6 +31,7 @@ export type ApiResult = { ok: true; [key: string]: unknown } | { ok: false; erro
 const fail = (error: string): ApiResult => ({ ok: false, error })
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const VIEW_CHARS = 3000
+const FAILURE_SHOWN_MS = 30_000
 
 export const SETTING_KEYS = ['shorten', 'activation', 'minConfidence', 'share', 'protectRecent', 'minResultChars', 'maxPerPass'] as const
 
@@ -106,9 +107,8 @@ async function stateEndpoint(session: SessionLike, env: ApiEnv): Promise<ApiResu
     : undefined
   const items = listItems(session)
   const queued = new Set(stats.pending.map(op => op.ref))
-  // a queued change that could not be applied is reported once
-  const failure = stats.lastFailure ?? null
-  delete stats.lastFailure
+  // a queued change that could not be applied is shown for 30 seconds, to every panel that asks (a second panel or a refresh sees it too)
+  const failure = stats.lastFailure !== undefined && Date.now() - (stats.lastFailureAt ?? 0) < FAILURE_SHOWN_MS ? stats.lastFailure : null
   return {
     ok: true,
     live: true,

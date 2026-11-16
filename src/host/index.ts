@@ -124,7 +124,7 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
       try {
         const meter = baseDeps.meter()
         const chat = chatStatsOf(stats, agent.session)
-        if (meter) for (const failure of drainPending(agent.session, meter, chat)) chat.lastFailure = failure.reason
+        if (meter) for (const failure of drainPending(agent.session, meter, chat)) { chat.lastFailure = failure.reason; chat.lastFailureAt = Date.now() }
       } catch (error) {
         log?.warn(`dsh-tameru: could not apply a queued change: ${error instanceof Error ? error.message : String(error)}`)
       }

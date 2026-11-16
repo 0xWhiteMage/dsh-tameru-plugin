@@ -28,6 +28,8 @@ export interface ChatStats {
   lastSkip?: string
   /** Why the latest queued change could not be applied, for the panel to show once. */
   lastFailure?: string
+  /** When it happened (ms); the panel shows it for a short while, to every panel that asks. */
+  lastFailureAt?: number
 }
 
 export interface StepAgent {
@@ -104,6 +106,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
     // what the user asked for while the agent was working (keep, restore, unkeep) is done first, even with shortening switched off
     for (const failure of drainPending(agent.session, meter, stats)) {
       stats.lastFailure = failure.reason
+      stats.lastFailureAt = Date.now()
       deps.log?.warn(`dsh-tameru: could not ${failure.op.op} reference ${failure.op.ref}: ${failure.reason}`)
     }
     if (deps.settings.shorten === false) return skip('off')
