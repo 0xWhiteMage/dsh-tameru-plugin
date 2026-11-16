@@ -10,7 +10,7 @@ import type { TameruSettings } from './step.ts'
 export function readSaved(directory: string): TameruSettings {
   try {
     const parsed = JSON.parse(readFileSync(join(directory, 'settings.json'), 'utf8')) as { version?: number; settings?: unknown }
-    if (parsed?.version === 1) return normalizeSettings(parsed.settings)
+    if (parsed?.version === 2) return normalizeSettings(parsed.settings)
   } catch {
     // missing or damaged: nothing saved
   }
@@ -23,7 +23,7 @@ export function writeSaved(directory: string, settings: TameruSettings): string 
     mkdirSync(directory, { recursive: true })
     const path = join(directory, 'settings.json')
     const temporary = `${path}.${process.pid}.tmp`
-    writeFileSync(temporary, JSON.stringify({ version: 1, settings }), 'utf8')
+    writeFileSync(temporary, JSON.stringify({ version: 2, settings }), 'utf8')
     renameSync(temporary, path)
     return undefined
   } catch (error) {

@@ -154,7 +154,7 @@ test('settings through the panel are validated, saved, applied at once, and rese
     assert.ok(changed.ok)
     assert.equal(changed.settings.values.minConfidence, 0.4)
     assert.equal((await p.call('state')).settings.values.activation, 0.6, 'the running plugin uses it now')
-    assert.deepEqual(JSON.parse(readFileSync(join(p.home, 'tameru', 'settings.json'), 'utf8')), { version: 1, settings: { shorten: true, activation: 0.6, minConfidence: 0.4 } })
+    assert.deepEqual(JSON.parse(readFileSync(join(p.home, 'tameru', 'settings.json'), 'utf8')), { version: 2, settings: { shorten: true, activation: 0.6, minConfidence: 0.4 } })
     for (const bad of [{ activation: 5 }, { minConfidence: 'high' }, { shorten: 'yes' }, { nonsense: 1 }, { activation: 0.1 }]) {
       const refused = await p.call('settings', { patch: bad })
       assert.equal(refused.ok, false, JSON.stringify(bad))
@@ -176,7 +176,7 @@ test('saved settings are read when the plugin starts, over the profile\'s values
   try {
     const { mkdirSync } = await import('node:fs')
     mkdirSync(join(home, 'tameru'))
-    writeFileSync(join(home, 'tameru', 'settings.json'), JSON.stringify({ version: 1, settings: { activation: 0.5, share: 'wrong' } }))
+    writeFileSync(join(home, 'tameru', 'settings.json'), JSON.stringify({ version: 2, settings: { activation: 0.5, share: 'wrong' } }))
     const { LocalSubprocessRuntime } = await load('@deepseek-ai/dsh-subprocess-local')
     w.ctx.plugin(LocalSubprocessRuntime)
     w.ctx.provide('commands')
@@ -202,7 +202,7 @@ test('only what the user changed in the panel is saved: the profile\'s values ar
   try {
     assert.equal((await p.call('settings')).settings.values.share, 0.5)
     await p.call('settings', { patch: { activation: 0.6 } })
-    assert.deepEqual(JSON.parse(readFileSync(join(p.home, 'tameru', 'settings.json'), 'utf8')), { version: 1, settings: { activation: 0.6 } })
+    assert.deepEqual(JSON.parse(readFileSync(join(p.home, 'tameru', 'settings.json'), 'utf8')), { version: 2, settings: { activation: 0.6 } })
     await p.call('settings', { patch: { share: 0.2 } })
     assert.equal((await p.call('settings')).settings.values.share, 0.2)
     const reset = await p.call('settings', { patch: { share: null } })

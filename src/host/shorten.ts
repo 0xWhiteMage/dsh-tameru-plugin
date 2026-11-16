@@ -5,6 +5,7 @@ import {
   RESTORED_PREFIX,
   SHORTENED_PREFIX,
   alreadyShortened,
+  touchedByTameru,
   buildQuery,
   hasSpillNotice,
   textOnly,
@@ -123,7 +124,8 @@ export function findCandidates(session: SessionLike, entries: Entry[], options: 
     // A header counts only on a replacement the Harness recorded as made from a tool result; a tool's own output that merely begins
     // with our words is ordinary text.
     const sources = (entry.event as unknown as { sourceEventSeqs?: number[] }).sourceEventSeqs
-    const ours = sources?.[0] !== undefined && session.eventAt(sources[0])?.type === 'tool/result'
+    const citedText = sources?.[0] === undefined ? undefined : session.eventAt(sources[0])?.data.message
+    const ours = sources?.[0] !== undefined && session.eventAt(sources[0])?.type === 'tool/result' && citedText !== undefined && !touchedByTameru(textOnly(citedText) ?? '')
     if (ours && text.startsWith(KEPT_PREFIX)) continue
     if (ours && text.startsWith(RESTORED_PREFIX)) {
       // a restored result stays in full for a few replies, then is an ordinary candidate again, from its original text
@@ -244,7 +246,13 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         return
       }
       const result = await client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
-      if (!result) return
+      if (!result) {
+        // the engine did not answer for this one: a second failure stops it being tried again, so one hard result cannot stall every step
+        const failedOnce = `${key}#failed`
+        if (pass.declined?.has(failedOnce)) pass.declined.add(key)
+        else pass.declined?.add(failedOnce)
+        return
+      }
       answered++
       if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) {
         pass.declined?.add(key)

@@ -90,7 +90,8 @@ export class EngineClient {
   }
 
   async compress(request: CompressRequest): Promise<CompressResult | undefined> {
-    const reply = await this.call(id => toWire(id, request))
+    // a big text takes longer to read: the deadline grows with it, so a healthy worker is not killed for a large result
+    const reply = await this.call(id => toWire(id, request), Math.ceil(request.text.length / 50))
     const result = reply?.ok === true ? (reply.result as Record<string, unknown> | undefined) : undefined
     if (reply && reply.ok !== true) this.note(typeof reply.error === 'string' ? reply.error : 'error_reply', false)
     return result ? fromWireResult(result) : undefined
@@ -135,16 +136,20 @@ export class EngineClient {
    * Requests go to the worker one at a time: it answers one at a time anyway, and this way each request's deadline covers only its own
    * work, so one slow request cannot fail the ones queued behind it.
    */
-  private call(build: (id: number) => Record<string, unknown>): Promise<Record<string, unknown> | undefined> {
-    const run = this.tail.then(() => this.callNow(build))
+  private call(build: (id: number) => Record<string, unknown>, extraMs = 0): Promise<Record<string, unknown> | undefined> {
+    const run = this.tail.then(() => this.callNow(build, extraMs))
     this.tail = run.then(() => undefined, () => undefined)
     return run
   }
 
-  private async callNow(build: (id: number) => Record<string, unknown>): Promise<Record<string, unknown> | undefined> {
+  private async callNow(build: (id: number) => Record<string, unknown>, extraMs = 0): Promise<Record<string, unknown> | undefined> {
     if (this.disposed) return undefined
     // after repeated failures the engine rests, then is tried again: a bad minute must not switch it off until the Harness restarts
-    if (this.disabled && this.now() - this.disabledAt >= this.cooldownMs) this.reset()
+    if (this.disabled && this.now() - this.disabledAt >= this.cooldownMs) {
+      this.reset()
+      // a single trial: one more failure rests the engine again at once
+      this.failures = Array.from({ length: Math.max(0, this.maxFailures - 1) }, () => this.now())
+    }
     if (this.disabled) return undefined
     const fresh = this.worker === undefined
     const worker = await this.ensureWorker()
@@ -156,7 +161,7 @@ export class EngineClient {
         this.note('timeout', true)
         this.drop(worker)
         resolve(undefined)
-      }, this.timeoutMs + (fresh ? this.startupMs : 0))
+      }, this.timeoutMs + extraMs + (fresh ? this.startupMs : 0))
       this.pending.set(id, { resolve, timer })
       try {
         worker.send(JSON.stringify(build(id)))
@@ -179,7 +184,9 @@ export class EngineClient {
           worker.kill()
           return undefined
         }
-        worker.onLine(line => this.onLine(line))
+        worker.onLine(line => {
+          if (this.worker === worker) this.onLine(line)
+        })
         worker.onExit(() => this.onExit(worker))
         this.worker = worker
         return worker

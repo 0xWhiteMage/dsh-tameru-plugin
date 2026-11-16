@@ -187,3 +187,43 @@ test('a reply with a null id (a line the worker could not read) fails only the r
   assert.equal(worker.killed(), false, 'the worker is kept')
   await client.dispose()
 })
+
+test('a big text gets a longer deadline, so a healthy worker is not killed for a large result', async () => {
+  const worker = fake((request, push) => {
+    setTimeout(() => push(ok(request.id, compressed)), 60)
+  })
+  const client = new EngineClient(() => worker.process, { timeoutMs: 20, startupMs: 0 })
+  assert.equal((await client.compress({ text: 'x'.repeat(200_000), query: 'q' }))?.text, 'short', '200,000 characters earn four extra seconds')
+  assert.equal(worker.killed(), false)
+  await client.dispose()
+})
+
+test('after the rest the engine gets one trial: a single failure rests it again at once', async () => {
+  let clock = 0
+  let starts = 0
+  const client = new EngineClient(() => (starts++, fake().process), { timeoutMs: 5, startupMs: 0, maxFailures: 3, cooldownMs: 1000, now: () => clock })
+  for (let i = 0; i < 3; i++) await client.compress({ text: 'x', query: 'q' })
+  assert.equal(client.status().state, 'disabled')
+  clock = 1500
+  await client.compress({ text: 'x', query: 'q' })
+  assert.equal(starts, 4, 'one trial was made')
+  assert.equal(client.status().state, 'disabled', 'and its failure rested the engine again')
+  await client.compress({ text: 'x', query: 'q' })
+  assert.equal(starts, 4, 'no second trial before the next rest ends')
+})
+
+test('a late reply from a worker that was killed is not taken for the answer to the next request', async () => {
+  let starts = 0
+  let pushFromFirst: (line: string) => void = () => {}
+  const first = fake((_request, push) => { pushFromFirst = push })
+  const second = fake((request, push) => {
+    setTimeout(() => push(ok(request.id, compressed)), 40)
+  })
+  const client = new EngineClient(() => (starts++ === 0 ? first.process : second.process), { timeoutMs: 80, startupMs: 0 })
+  assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined, 'the first worker is silent and is dropped')
+  const next = client.compress({ text: 'x', query: 'q' })
+  await new Promise(resolve => setTimeout(resolve, 10))
+  pushFromFirst(JSON.stringify({ id: null, ok: false, error: 'too_large' }))
+  assert.equal((await next)?.text, 'short', 'the stale line did not fail the request now in flight')
+  await client.dispose()
+})

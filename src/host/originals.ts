@@ -1,4 +1,4 @@
-import { KEPT_PREFIX, RESTORED_PREFIX, SHORTENED_PREFIX, STOCK_PRUNE_MARKER, textOnly } from './messages.ts'
+import { KEPT_PREFIX, RESTORED_PREFIX, SHORTENED_PREFIX, STOCK_PRUNE_MARKER, textOnly, touchedByTameru } from './messages.ts'
 import type { MeterLike, SessionLike } from './shorten.ts'
 
 /**
@@ -33,20 +33,28 @@ function rootOf(session: SessionLike, seq: number): number {
   let at = seq
   for (let hops = 0; hops < 8; hops++) {
     const first = sourcesOf(session, at)?.[0]
-    if (first === undefined || session.eventAt(first)?.type !== 'tool/result') break
+    if (first === undefined || session.eventAt(first)?.type !== 'tool/result') return at
     at = first
   }
-  return at
+  return seq // longer than any real chain: not resolved, so the item is left out
+}
+
+/** A node the Harness's own pruner cut: it cites exactly one result, which has no cut of its own, and its text carries the marker. */
+function isStockCut(session: SessionLike, seq: number): boolean {
+  const sources = sourcesOf(session, seq)
+  const text = (() => { const message = session.eventAt(seq)?.data.message; return message ? textOnly(message) : undefined })()
+  if (text === undefined || !text.includes(STOCK_PRUNE_MARKER) || sources?.length !== 1) return false
+  const cited = session.eventAt(sources[0]!)?.data.message
+  const citedText = cited ? textOnly(cited) : undefined
+  return citedText !== undefined && !citedText.includes(STOCK_PRUNE_MARKER)
 }
 
 /** The Tameru-written node behind a node the Harness may have cut since: the one that cites both the original and its predecessor. */
 function tameruNodeOf(session: SessionLike, seq: number): number {
   let at = seq
   for (let hops = 0; hops < 8; hops++) {
-    const message = session.eventAt(at)?.data.message
-    const text = message ? textOnly(message) : undefined
     const first = sourcesOf(session, at)?.[0]
-    if (text === undefined || !text.includes(STOCK_PRUNE_MARKER) || first === undefined || sourcesOf(session, at)!.length !== 1) break
+    if (first === undefined || !isStockCut(session, at)) break
     at = first
   }
   return at
@@ -87,7 +95,8 @@ export function listItems(session: SessionLike): Item[] {
     if (ref === seq) continue
     const original = session.eventAt(ref)
     const originalText = original?.type === 'tool/result' && original.data.message ? textOnly(original.data.message) : undefined
-    if (originalText === undefined) continue
+    // an original never starts with our headers; text that does is not one of ours
+    if (originalText === undefined || touchedByTameru(originalText)) continue
     latest.set(ref, {
       ref,
       currentSeq: seq,
@@ -96,7 +105,7 @@ export function listItems(session: SessionLike): Item[] {
       originalChars: originalText.length,
       shownChars: text.length,
       onSurface: surface.has(seq),
-      cutByHarness: text.includes(STOCK_PRUNE_MARKER),
+      cutByHarness: isStockCut(session, seq),
       ...(sourcesOf(session, tameruNodeOf(session, seq))?.[1] !== undefined ? { previousSeq: sourcesOf(session, tameruNodeOf(session, seq))![1]! } : {}),
     })
   }
