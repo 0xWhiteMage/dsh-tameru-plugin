@@ -22,6 +22,7 @@ const en = {
       case 'failure': return s.text
       case 'waiting': return `${s.count} change${s.count === 1 ? '' : 's'} waiting for the next step`
       case 'shortened': return s.fresh > 0 ? `${s.fresh} new · ${s.count} shortened` : `${s.count} shortened`
+      case 'kept': return `${s.count} shown in full`
       case 'startsAt': return `Starts at ${s.percent}%`
       case 'watching': return 'Watching'
     }
@@ -80,8 +81,8 @@ const en = {
   carefulness: 'How sure the engine must be',
   presets: {
     cautious: { name: 'Cautious', line: 'Shortens fewer results. Not measured separately.' },
-    balanced: { name: 'Balanced', line: 'The default. Measured on 160 replayed sessions: no change in cost.' },
-    eager: { name: 'Eager', line: 'Shortens more results. In the same replay a looser setting cost about 3% more and kept about 0.7 more of 5 needed facts.' },
+    balanced: { name: 'Balanced', line: 'The default. In a simulated replay (40 sessions, assumed prices) it cost the same as the stock pruner, because it rarely acted.' },
+    eager: { name: 'Eager', line: 'Shortens more results. In the same replay a looser gate (0.5; this is 0.55) cost about 3% more and kept about 0.7 more of 5 needed facts.' },
     custom: { name: 'Custom', line: 'Set in your profile file.' },
   },
   reset: 'Back to defaults',
@@ -111,6 +112,7 @@ const zh: Copy = {
       case 'failure': return s.text
       case 'waiting': return `${s.count} 项更改等待下一步`
       case 'shortened': return s.fresh > 0 ? `新增 ${s.fresh} · 已缩短 ${s.count}` : `已缩短 ${s.count}`
+      case 'kept': return `${s.count} 项完整显示`
       case 'startsAt': return `${s.percent}% 时开始`
       case 'watching': return '监视中'
     }
@@ -157,8 +159,8 @@ const zh: Copy = {
   chars: (from, to, total) => `第 ${from}–${to} 字符，共 ${total}`,
   restore: '在模型接下来的 3 次回复中显示完整内容',
   loadingText: '加载中…',
-  pinsTitle: '固定的话',
-  pinsEmpty: '还没有固定内容。固定的话会出现在每次请求中，且不会被任何压缩移除。',
+  pinsTitle: '已固定的内容',
+  pinsEmpty: '还没有固定内容。固定的内容会出现在每次请求中，且不会被任何压缩移除。',
   pinsFull: '已达上限：请先移除一条',
   pinPlaceholder: '固定一句话，例如：不要修改生产环境配置',
   pin: '固定',
@@ -169,8 +171,8 @@ const zh: Copy = {
   carefulness: '引擎需要多大把握',
   presets: {
     cautious: { name: '谨慎', line: '缩短的结果更少。未单独测量。' },
-    balanced: { name: '均衡', line: '默认。在 160 个回放会话中测得：成本没有变化。' },
-    eager: { name: '积极', line: '缩短更多结果。同一回放中，更宽松的设置成本约高 3%，在 5 条所需事实中多保留约 0.7 条。' },
+    balanced: { name: '均衡', line: '默认。在模拟回放中（40 个会话，价格为假设），成本与原生裁剪相同，因为它很少动作。' },
+    eager: { name: '积极', line: '缩短更多结果。同一回放中，更宽松的门槛（0.5；此处为 0.55）成本约高 3%，在 5 条所需事实中多保留约 0.7 条。' },
     custom: { name: '自定义', line: '在你的配置文件中设置。' },
   },
   reset: '恢复默认',

@@ -42,8 +42,12 @@ test('the one phrase: the most important true thing wins, and none of them claim
   assert.equal(failing.key, 'failure', 'a failure outranks waiting changes')
   assert.deepEqual(statusOf(state({ chat: { pending: 2 } }), false, -1), { tone: 'idle', key: 'waiting', count: 2 })
   assert.equal(statusOf(state({ settings: { values: { shorten: false } } }), false, -1).key, 'shorteningOff')
-  const items = [{ ref: 3, onSurface: true }, { ref: 9, onSurface: true }, { ref: 5, onSurface: false }]
+  const items = [{ ref: 3, state: 'shortened', onSurface: true }, { ref: 9, state: 'shortened', onSurface: true }, { ref: 5, state: 'shortened', onSurface: false }]
   assert.deepEqual(statusOf(state({ items }), false, 4), { tone: 'ok', key: 'shortened', count: 2, fresh: 1 }, 'summarised-away results are not counted; "new" is what is above the last seen')
+  // a result held in full, or waiting to be changed, is not counted as shortened
+  const mixed = [{ ref: 3, state: 'kept', onSurface: true }, { ref: 9, state: 'shortened', onSurface: true, queued: true }, { ref: 11, state: 'shortened', onSurface: true }]
+  assert.deepEqual(statusOf(state({ items: mixed }), false, -1), { tone: 'ok', key: 'shortened', count: 1, fresh: 1 })
+  assert.deepEqual(statusOf(state({ items: [mixed[0]] }), false, -1), { tone: 'ok', key: 'kept', count: 1 })
   assert.deepEqual(statusOf(state(), false, -1), { tone: 'idle', key: 'startsAt', percent: 59 })
   assert.deepEqual(statusOf(state({ gauge: null }), false, -1), { tone: 'idle', key: 'watching' })
   assert.equal(liveItems({ items }).length, 2)

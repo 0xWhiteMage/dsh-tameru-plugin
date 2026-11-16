@@ -16,7 +16,7 @@ const POLL_CLOSED_MS = 5000
 const STYLE = `
 .tameru { --t-fg: var(--dsw-alias-label-secondary, currentColor); --t-fg2: var(--dsw-alias-label-tertiary, color-mix(in srgb, currentColor 60%, transparent)); --t-fg1: var(--dsw-alias-label-primary, currentColor);
   --t-line: var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 16%, transparent)); --t-hover: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, currentColor 9%, transparent));
-  --t-accent: var(--dsw-static-blue-450, #4d6bfe); --t-ok: #3fb950; --t-warn: #d9822b;
+  --t-accent: var(--dsw-static-blue-450, #4d6bfe); --t-ok: #3fb950; --t-warn: #d9822b; --t-warn-text: color-mix(in srgb, #d9822b 55%, var(--t-fg1)); --t-track: color-mix(in srgb, currentColor 32%, transparent);
   font-size: 12px; line-height: 18px; color: var(--t-fg); box-sizing: border-box; }
 .tameru *, .tameru *::before, .tameru *::after { box-sizing: border-box; }
 .tameru button { font: inherit; color: inherit; background: transparent; border: 0; cursor: pointer; border-radius: 6px; }
@@ -28,9 +28,10 @@ const STYLE = `
 .tameru-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--t-fg2); }
 .tameru-dot.ok { background: var(--t-ok); } .tameru-dot.warn { background: var(--t-warn); } .tameru-dot.idle { background: var(--t-accent); }
 .tameru-name { flex: none; font-weight: 600; color: var(--t-fg1); }
-.tameru-meter { flex: none; position: relative; width: 56px; height: 6px; border-radius: 3px; background: var(--t-hover); }
-.tameru-meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--t-fg2); }
-.tameru-meter-tick { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: var(--t-fg2); }
+.tameru-meter { flex: none; position: relative; width: 56px; height: 6px; border-radius: 3px; background: var(--t-track); }
+.tameru-meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--t-fg); }
+.tameru-meter-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--t-fg1); }
+.tameru-meter-tick.soft { height: 8px; top: -1px; opacity: .55; }
 .tameru-percent { flex: none; font-variant-numeric: tabular-nums; min-width: 3ch; }
 .tameru-phrase { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--t-fg2); }
 .tameru-chev { flex: none; width: 12px; height: 12px; opacity: .7; }
@@ -51,7 +52,7 @@ const STYLE = `
 .tameru-fresh { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--t-accent); }
 .tameru-tag { color: var(--t-fg2); font-size: 11px; }
 .tameru-switch { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 24px; min-width: 24px; padding: 0 6px; }
-.tameru-switch-track { width: 24px; height: 14px; border-radius: 7px; background: var(--t-line); position: relative; flex: none; }
+.tameru-switch-track { width: 24px; height: 14px; border-radius: 7px; background: var(--t-track); position: relative; flex: none; }
 .tameru-switch-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--t-fg1); }
 .tameru-switch[aria-checked="true"] .tameru-switch-track { background: var(--t-accent); }
 .tameru-switch[aria-checked="true"] .tameru-switch-track::after { left: 12px; background: #fff; }
@@ -66,10 +67,10 @@ const STYLE = `
 .tameru-add { display: flex; gap: 6px; margin-top: 8px; }
 .tameru-add input { flex: 1; min-width: 0; font: inherit; color: inherit; background: transparent; border: 1px solid var(--t-line); border-radius: 6px; padding: 3px 8px; min-height: 26px; }
 .tameru-add button { border: 1px solid var(--t-line); padding: 2px 10px; min-height: 26px; }
-.tameru-error { color: var(--t-warn); margin-top: 6px; }
+.tameru-error { color: var(--t-warn-text); margin-top: 6px; }
 .tameru .tameru-radio { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 5px 8px; border: 1px solid transparent; }
-.tameru .tameru-radio[aria-checked="true"] { border-color: var(--t-accent); }
-.tameru .tameru-radio[aria-checked="true"] strong::after { content: ' ✓'; color: var(--t-accent); }
+.tameru .tameru-radio[aria-pressed="true"] { border-color: var(--t-accent); }
+.tameru .tameru-radio[aria-pressed="true"] strong::after { content: ' ✓'; color: var(--t-accent); }
 .tameru-radio strong { color: var(--t-fg1); font-weight: 600; }
 .tameru-field { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .tameru-h { margin: 8px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--t-fg2); }
@@ -137,8 +138,8 @@ function Row({ item, fresh, sessionId, act, t }: { item: Json; fresh: boolean; s
   const gone = !item.onSurface
   return h('div', { className: 'tameru-row', style: gone ? { opacity: 0.6 } : undefined },
     h('div', { className: 'tameru-row-line', ref: line },
-      h('button', { type: 'button', className: 'tameru-row-toggle', 'aria-expanded': open, 'aria-label': t.detailsLabel(tool, item.ref), disabled: gone, onClick: () => setOpen(!open) },
-        fresh ? h('span', { className: 'tameru-fresh', title: t.fresh }) : null,
+      h('button', { type: 'button', className: 'tameru-row-toggle', 'aria-expanded': open, disabled: gone, onClick: () => setOpen(!open) },
+        fresh ? h(Fragment, null, h('span', { className: 'tameru-fresh', 'aria-hidden': true }), h('span', { className: 'tameru-sr' }, t.fresh)) : null,
         h('span', { className: 'tameru-tool' }, tool),
         h('span', { className: 'tameru-ref' }, `#${item.ref}`),
         item.queued ? h('span', { className: 'tameru-tag' }, t.waitingRow) : item.state === 'restored' ? h('span', { className: 'tameru-tag' }, t.fullForNow) : null,
@@ -185,15 +186,15 @@ function Pins({ state, sessionId, refresh, t }: { state: Json; sessionId: string
     h('div', { className: 'tameru-note', style: { marginTop: 6, fontSize: 11 } }, t.pinsHelp(state.limits.pinChars)))
 }
 
-function Settings({ state, refresh, t }: { state: Json; refresh: () => void; t: Copy }) {
+function Settings({ state, refresh, t }: { state: Json; refresh: () => Promise<void>; t: Copy }) {
   const v = state.settings.values
   const [error, setError] = useState('')
   const [chosen, setChosen] = useState<Json>({})
   const send = async (patch: Json) => {
     const r = await call('settings', { patch }).catch(() => ({ ok: false, error: t.unreachable }))
     setError(r.ok ? '' : r.error)
+    await refresh()
     setChosen({})
-    refresh()
   }
   const current: PresetId | 'custom' = chosen.preset ?? presetOf(v.minConfidence)
   const shorten = chosen.shorten ?? v.shorten !== false
@@ -203,10 +204,10 @@ function Settings({ state, refresh, t }: { state: Json; refresh: () => void; t: 
       h('div', null, h('div', { style: { color: 'var(--t-fg1)' } }, t.shortening), h('div', { className: 'tameru-note', style: { margin: 0 } }, t.shorteningHelp)),
       h('button', { type: 'button', role: 'switch', className: 'tameru-switch', 'aria-checked': shorten, 'aria-label': t.shortening, onClick: () => { setChosen({ ...chosen, shorten: !shorten }); void send({ shorten: !shorten }) } }, h('span', { className: 'tameru-switch-track' }))),
     h('div', { className: 'tameru-h' }, t.carefulness),
-    h('div', { role: 'radiogroup', 'aria-label': t.carefulness },
+    h('div', { role: 'group', 'aria-label': t.carefulness },
       [...PRESETS.map(p => p.id), ...(current === 'custom' ? ['custom' as const] : [])].map(id => {
         const text = t.presets[id]
-        return h('button', { key: id, type: 'button', role: 'radio', className: 'tameru-radio', 'aria-checked': current === id, disabled: id === 'custom',
+        return h('button', { key: id, type: 'button', className: 'tameru-radio', 'aria-pressed': current === id, 'aria-disabled': id === 'custom' ? true : undefined,
           onClick: () => { const preset = PRESETS.find(p => p.id === id); if (preset) { setChosen({ ...chosen, preset: id }); void send({ minConfidence: preset.minConfidence }) } } },
           h('strong', null, text.name), h('span', { className: 'tameru-note', style: { margin: 0 } }, text.line))
       })),
@@ -221,15 +222,17 @@ function Bar(props: Json) {
   const sessionId: string | undefined = props.sessionId
   const useProjection: ((name: string) => any) | undefined = props.useProjection
   const pressure = useProjection?.('contextPressure')
-  const initial = readOpen()
+  const [initial] = useState(readOpen)
   const [open, setOpen] = useState(initial.open)
   const [tab, setTab] = useState<TabId>(initial.tab)
-  const [state, setState] = useState<Json | null>(null)
+  const [stored, setState] = useState<Json | null>(null)
+  const state = stored && stored.sessionKey === sessionId ? stored : null
   const [failed, setFailed] = useState(false)
   const [notice, setNotice] = useState('')
   const [seen, setSeen] = useState(-1)
   const current = useRef<string | undefined>(sessionId)
   const newest = useRef(-1)
+  const loading = useRef<string | undefined>(undefined)
   current.current = sessionId
 
   // a different chat is a different state: nothing of the last one is shown for it
@@ -243,19 +246,25 @@ function Bar(props: Json) {
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const asked = current.current
-    if (!asked) return
+    if (!asked || loading.current === asked) return
+    loading.current = asked
     try {
       const next = await call('state', { sessionId: asked }, signal)
-      if (current.current === asked) { setState(next); setFailed(false) }
+      // the answer is kept with the chat it is for, so a chat switch can never show another chat's numbers
+      if (current.current === asked) { setState({ ...next, sessionKey: asked }); setFailed(false) }
     } catch (error: any) {
       if (error?.name !== 'AbortError' && current.current === asked) setFailed(true)
+    } finally {
+      if (loading.current === asked) loading.current = undefined
     }
   }, [])
   useEffect(() => {
     const controller = new AbortController()
     void load(controller.signal)
     const timer = setInterval(() => { if (typeof document === 'undefined' || !document.hidden) void load(controller.signal) }, open ? POLL_OPEN_MS : POLL_CLOSED_MS)
-    return () => { controller.abort(); clearInterval(timer) }
+    const onVisible = () => { if (!document.hidden) void load(controller.signal) }
+    document.addEventListener?.('visibilitychange', onVisible)
+    return () => { controller.abort(); clearInterval(timer); document.removeEventListener?.('visibilitychange', onVisible); loading.current = undefined }
   }, [load, open, sessionId])
 
   const items: Json[] = state?.live ? liveItems(state) : []
@@ -284,13 +293,13 @@ function Bar(props: Json) {
 
   return h('div', { className: 'tameru', role: 'region', 'aria-label': t.name },
     h('div', { className: 'tameru-bar' },
-      h('button', { type: 'button', className: 'tameru-main', 'aria-expanded': open, 'aria-controls': panelId, title: open ? t.close : t.open, onClick: () => choose(!open) },
+      h('button', { type: 'button', className: 'tameru-main', 'aria-expanded': open, 'aria-controls': open ? panelId : undefined, 'aria-label': `${t.name}, ${phrase}${gauge ? `, ${gauge.percent}%` : ''}`, title: open ? t.close : t.open, onClick: () => choose(!open) },
         h('span', { className: `tameru-dot ${status.tone}`, 'aria-hidden': true }),
         h('span', { className: 'tameru-name' }, t.name),
         gauge ? h(Fragment, null,
-          h('span', { className: 'tameru-meter', role: 'meter', 'aria-label': t.gauge, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': gauge.percent, title: t.gaugeTitle(gauge.percent, gauge.starts, gauge.compacts) },
+          h('span', { className: 'tameru-meter', 'aria-hidden': true, title: t.gaugeTitle(gauge.percent, gauge.starts, gauge.compacts) },
             h('span', { className: 'tameru-meter-fill', style: { width: `${gauge.percent}%` } }),
-            gauge.starts !== undefined ? h('span', { className: 'tameru-meter-tick', style: { left: `${gauge.starts * 100}%`, opacity: 0.5 } }) : null,
+            gauge.starts !== undefined ? h('span', { className: 'tameru-meter-tick soft', style: { left: `${gauge.starts * 100}%` } }) : null,
             gauge.compacts !== undefined ? h('span', { className: 'tameru-meter-tick', style: { left: `${gauge.compacts * 100}%` } }) : null),
           h('span', { className: 'tameru-percent' }, `${gauge.percent}%`)) : null,
         h('span', { className: 'tameru-phrase' }, phrase),
@@ -299,13 +308,19 @@ function Bar(props: Json) {
     h('span', { className: 'tameru-sr', role: 'status', 'aria-live': 'polite' }, phrase),
     open ? h('div', { className: 'tameru-panel', id: panelId },
       h('div', { className: 'tameru-tabs', role: 'tablist', 'aria-label': t.tabsLabel },
-        tabs.map(id => h('button', { key: id, type: 'button', role: 'tab', className: 'tameru-tab', 'aria-selected': tab === id, onClick: () => choose(true, id) }, t.tabs[id]))),
-      h('div', { className: 'tameru-body', role: 'tabpanel' },
+        tabs.map(id => h('button', { key: id, id: `tameru-tab-${id}`, type: 'button', role: 'tab', className: 'tameru-tab', 'aria-selected': tab === id, 'aria-controls': 'tameru-tabpanel', tabIndex: tab === id ? 0 : -1,
+          onKeyDown: (e: any) => {
+            const at = tabs.indexOf(id)
+            const next = e.key === 'ArrowRight' ? tabs[(at + 1) % tabs.length] : e.key === 'ArrowLeft' ? tabs[(at + tabs.length - 1) % tabs.length] : e.key === 'Home' ? tabs[0] : e.key === 'End' ? tabs[tabs.length - 1] : undefined
+            if (next) { e.preventDefault(); choose(true, next); document.getElementById(`tameru-tab-${next}`)?.focus() }
+          },
+          onClick: () => choose(true, id) }, t.tabs[id]))),
+      h('div', { className: 'tameru-body', role: 'tabpanel', id: 'tameru-tabpanel', 'aria-labelledby': `tameru-tab-${tab}` },
         !state ? h('div', { className: 'tameru-note' }, failed ? t.unreachable : t.loading)
           : !live ? h('div', { className: 'tameru-note' }, t.status({ tone: 'off', key: 'notOpen' }))
           : tab === 'results' ? h(Results, { state, seen, sessionId: sessionId!, act, notice, t })
           : tab === 'pins' ? h(Pins, { state, sessionId: sessionId!, refresh: () => void load(), t })
-          : h(Settings, { state, refresh: () => void load(), t })),
+          : h(Settings, { state, refresh: () => load(), t })),
       state?.live ? h('div', { className: 'tameru-foot' }, t.footer(state.version)) : null) : null)
 }
 

@@ -30,6 +30,7 @@ export type Status =
   | { tone: 'warn'; key: 'failure'; text: string }
   | { tone: 'idle'; key: 'waiting'; count: number }
   | { tone: 'ok'; key: 'shortened'; count: number; fresh: number }
+  | { tone: 'ok'; key: 'kept'; count: number }
   | { tone: 'idle'; key: 'startsAt'; percent: number }
   | { tone: 'idle'; key: 'watching' }
 
@@ -46,7 +47,10 @@ export function statusOf(state: Json | null, failed: boolean, seenRef: number): 
   if (state.chat?.pending > 0) return { tone: 'idle', key: 'waiting', count: state.chat.pending }
   if (state.settings?.values?.shorten === false) return { tone: 'off', key: 'shorteningOff' }
   const items = liveItems(state)
-  if (items.length > 0) return { tone: 'ok', key: 'shortened', count: items.length, fresh: items.filter(item => item.ref > seenRef).length }
+  // "shortened" counts only what the model really sees shortened now; a result held in full, or waiting to be, is not one
+  const shortened = items.filter(item => item.state === 'shortened' && !item.queued)
+  if (shortened.length > 0) return { tone: 'ok', key: 'shortened', count: shortened.length, fresh: shortened.filter(item => item.ref > seenRef).length }
+  if (items.length > 0) return { tone: 'ok', key: 'kept', count: items.length }
   const gauge = state.gauge
   if (gauge && gauge.contextWindow > 0) return { tone: 'idle', key: 'startsAt', percent: Math.round((gauge.startsAt / gauge.contextWindow) * 100) }
   return { tone: 'idle', key: 'watching' }
