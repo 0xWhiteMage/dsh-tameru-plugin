@@ -10,22 +10,22 @@ export function compact(chars: number): string {
   return `${(chars / 1_000_000).toFixed(1)}M`
 }
 
-/** Three named choices for how sure the engine must be before a result is shortened. The number is the engine's confidence gate. */
-export const PRESETS = [
-  { id: 'cautious', minConfidence: 0.85 },
+/** How eager the shortening is: the engine's confidence gate for each named mode. Balanced is the shipped default. */
+export const MODES = [
+  { id: 'more', minConfidence: 0.55 },
   { id: 'balanced', minConfidence: 0.7 },
-  { id: 'eager', minConfidence: 0.55 },
+  { id: 'less', minConfidence: 0.85 },
 ] as const
-export type PresetId = (typeof PRESETS)[number]['id']
+export type ModeId = (typeof MODES)[number]['id']
 
-export function presetOf(minConfidence: unknown): PresetId | 'custom' {
+export function modeOf(minConfidence: unknown): ModeId | 'custom' {
   if (typeof minConfidence !== 'number') return 'balanced'
-  return PRESETS.find(preset => Math.abs(preset.minConfidence - minConfidence) < 0.005)?.id ?? 'custom'
+  return MODES.find(mode => Math.abs(mode.minConfidence - minConfidence) < 0.005)?.id ?? 'custom'
 }
 
 export type Tone = 'ok' | 'idle' | 'warn' | 'off'
 export type Status =
-  | { tone: 'off'; key: 'loading' | 'notOpen' | 'unreachable' | 'shorteningOff' }
+  | { tone: 'off'; key: 'loading' | 'notOpen' | 'unreachable' | 'paused' }
   | { tone: 'warn'; key: 'noPython' | 'enginePaused' }
   | { tone: 'warn'; key: 'failure'; text: string }
   | { tone: 'idle'; key: 'waiting'; count: number }
@@ -45,7 +45,7 @@ export function statusOf(state: Json | null, failed: boolean, seenRef: number): 
   if (state.engine?.state === 'disabled') return { tone: 'warn', key: 'enginePaused' }
   if (typeof state.failure === 'string' && state.failure) return { tone: 'warn', key: 'failure', text: state.failure }
   if (state.chat?.pending > 0) return { tone: 'idle', key: 'waiting', count: state.chat.pending }
-  if (state.settings?.values?.shorten === false) return { tone: 'off', key: 'shorteningOff' }
+  if (state.settings?.values?.shorten === false) return { tone: 'off', key: 'paused' }
   const items = liveItems(state)
   // "shortened" counts only what the model really sees shortened now; a result held in full, or waiting to be, is not one
   const shortened = items.filter(item => item.state === 'shortened' && !item.queued)
@@ -73,7 +73,6 @@ export function sizeOf(item: Json, inFull: string): string {
 }
 
 const SEEN_KEY = 'dsh-tameru.v1.seen'
-const OPEN_KEY = 'dsh-tameru.v1.open'
 const TAB_KEY = 'dsh-tameru.v1.tab'
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>
@@ -106,20 +105,26 @@ export function writeSeen(sessionId: string, ref: number, store: Store | undefin
   }
 }
 
-export function readOpen(store: Store | undefined = storeOf()): { open: boolean; tab: 'results' | 'pins' | 'settings' } {
+export type TabId = 'results' | 'pins'
+
+/** The chosen tab is remembered; whether the card is open is not (a floating card that reopens itself on every load is a nuisance). */
+export function readTab(store: Store | undefined = storeOf()): TabId {
   try {
-    const tab = store?.getItem(TAB_KEY)
-    return { open: store?.getItem(OPEN_KEY) === '1', tab: tab === 'pins' || tab === 'settings' ? tab : 'results' }
+    return store?.getItem(TAB_KEY) === 'pins' ? 'pins' : 'results'
   } catch {
-    return { open: false, tab: 'results' }
+    return 'results'
   }
 }
 
-export function writeOpen(open: boolean, tab: string, store: Store | undefined = storeOf()): void {
+export function writeTab(tab: TabId, store: Store | undefined = storeOf()): void {
   try {
-    store?.setItem(OPEN_KEY, open ? '1' : '0')
     store?.setItem(TAB_KEY, tab)
   } catch {
     // the choice is a convenience
   }
+}
+
+/** What a row needs to draw itself, in one place. */
+export function rowFlags(item: Json): { kept: boolean; gone: boolean; queued: boolean; cut: boolean; restored: boolean } {
+  return { kept: item.state === 'kept', gone: item.onSurface === false, queued: item.queued === true, cut: item.cutByHarness === true, restored: item.state === 'restored' }
 }

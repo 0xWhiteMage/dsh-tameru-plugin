@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { PRESETS, compact, gaugeOf, liveItems, presetOf, readOpen, readSeen, sizeOf, statusOf, writeOpen, writeSeen } from '../src/client/model.ts'
+import { MODES, compact, gaugeOf, liveItems, modeOf, readSeen, readTab, rowFlags, sizeOf, statusOf, writeSeen, writeTab } from '../src/client/model.ts'
 
 const state = (extra: Record<string, unknown> = {}) => ({
   live: true,
@@ -25,11 +25,12 @@ test('sizes read like 20.0K → 1.2K', () => {
 })
 
 test('the three named choices map to the confidence gate and back; anything else is custom', () => {
-  assert.deepEqual(PRESETS.map(p => p.id), ['cautious', 'balanced', 'eager'])
-  for (const preset of PRESETS) assert.equal(presetOf(preset.minConfidence), preset.id)
-  assert.equal(presetOf(undefined), 'balanced')
-  assert.equal(presetOf(0.42), 'custom')
-  assert.equal(PRESETS.find(p => p.id === 'balanced')!.minConfidence, 0.7, 'balanced is the shipped default')
+  assert.deepEqual(MODES.map(m => m.id), ['more', 'balanced', 'less'])
+  for (const mode of MODES) assert.equal(modeOf(mode.minConfidence), mode.id)
+  assert.equal(modeOf(undefined), 'balanced')
+  assert.equal(modeOf(0.42), 'custom')
+  assert.equal(MODES.find(m => m.id === 'balanced')!.minConfidence, 0.7, 'balanced is the shipped default')
+  assert.ok(MODES[0]!.minConfidence < MODES[1]!.minConfidence && MODES[1]!.minConfidence < MODES[2]!.minConfidence, 'more shortening means a lower gate')
 })
 
 test('the one phrase: the most important true thing wins, and none of them claims a saving', () => {
@@ -41,7 +42,7 @@ test('the one phrase: the most important true thing wins, and none of them claim
   const failing = statusOf(state({ failure: 'reference 4 was summarised away', chat: { pending: 2 } }), false, -1)
   assert.equal(failing.key, 'failure', 'a failure outranks waiting changes')
   assert.deepEqual(statusOf(state({ chat: { pending: 2 } }), false, -1), { tone: 'idle', key: 'waiting', count: 2 })
-  assert.equal(statusOf(state({ settings: { values: { shorten: false } } }), false, -1).key, 'shorteningOff')
+  assert.equal(statusOf(state({ settings: { values: { shorten: false } } }), false, -1).key, 'paused')
   const items = [{ ref: 3, state: 'shortened', onSurface: true }, { ref: 9, state: 'shortened', onSurface: true }, { ref: 5, state: 'shortened', onSurface: false }]
   assert.deepEqual(statusOf(state({ items }), false, 4), { tone: 'ok', key: 'shortened', count: 2, fresh: 1 }, 'summarised-away results are not counted; "new" is what is above the last seen')
   // a result held in full, or waiting to be changed, is not counted as shortened
@@ -69,16 +70,23 @@ test('remembered choices are per viewer, optional, and survive a broken store', 
   writeSeen('chat-b', 3, store)
   assert.equal(readSeen('chat-a', store), 12)
   assert.equal(readSeen('chat-b', store), 3)
-  assert.deepEqual(readOpen(store), { open: false, tab: 'results' }, 'closed by default')
-  writeOpen(true, 'pins', store)
-  assert.deepEqual(readOpen(store), { open: true, tab: 'pins' })
-  memory.set('dsh-tameru.v1.tab', 'something else')
-  assert.equal(readOpen(store).tab, 'results')
+  assert.equal(readTab(store), 'results', 'results by default')
+  writeTab('pins', store)
+  assert.equal(readTab(store), 'pins')
+  assert.equal(memory.has('dsh-tameru.v1.open'), false, 'whether the card is open is never stored')
+  memory.set('dsh-tameru.v1.tab', 'settings')
+  assert.equal(readTab(store), 'results', 'a tab that no longer exists falls back')
   const broken = { getItem: () => { throw new Error('blocked') }, setItem: () => { throw new Error('blocked') } }
   assert.equal(readSeen('x', broken), -1)
-  assert.deepEqual(readOpen(broken), { open: false, tab: 'results' })
+  assert.equal(readTab(broken), 'results')
   assert.doesNotThrow(() => writeSeen('x', 1, broken))
-  assert.doesNotThrow(() => writeOpen(true, 'results', broken))
+  assert.doesNotThrow(() => writeTab('results', broken))
   memory.set('dsh-tameru.v1.seen', '{not json')
   assert.equal(readSeen('chat-a', store), -1)
+})
+
+test('a row\'s flags say what to draw', () => {
+  assert.deepEqual(rowFlags({ state: 'kept', onSurface: true }), { kept: true, gone: false, queued: false, cut: false, restored: false })
+  assert.deepEqual(rowFlags({ state: 'shortened', onSurface: false, queued: true, cutByHarness: true }), { kept: false, gone: true, queued: true, cut: true, restored: false })
+  assert.equal(rowFlags({ state: 'restored', onSurface: true }).restored, true)
 })
