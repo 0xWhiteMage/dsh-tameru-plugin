@@ -19,7 +19,7 @@
 | `compaction/prune` + replacing `tool/result` (`surfaceOp` replace, `sourceEventSeqs`) | every write | documented in the compaction packages; the Session enforces that a replacement changes only the content |
 | `ctx.subprocess.spawn` | the engine worker | documented; piped `stdin` and `stdout` on the handle |
 | `ctx.tools.register`, `ctx.commands.register`, `ctx.systemPrompt.section`, `ctx.connection.fetch.register` | tool, command, pins, panel route | documented |
-| `@deepseek-ai/dsh-client-ui-primitives` (`Tooltip`, `StateDot`, `Icon*`), a module the web shell shares with plugin bundles | the bar's hover cards, status dot and icons | **not documented**: found by reading the shipped client. Every part is looked up by name with a plain fallback (`src/client/ui.ts`), and a test renders the bar with none of them present |
+| `@deepseek-ai/dsh-client-ui-primitives` (`Tooltip`, `Icon*`), a module the web shell shares with plugin bundles | the bar's hover cards and generic icons | **not documented**: found by reading the shipped client. Every part is looked up by name with a plain fallback (`src/client/ui.ts`), and tests render the bar with none of them present, with an export that is not a component, and with the bar itself throwing |
 | `ctx.slots.inject` / `ctx.slots.register`, slot `conversation.input.dock` | the bar | the Harness registers its own goal and queue docks the same way; a dock component receives `useProjection`, `useSession` and what our `inject(sessionId)` returns (found by reading the shipped client) |
 
 A plugin must declare every Harness service it uses in `inject`, or Cordis fails it silently: the plugin declares `commands`, `subprocess`, `tools`, `systemPrompt` and `connection`.
@@ -28,7 +28,7 @@ A plugin must declare every Harness service it uses in `inject`, or Cordis fails
 
 - A unit and integration suite against the **real Harness packages** (session log, token meter, prompt assembler, tool registry, subprocess service, Cordis event bus), extracted by `scripts/extract_harness.py`. It skips when the Harness is absent.
 - The packed plugin installs into a throwaway Harness home, the composed configuration differs from stock by exactly one row, the plugin loads, `/tameru` runs, the worker starts on the bundled Python and is gone when the Harness stops, and the bar loads in the input dock, with its Results, Pins and Settings sections working against the real route (`scripts/dev_harness.py`).
-- Together with **DS Bot** installed: 199 rows composed with no duplicate id, both browser bundles load, no console error, and the Tameru bar shows and opens inside DS Bot's layout.
+- With **DS Bot** installed (checked once, on 0.1.0, and no longer re-checked): 199 rows composed with no duplicate id and both browser bundles loaded with no console error.
 
 ## Not verified
 

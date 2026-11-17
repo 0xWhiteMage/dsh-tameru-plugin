@@ -403,7 +403,7 @@ function Bar(props: Json) {
                       const next = e.key === 'ArrowRight' || e.key === 'ArrowLeft' ? tabs[(tabs.indexOf(id) + 1) % tabs.length] : e.key === 'Home' ? tabs[0] : e.key === 'End' ? tabs[tabs.length - 1] : undefined
                       if (next) { e.preventDefault(); setTab(next); writeTab(next); document.getElementById(`tameru-tab-${next}`)?.focus() }
                     },
-                    onClick: () => { setTab(id); writeTab(id) } }, h(Icon, { name: id === 'pins' ? 'pin' : 'list' }), word, String(count))
+                    onClick: () => { setTab(id); writeTab(id) } }, h(Icon, { name: id === 'pins' ? 'pin' : 'list' }), h('span', null, word), h('span', null, String(count)))
                 })),
               h('span', { className: 'tameru-grow' }),
               h(IconButton, { icon: 'close', label: t.close, onClick: () => goBack(`tameru-launch-${tab}`) })),
