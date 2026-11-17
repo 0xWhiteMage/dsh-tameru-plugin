@@ -30,6 +30,8 @@ A plugin must declare every Harness service it uses in `inject`, or Cordis fails
 - The packed plugin installs into a throwaway Harness home, the composed configuration differs from stock by exactly one row, the plugin loads, `/tameru` runs, the worker starts on the bundled Python and is gone when the Harness stops, and the bar loads in the input dock, with its Results, Pins and Settings sections working against the real route (`scripts/dev_harness.py`).
 - With **DS Bot** installed (checked once, on 0.1.0, and no longer re-checked): 199 rows composed with no duplicate id and both browser bundles loaded with no console error.
 
+- **Contrast and layout, measured on the live bar** (Harness 0.2.2-rc.3 web client, sample data): dimmed text is 8.84:1 on its surface in the dark theme and 6.03:1 in the light theme (the Harness's own tertiary colour is 3.66:1 in light, so the bar blends 30% of the primary colour into it); primary text 14.3:1 and 18.7:1. Exactly two text sizes at the default and at an 18 px user font, a 36 px bar, the card flush with the bar with a 6 px gap, all size columns and trailing buttons on one x, and no overflow.
+
 ## Not verified
 
 - **The measurements on rc.3.** [MEASURED-VS-STOCK.md](MEASURED-VS-STOCK.md) and [REPLAY-VS-STOCK.md](REPLAY-VS-STOCK.md) were run on 0.2.2-rc.1. The stock trigger formula and the stock pruner's constants (8,192 / 4,096 / 1,024) are identical in rc.3, but the replay was not re-run.

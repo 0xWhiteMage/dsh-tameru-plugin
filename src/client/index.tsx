@@ -22,7 +22,7 @@ const NOTICE_MS = 5000
 
 const STYLE = `
 .tameru, .tameru-card, .tameru-menu { --t-fs: var(--dsh-content-font-size-secondary, 13px); --t-lh: calc(20px + var(--dsh-content-font-delta-secondary, 0px)); --t-fs-s: calc(var(--t-fs) - 1px); --t-lh-s: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
-  --t-fg1: var(--dsw-alias-label-primary, currentColor); --t-fg2: var(--dsw-alias-label-secondary, currentColor); --t-fg3: var(--dsw-alias-label-tertiary, color-mix(in srgb, currentColor 62%, transparent));
+  --t-fg1: var(--dsw-alias-label-primary, currentColor); --t-fg2: var(--dsw-alias-label-secondary, currentColor); --t-fg3: color-mix(in srgb, var(--dsw-alias-label-tertiary, color-mix(in srgb, currentColor 62%, transparent)) 70%, var(--t-fg1));
   --t-line: var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 16%, transparent)); --t-hover: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, currentColor 9%, transparent));
   --t-accent: var(--dsw-static-blue-450, #4d6bfe); --t-error: var(--dsw-alias-state-error-primary, #d9534f);
   --t-ring-track: var(--dsw-alias-border-l3, color-mix(in srgb, currentColor 22%, transparent)); --t-ring-fill: var(--t-fg2);
