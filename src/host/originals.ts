@@ -1,5 +1,6 @@
 import { KEPT_PREFIX, RESTORED_PREFIX, SHORTENED_PREFIX, STOCK_PRUNE_MARKER, textOnly, touchedByTameru } from './messages.ts'
 import type { MeterLike, SessionLike } from './shorten.ts'
+import { safeLine } from './trail.ts'
 
 /**
  * Everything about a result Tameru shortened is derived from the session log, so it survives a restart and a fork and needs no
@@ -16,6 +17,8 @@ export interface Item {
   currentSeq: number
   state: HoldState
   toolName: string
+  /** What was run, from the tool call's own arguments: the start of its command or path. Empty when there is none. */
+  label: string
   originalChars: number
   shownChars: number
   /** False once a compaction summarised the node away. */
@@ -24,6 +27,36 @@ export interface Item {
   previousSeq?: number
   /** True when the Harness's own pruner has since cut the middle out of the node that stands for the result. */
   cutByHarness: boolean
+}
+
+const LABEL_KEYS = ['command', 'cmd', 'path', 'file_path', 'filePath', 'file', 'filename', 'url', 'query', 'pattern']
+const LABEL_CHARS = 80
+const LABEL_LOOKBACK = 400
+
+/**
+ * A short label for the tool call that produced the result at `ref`: the first line of its command, or its path, from the arguments
+ * the model wrote. Cleaned like everything else shown to the user (no control characters, no markup, bounded). It is only ever shown, never
+ * sent to the model.
+ */
+export function callLabel(session: SessionLike, ref: number, callId: unknown): string {
+  if (typeof callId !== 'string' || callId === '') return ''
+  for (let seq = ref - 1; seq >= Math.max(0, ref - LABEL_LOOKBACK); seq--) {
+    const message = session.eventAt(seq)?.data.message
+    if (message?.role !== 'assistant') continue
+    for (const block of message.content ?? []) {
+      if (block.type !== 'tool-call' || block.id !== callId) continue
+      let args: Record<string, unknown> = {}
+      try {
+        const raw = block.arguments
+        args = typeof raw === 'string' ? JSON.parse(raw) : typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {}
+      } catch {
+        return ''
+      }
+      const key = LABEL_KEYS.find(name => typeof args[name] === 'string' && (args[name] as string).trim() !== '')
+      return key ? safeLine((args[key] as string).trim().split('\n')[0] ?? '', LABEL_CHARS) : ''
+    }
+  }
+  return ''
 }
 
 const sourcesOf = (session: SessionLike, seq: number): number[] | undefined => (session.eventAt(seq) as unknown as { sourceEventSeqs?: number[] } | undefined)?.sourceEventSeqs
@@ -102,6 +135,7 @@ export function listItems(session: SessionLike): Item[] {
       currentSeq: seq,
       state,
       toolName: message.source?.name ?? '',
+      label: callLabel(session, ref, original?.data.message?.toolCallId ?? original?.data.message?.source?.callId),
       originalChars: originalText.length,
       shownChars: text.length,
       onSurface: surface.has(seq),

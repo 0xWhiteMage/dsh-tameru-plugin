@@ -44,7 +44,7 @@ export function effectiveSettings(settings: TameruSettings, saved?: TameruSettin
 }
 
 function describe(item: Item, queued: Set<number>): Record<string, unknown> {
-  return { ref: item.ref, tool: item.toolName, state: item.state, originalChars: item.originalChars, shownChars: item.shownChars, onSurface: item.onSurface, cutByHarness: item.cutByHarness, queued: queued.has(item.ref) }
+  return { ref: item.ref, tool: item.toolName, label: item.label, state: item.state, originalChars: item.originalChars, shownChars: item.shownChars, onSurface: item.onSurface, cutByHarness: item.cutByHarness, queued: queued.has(item.ref) }
 }
 
 /** One panel request. `endpoint` and `payload` come from the browser: nothing in them is trusted beyond its validated shape. */
