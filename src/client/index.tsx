@@ -18,13 +18,14 @@ const CARD_HEIGHT = 320
 const MENU_WIDTH = 264
 const PROBLEM_SEEN_MS = 10_000
 const UNDO_MS = 5000
+const NOTICE_MS = 5000
 
 const STYLE = `
 .tameru, .tameru-card, .tameru-menu { --t-fs: var(--dsh-content-font-size-secondary, 13px); --t-lh: calc(20px + var(--dsh-content-font-delta-secondary, 0px)); --t-fs-s: calc(var(--t-fs) - 1px); --t-lh-s: calc(18px + var(--dsh-content-font-delta-secondary, 0px));
   --t-fg1: var(--dsw-alias-label-primary, currentColor); --t-fg2: var(--dsw-alias-label-secondary, currentColor); --t-fg3: var(--dsw-alias-label-tertiary, color-mix(in srgb, currentColor 62%, transparent));
   --t-line: var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 16%, transparent)); --t-hover: var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, currentColor 9%, transparent));
   --t-accent: var(--dsw-static-blue-450, #4d6bfe); --t-error: var(--dsw-alias-state-error-primary, #d9534f);
-  --t-ring-track: var(--dsw-alias-border-l3, color-mix(in srgb, currentColor 22%, transparent)); --t-ring-fill: var(--t-fg3);
+  --t-ring-track: var(--dsw-alias-border-l3, color-mix(in srgb, currentColor 22%, transparent)); --t-ring-fill: var(--t-fg2);
   --t-mono: var(--dsw-font-family-mono, ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace);
   font-size: var(--t-fs); line-height: var(--t-lh); color: var(--t-fg2); box-sizing: border-box; }
 .tameru *, .tameru *::before, .tameru *::after, .tameru-card *, .tameru-card *::before, .tameru-card *::after, .tameru-menu *, .tameru-menu *::before, .tameru-menu *::after { box-sizing: border-box; }
@@ -62,12 +63,13 @@ const STYLE = `
 .tameru-tab { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; min-width: 44px; padding: 0 10px; border-radius: 999px; color: var(--t-fg3); font-variant-numeric: tabular-nums; }
 .tameru-tab:hover { color: var(--t-fg2); } .tameru-tab[aria-selected="true"] { background: var(--t-hover); color: var(--t-fg1); }
 .tameru-grow { flex: 1; min-width: 0; }
-.tameru-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 8px; }
+.tameru-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 8px; }
 .tameru-line { margin: 0 8px 8px; color: var(--t-fg3); overflow-wrap: anywhere; } .tameru-line.problem { color: var(--t-error); display: flex; gap: 8px; align-items: flex-start; } .tameru-line.problem svg { flex: none; margin-top: 3px; }
 .tameru-line small { display: block; color: var(--t-fg3); font-size: var(--t-fs-s); line-height: var(--t-lh-s); }
 .tameru-row { display: flex; align-items: center; min-height: 32px; margin-bottom: 2px; }
 .tameru-rowmain { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; min-height: 32px; padding: 0 8px; border-radius: 8px; text-align: left; align-items: center; }
 .tameru-rowmain:hover { background: var(--t-hover); }
+.tameru-rowgo { flex: none; display: inline-flex; width: 12px; color: var(--t-fg3); opacity: 0; } .tameru-rowmain:hover .tameru-rowgo, .tameru-rowmain:focus-visible .tameru-rowgo { opacity: 1; }
 .tameru-tool { flex: none; max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--t-fg1); }
 .tameru-arg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 var(--t-fs-s)/var(--t-lh-s) var(--t-mono); color: var(--t-fg2); }
 .tameru-sizes { flex: none; width: 96px; display: grid; grid-template-columns: 40px 16px 40px; align-items: center; font-variant-numeric: tabular-nums; text-align: right; }
@@ -77,9 +79,9 @@ const STYLE = `
 .tameru-keep { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 8px; border-radius: 999px; font-size: var(--t-fs-s); line-height: var(--t-lh-s); color: var(--t-fg3); }
 .tameru-keep:hover { background: var(--t-hover); color: var(--t-fg2); } .tameru-keep.on { color: var(--t-fg1); }
 .tameru-cap { display: flex; align-items: center; margin-bottom: 2px; font-size: var(--t-fs-s); line-height: var(--t-lh-s); color: var(--t-fg3); }
-.tameru-cap span:first-child { flex: 1; } .tameru-cap .cell { flex: none; width: 96px; text-align: right; } .tameru-cap .spacer { flex: none; width: 72px; }
+.tameru-cap span:first-child { flex: 1; } .tameru-cap .cell { flex: none; width: 96px; text-align: right; margin-right: 28px; } .tameru-cap .spacer { flex: none; width: 72px; }
 .tameru-divider { margin: 8px 8px 4px; color: var(--t-fg3); font-size: var(--t-fs-s); line-height: var(--t-lh-s); }
-.tameru-viewhead { flex: none; display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--t-line); }
+.tameru-viewhead { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--t-line); }
 .tameru-viewtitle { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .tameru-viewtitle .tool { flex: none; font-weight: 500; color: var(--t-fg1); max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tameru-viewtitle .arg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 var(--t-fs-s)/var(--t-lh-s) var(--t-mono); color: var(--t-fg2); }
@@ -147,12 +149,13 @@ function Row({ item, t, act, open }: { item: Json; t: Copy; act: (op: string, re
     h('button', { type: 'button', className: 'tameru-rowmain', onClick: open },
       h('span', { className: 'tameru-tool' }, item.tool || '—'),
       item.label ? h('span', { className: 'tameru-arg', title: item.label }, item.label) : h('span', { className: 'tameru-arg' }),
-      h(Sizes, { item, t })),
+      h(Sizes, { item, t }),
+      h('span', { className: 'tameru-rowgo', 'aria-hidden': true }, h(Icon, { name: 'right', size: 12 }))),
     h('span', { className: 'tameru-act' },
       item.queued ? h(Tip, { label: t.waitingTip }, h('span', { className: 'next' }, t.nextStep)) : h(KeepButton, { item, t, act })))
 }
 
-function Viewer({ item, sessionId, t, act, notice, onBack, onClose }: { item: Json; sessionId: string; t: Copy; act: (op: string, ref: number) => void; notice: string; onBack: () => void; onClose: () => void }) {
+function Viewer({ item, sessionId, t, act, notice, problem, onBack, onClose }: { item: Json; sessionId: string; t: Copy; act: (op: string, ref: number) => void; notice: string; problem: any; onBack: () => void; onClose: () => void }) {
   const [side, setSide] = useState<'shown' | 'original'>(lastSide)
   const [pages, setPages] = useState<Json[]>([])
   const [error, setError] = useState('')
@@ -179,6 +182,7 @@ function Viewer({ item, sessionId, t, act, notice, onBack, onClose }: { item: Js
       item.queued ? null : h(KeepButton, { item, t, act }),
       h(IconButton, { icon: 'close', label: t.close, onClick: onClose })),
     h('div', { className: 'tameru-body' },
+      problem,
       notice ? h('div', { className: 'tameru-line', role: 'status' }, notice) : null,
       error ? h('div', { className: 'tameru-line problem' }, h(Icon, { name: 'warn', size: 13 }), error)
         : h('pre', { className: 'tameru-pre', tabIndex: 0, 'aria-label': `${side === 'shown' ? t.aiSees : t.original}: ${item.tool} #${item.ref}` }, loading && !text ? t.loading : text),
@@ -222,7 +226,8 @@ function Pins({ state, sessionId, refresh, t, onProblem }: { state: Json; sessio
           h('input', { id: 'tameru-pin-input', type: 'text', value: text, maxLength: max, placeholder: t.pinPlaceholder, 'aria-label': t.pinPlaceholder, onChange: (e: any) => setText(e.target.value),
             onKeyDown: (e: any) => { if (e.key === 'Enter' && !e.nativeEvent?.isComposing && e.keyCode !== 229) { e.preventDefault(); void submit() } } }),
           text.length >= max * 0.8 ? h('span', { className: 'tameru-count' }, `${text.length}/${max}`) : null,
-          h(IconButton, { icon: 'plus', label: t.pinPlaceholder, disabled: busy || !text.trim(), onClick: () => void submit() })))
+          h(IconButton, { icon: 'plus', label: t.pinPlaceholder, disabled: busy || !text.trim(), onClick: () => void submit() })),
+    h('div', { className: 'tameru-line', style: { margin: '6px 8px 0' } }, t.pinsWarning))
 }
 
 function StrengthMenu({ current, t, onPick }: { current: StrengthId | 'custom'; t: Copy; onPick: (id: StrengthId) => void }) {
@@ -326,7 +331,12 @@ function Bar(props: Json) {
     return () => clearTimeout(timer)
   }, [open, problem])
 
-  const close = useCallback(() => { setOpen(false); setViewing(null) }, [])
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(''), NOTICE_MS)
+    return () => clearTimeout(timer)
+  }, [notice])
+  const close = useCallback(() => { setOpen(false); setViewing(null); setNotice('') }, [])
   useDismiss(open, [cardRef, barRef], close)
   const anchored = useAnchor(open, barRef, CARD_WIDTH)
   const opened = useRef(false)
@@ -337,7 +347,7 @@ function Bar(props: Json) {
 
   const launch = (next: TabId) => {
     if (open && tab === next && viewing === null) { close(); return }
-    setTab(next); writeTab(next); setViewing(null); setOpen(true)
+    setTab(next); writeTab(next); setViewing(null); setNotice(''); setOpen(true)
   }
   const goBack = (id: string) => { close(); setTimeout(() => document.getElementById(id)?.focus(), 0) }
 
@@ -391,7 +401,7 @@ function Bar(props: Json) {
   const card = open && anchored ? createPortal(
     h('div', { ref: cardRef, id: 'tameru-card', className: 'tameru-card', role: 'dialog', 'aria-modal': 'false', 'aria-label': t.card, onKeyDown: onCardKey,
       style: { left: anchored.left, bottom: anchored.bottom, width: anchored.width, height: Math.min(CARD_HEIGHT, anchored.maxHeight || CARD_HEIGHT) } },
-      viewed ? h(Viewer, { item: viewed, sessionId: sessionId!, t, act, notice, onBack: () => setViewing(null), onClose: close })
+      viewed ? h(Viewer, { item: viewed, sessionId: sessionId!, t, act, notice, problem: problemLine, onBack: () => setViewing(null), onClose: close })
         : h(Fragment, null,
             h('div', { className: 'tameru-head' },
               h('div', { className: 'tameru-tabs', role: 'tablist', 'aria-label': t.tabsLabel },

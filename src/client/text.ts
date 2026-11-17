@@ -30,7 +30,7 @@ const LOCAL: Record<Language, {
     tabs: 'Tameru sections',
     loading: '…',
     customName: 'Custom',
-    customLine: 'Set in your profile file.',
+    customLine: 'Set in your profile\'s Tameru settings.',
     trimmed: 'The Harness has also trimmed this one.',
     waitingTip: 'Waiting for the next step.',
     restoredTip: 'In full for a few replies.',
@@ -38,7 +38,7 @@ const LOCAL: Record<Language, {
     gaugeReason: reason =>
       ({
         no_request_yet: 'Waiting for the first request.',
-        no_context_window: 'This model declares no context window, so Tameru has no point to start from.',
+        no_context_window: 'The AI declares no context window, so Tameru has no point to start from.',
         unusable_context_window: 'The context window is too small.',
         managed_elsewhere: 'Another plugin manages this chat; Tameru stays out.',
         no_token_meter: 'The Harness has no token meter.',
@@ -52,7 +52,7 @@ const LOCAL: Record<Language, {
     tabs: 'Tameru 分区',
     loading: '…',
     customName: '自定义',
-    customLine: '在你的配置文件中设置。',
+    customLine: '在你配置文件的 Tameru 设置中设置。',
     trimmed: 'Harness 也已裁剪这一条。',
     waitingTip: '等待下一步。',
     restoredTip: '在接下来几次回复中完整显示。',
@@ -60,7 +60,7 @@ const LOCAL: Record<Language, {
     gaugeReason: reason =>
       ({
         no_request_yet: '正在等待第一次请求。',
-        no_context_window: '此模型未声明上下文窗口，Tameru 没有起点。',
+        no_context_window: 'AI 未声明上下文窗口，Tameru 没有起点。',
         unusable_context_window: '上下文窗口太小。',
         managed_elsewhere: '另一个插件管理此对话，Tameru 不介入。',
         no_token_meter: 'Harness 没有 token 计量器。',
@@ -136,6 +136,7 @@ export function build(language: Language) {
     keptDivider: (n: number) => fill(say(v.views.keptDivider), { n }),
     pinPlaceholder: say(v.pins.placeholder),
     pinsEmpty: say(v.pins.empty),
+    pinsWarning: say(v.pins.warning),
     pinsLimit: (used: number, max: number) => fill(say(v.pins.limit), { used, max }),
     problems: {
       notConnected: say(v.problems.notConnected),
