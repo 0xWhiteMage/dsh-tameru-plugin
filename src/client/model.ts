@@ -1,62 +1,75 @@
-// The bar's decisions, with no React and no DOM, so they can be tested directly.
+// The bar's decisions, with no React and no DOM, so they can be tested directly. The rules are docs/PLUGIN-UI.md in the engine repository.
 
 export type Json = Record<string, any>
 
-/** `20000` → `20.0K`, `1250000` → `1.3M`, small numbers as they are. */
-export function compact(chars: number): string {
-  if (!Number.isFinite(chars) || chars < 0) return '0'
-  if (chars < 1000) return String(Math.round(chars))
-  if (chars < 1_000_000) return `${(chars / 1000).toFixed(1)}K`
-  return `${(chars / 1_000_000).toFixed(1)}M`
+/** `<1K` below a thousand characters, whole K up to 999,999, whole M above. Always short enough for a 40 px column. */
+export function compactChars(chars: number): string {
+  if (!Number.isFinite(chars) || chars < 0) return '<1K'
+  if (chars < 1000) return '<1K'
+  const thousands = Math.round(chars / 1000)
+  if (thousands < 1000) return `${thousands}K`
+  return `${Math.round(chars / 1_000_000)}M`
 }
 
-/** How eager the shortening is: the engine's confidence gate for each named mode. Balanced is the shipped default. */
-export const MODES = [
-  { id: 'more', minConfidence: 0.55 },
-  { id: 'balanced', minConfidence: 0.7 },
+/** Off, or how sure the engine must be: the confidence gate for each strength. Normal is the shipped default. */
+export const STRENGTHS = [
+  { id: 'off' },
   { id: 'less', minConfidence: 0.85 },
+  { id: 'normal', minConfidence: 0.7 },
+  { id: 'more', minConfidence: 0.55 },
 ] as const
-export type ModeId = (typeof MODES)[number]['id']
+export type StrengthId = (typeof STRENGTHS)[number]['id']
 
-export function modeOf(minConfidence: unknown): ModeId | 'custom' {
-  if (typeof minConfidence !== 'number') return 'balanced'
-  return MODES.find(mode => Math.abs(mode.minConfidence - minConfidence) < 0.005)?.id ?? 'custom'
+/** The strength in force, from the plugin's settings. `custom` when the profile file sets a gate that is none of ours. */
+export function strengthOf(values: Json | undefined): StrengthId | 'custom' {
+  if (!values) return 'normal'
+  if (values.shorten === false) return 'off'
+  if (typeof values.minConfidence !== 'number') return 'normal'
+  const match = STRENGTHS.find(strength => 'minConfidence' in strength && Math.abs(strength.minConfidence - values.minConfidence) < 0.005)
+  return match?.id ?? 'custom'
 }
 
-export type Tone = 'ok' | 'idle' | 'warn' | 'off'
-export type Status =
-  | { tone: 'off'; key: 'loading' | 'notOpen' | 'unreachable' | 'paused' }
-  | { tone: 'warn'; key: 'noPython' | 'enginePaused' }
-  | { tone: 'warn'; key: 'failure'; text: string }
-  | { tone: 'idle'; key: 'waiting'; count: number }
-  | { tone: 'ok'; key: 'shortened'; count: number; fresh: number }
-  | { tone: 'ok'; key: 'kept'; count: number }
-  | { tone: 'idle'; key: 'startsAt'; percent: number }
-  | { tone: 'idle'; key: 'watching' }
+/** The settings change that puts a strength in force. Any strength but Off also switches shortening back on. */
+export function strengthPatch(id: StrengthId): Json {
+  const strength = STRENGTHS.find(candidate => candidate.id === id)
+  return strength && 'minConfidence' in strength ? { shorten: true, minConfidence: strength.minConfidence } : { shorten: false }
+}
 
-/** How many results are in the model's view now: the ones a compaction summarised away no longer count. */
+export type Tone = 'idle' | 'working' | 'off' | 'problem'
+export type Status = {
+  key: 'loading' | 'notConnected' | 'notRunning' | 'notRunningRetrying' | 'problem' | 'waiting' | 'off' | 'shortened' | 'keptOnly' | 'idleUntil' | 'idle'
+  tone: Tone
+  n?: number
+  percent?: number
+}
+
+/** The outputs the AI sees right now. A summary that replaced a result takes it out of every count and list. */
 export const liveItems = (state: Json): Json[] => (Array.isArray(state.items) ? state.items.filter((item: Json) => item.onSurface) : [])
 
-/** The one phrase the bar shows. The most important true thing wins; nothing here is a claim about money or tokens saved. */
-export function statusOf(state: Json | null, failed: boolean, seenRef: number): Status {
-  if (!state) return { tone: 'off', key: failed ? 'unreachable' : 'loading' }
-  if (state.live === false) return { tone: 'off', key: 'notOpen' }
-  if (!state.python) return { tone: 'warn', key: 'noPython' }
-  if (state.engine?.state === 'disabled') return { tone: 'warn', key: 'enginePaused' }
-  if (typeof state.failure === 'string' && state.failure) return { tone: 'warn', key: 'failure', text: state.failure }
-  if (state.chat?.pending > 0) return { tone: 'idle', key: 'waiting', count: state.chat.pending }
-  if (state.settings?.values?.shorten === false) return { tone: 'off', key: 'paused' }
-  const items = liveItems(state)
-  // "shortened" counts only what the model really sees shortened now; a result held in full, or waiting to be, is not one
-  const shortened = items.filter(item => item.state === 'shortened' && !item.queued)
-  if (shortened.length > 0) return { tone: 'ok', key: 'shortened', count: shortened.length, fresh: shortened.filter(item => item.ref > seenRef).length }
-  if (items.length > 0) return { tone: 'ok', key: 'kept', count: items.length }
-  const gauge = state.gauge
-  if (gauge && gauge.contextWindow > 0) return { tone: 'idle', key: 'startsAt', percent: Math.round((gauge.startsAt / gauge.contextWindow) * 100) }
-  return { tone: 'idle', key: 'watching' }
+/** Shortened (including ones waiting for the next step) and held in full (kept, or restored for a few replies). The one definition behind every count. */
+export function groupsOf(state: Json | null): { shortened: Json[]; kept: Json[] } {
+  const items = state?.live ? liveItems(state) : []
+  return { shortened: items.filter(item => item.state === 'shortened'), kept: items.filter(item => item.state === 'kept' || item.state === 'restored') }
 }
 
-/** The gauge's numbers as fractions of the context window. The host's own meter gives the fill; the ticks come from the plugin. */
+/** The one phrase on the bar: the most important true thing wins. Never a claim about money or tokens saved, never raw error text. */
+export function statusOf(state: Json | null, failed: boolean, problem: boolean): Status {
+  if (!state) return failed ? { key: 'notConnected', tone: 'problem' } : { key: 'loading', tone: 'idle' }
+  if (state.live === false) return { key: 'idle', tone: 'idle' }
+  if (!state.python) return { key: 'notRunning', tone: 'problem' }
+  if (state.engine?.state === 'disabled') return { key: 'notRunningRetrying', tone: 'problem' }
+  if (problem || (typeof state.failure === 'string' && state.failure)) return { key: 'problem', tone: 'problem' }
+  if (state.chat?.pending > 0) return { key: 'waiting', tone: 'working', n: state.chat.pending }
+  if (strengthOf(state.settings?.values) === 'off') return { key: 'off', tone: 'off' }
+  const { shortened, kept } = groupsOf(state)
+  if (shortened.length > 0) return { key: 'shortened', tone: 'idle', n: shortened.length }
+  if (kept.length > 0) return { key: 'keptOnly', tone: 'idle', n: kept.length }
+  const gauge = state.gauge
+  if (gauge && gauge.contextWindow > 0 && gauge.tokens < gauge.startsAt) return { key: 'idleUntil', tone: 'idle', percent: Math.round((gauge.startsAt / gauge.contextWindow) * 100) }
+  return { key: 'idle', tone: 'idle' }
+}
+
+/** The gauge's numbers as fractions of the context window. The host's own meter gives the fill when it has one; the ticks come from the plugin. */
 export function gaugeOf(pressure: Json | undefined, state: Json | null): { percent: number; starts?: number; compacts?: number } | undefined {
   const used = pressure?.projectedTokens ?? pressure?.pressureTokens ?? state?.gauge?.tokens
   const window = pressure?.contextWindow ?? state?.gauge?.contextWindow
@@ -67,12 +80,30 @@ export function gaugeOf(pressure: Json | undefined, state: Json | null): { perce
   return { percent: Math.min(100, Math.round((used / window) * 100)), ...(starts !== undefined ? { starts } : {}), ...(compacts !== undefined ? { compacts } : {}) }
 }
 
-/** A row's one-line size: `20.0K → 1.2K` while shortened, `20.0K in full` while held. */
-export function sizeOf(item: Json, inFull: string): string {
-  return item.state === 'shortened' ? `${compact(item.originalChars)} → ${compact(item.shownChars)}` : `${compact(item.originalChars)} ${inFull}`
+/** The size cells of a row: what the AI saw before and what it sees now. A held row shows only what it sees now. */
+export function sizeCells(item: Json): { from: string; to: string; held: boolean } {
+  const held = item.state === 'kept' || item.state === 'restored'
+  return { from: held ? '' : compactChars(item.originalChars), to: compactChars(held ? item.originalChars : item.shownChars), held }
 }
 
-const SEEN_KEY = 'dsh-tameru.v1.seen'
+/** `{n}` and `{percent}` and the like in a shared string. */
+export function fill(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{([a-z]+)\}/g, (whole, key: string) => (key in values ? String(values[key]) : whole))
+}
+
+/** The vocabulary key for the host's own reason that a pass did nothing. */
+export function emptyReasonKey(skip: string | null | undefined, belowStart: boolean): 'belowStart' | 'noCandidates' | 'notConfident' | 'tooSmall' | 'engineSilent' | 'off' {
+  switch (skip) {
+    case 'below_activation': return 'belowStart'
+    case 'no_candidates': return 'noCandidates'
+    case 'not_confident': return 'notConfident'
+    case 'not_worth_it': return 'tooSmall'
+    case 'engine_unavailable': return 'engineSilent'
+    case 'off': return 'off'
+    default: return belowStart ? 'belowStart' : 'noCandidates'
+  }
+}
+
 const TAB_KEY = 'dsh-tameru.v1.tab'
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>
@@ -84,30 +115,9 @@ const storeOf = (): Store | undefined => {
   }
 }
 
-/** Remembered per viewer, never required: every read and write is guarded. */
-export function readSeen(sessionId: string, store: Store | undefined = storeOf()): number {
-  try {
-    const all = JSON.parse(store?.getItem(SEEN_KEY) ?? '{}') as Record<string, unknown>
-    const value = all[sessionId]
-    return typeof value === 'number' && Number.isFinite(value) ? value : -1
-  } catch {
-    return -1
-  }
-}
-
-export function writeSeen(sessionId: string, ref: number, store: Store | undefined = storeOf()): void {
-  try {
-    const all = JSON.parse(store?.getItem(SEEN_KEY) ?? '{}') as Record<string, number>
-    const entries = Object.entries(all).slice(-49)
-    store?.setItem(SEEN_KEY, JSON.stringify({ ...Object.fromEntries(entries), [sessionId]: ref }))
-  } catch {
-    // the marker is a convenience
-  }
-}
-
 export type TabId = 'results' | 'pins'
 
-/** The chosen tab is remembered; whether the card is open is not (a floating card that reopens itself on every load is a nuisance). */
+/** The chosen tab is remembered; whether the card is open is not. Every read and write is guarded: the bar works without storage. */
 export function readTab(store: Store | undefined = storeOf()): TabId {
   try {
     return store?.getItem(TAB_KEY) === 'pins' ? 'pins' : 'results'
@@ -122,9 +132,4 @@ export function writeTab(tab: TabId, store: Store | undefined = storeOf()): void
   } catch {
     // the choice is a convenience
   }
-}
-
-/** What a row needs to draw itself, in one place. */
-export function rowFlags(item: Json): { kept: boolean; gone: boolean; queued: boolean; cut: boolean; restored: boolean } {
-  return { kept: item.state === 'kept', gone: item.onSurface === false, queued: item.queued === true, cut: item.cutByHarness === true, restored: item.state === 'restored' }
 }
