@@ -2,8 +2,8 @@
 
     python scripts/check_vendored.py --engine "D:/Development Projects/Tameru"
 
-Reads the commit from VENDORED_FROM in vendor/tameru/__init__.py and compares every vendor/tameru/*.py (except the plugin-owned
-__init__.py) with `git show <commit>:src/tameru/<file>` in the engine checkout. Exits 1 on any difference, a missing file, or a stale file.
+Reads the commit from VENDORED_FROM in vendor/tameru/__init__.py and compares every vendor/tameru/ file, Python modules and package data
+such as presets.json (except the plugin-owned __init__.py), with `git show <commit>:src/tameru/<file>` in the engine checkout. Exits 1 on any difference, a missing file, or a stale file.
 """
 from __future__ import annotations
 
@@ -33,9 +33,9 @@ def main() -> int:
     upstream = {
         line.rsplit("/", 1)[-1]
         for line in git(engine, "ls-tree", "-r", "--name-only", commit, "src/tameru").decode().splitlines()
-        if line.endswith(".py") and line.count("/") == 2 and not line.endswith("/__init__.py")
+        if line.count("/") == 2 and not line.endswith("/__init__.py") and not line.endswith(".pyc")
     }
-    ours = {p.name for p in VENDOR.glob("*.py") if p.name != "__init__.py"}
+    ours = {p.name for p in VENDOR.iterdir() if p.is_file() and p.name != "__init__.py" and p.suffix != ".pyc"}
     problems = [f"missing: {n}" for n in sorted(upstream - ours)] + [f"stale: {n}" for n in sorted(ours - upstream)]
     for name in sorted(upstream & ours):
         if git(engine, "show", f"{commit}:src/tameru/{name}") != (VENDOR / name).read_bytes():

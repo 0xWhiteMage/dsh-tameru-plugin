@@ -47,9 +47,11 @@ test('the worker shortens a log, keeps the error, and says what the engine is', 
   ])
   try {
     assert.equal(code, 0)
-    assert.equal(replies[0].result.engine_version, '1.9.0')
+    assert.equal(replies[0].result.engine_version, '1.10.0')
     assert.match(replies[0].result.vendored_from, /^[0-9a-f]{40}$/)
-    assert.equal(replies[0].result.protocol, 1)
+    assert.equal(replies[0].result.protocol, 2)
+    assert.equal(replies[0].result.result_schema, 2)
+    assert.ok(replies[0].result.presets.includes('dsh-tool-result@1'))
     const result = replies[1].result
     assert.equal(result.fail_open, false)
     assert.ok(result.text.includes('assertion at Foo.java:42 expected 3 but was 4'))
@@ -66,7 +68,8 @@ test('every option that could write to disk, reach a network or run a model is r
     assert.equal(replies.length, forbidden.length)
     for (const [i, reply] of replies.entries()) {
       assert.equal(reply.ok, false, forbidden[i])
-      assert.equal(reply.error, `unknown_field:${forbidden[i]}`)
+      // the engine's schema knows `strategy` (extract only); every other name is an unknown field, and the reply never repeats it
+      assert.equal(reply.error, forbidden[i] === 'strategy' ? 'bad_strategy' : 'unknown_field')
     }
   } finally {
     rmSync(home, { recursive: true, force: true })
@@ -161,7 +164,8 @@ test('the client works end to end over a real worker and stops it on dispose', a
   const client = new EngineClient(nodeWorkerSpawn(python, script, root), { timeoutMs: 30_000 })
   try {
     const version = await client.probe()
-    assert.equal(version?.engineVersion, '1.9.0')
+    assert.equal(version?.engineVersion, '1.10.0')
+    assert.equal(version?.protocol, 2)
     const result = await client.compress({ text: log, query: 'why did the build fail' })
     assert.ok(result && !result.failOpen)
     assert.ok(result.text.includes('Foo.java:42'))

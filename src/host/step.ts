@@ -24,6 +24,8 @@ export interface ChatStats {
   shortened: number
   freedTokens: number
   passes: number
+  /** How often the engine's decision came out with each closed reason code (`ok`, `low_confidence`, `no_gain`, ...). */
+  reasons: Record<string, number>
   /** Why the latest pass did nothing, if it did nothing. */
   lastSkip?: string
   /** Why the latest queued change could not be applied, for the panel to show once. */
@@ -48,7 +50,7 @@ export interface StepDeps {
 
 export const chatStatsOf = (store: WeakMap<object, ChatStats>, session: object): ChatStats => {
   let stats = store.get(session)
-  if (!stats) store.set(session, (stats = { declined: new Set(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0 }))
+  if (!stats) store.set(session, (stats = { declined: new Set(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0, reasons: {} }))
   return stats
 }
 
@@ -128,6 +130,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       activationTokens: pressure.startsAt,
       options,
       declined: stats.declined,
+      reasons: stats.reasons,
       ...(signal ? { signal } : {}),
     })
     stats.passes++

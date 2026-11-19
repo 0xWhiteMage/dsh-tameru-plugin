@@ -47,7 +47,7 @@ test('the real subprocess service runs the worker, and dispose reaps it', { skip
   const client = new EngineClient(harnessWorkerSpawn(ctx.subprocess, python, script, root), { timeoutMs: 30_000 })
   try {
     const version = await client.probe()
-    assert.equal(version?.engineVersion, '1.9.0')
+    assert.equal(version?.engineVersion, '1.10.0')
     const text = [...Array.from({ length: 300 }, (_, i) => `INFO line ${i}`), 'ERROR failed at Foo.java:42', ...Array.from({ length: 200 }, (_, i) => `INFO tail ${i}`)].join('\n')
     const result = await client.compress({ text, query: 'why did it fail' })
     assert.ok(result && !result.failOpen && result.text.includes('Foo.java:42'))
@@ -69,7 +69,7 @@ test('mounted as a Cordis plugin, the plugin registers one command, and unloadin
   assert.deepEqual(registered.map(c => c.name), ['tameru'])
   const reply = await registered[0].handler({})
   assert.equal(reply.kind, 'success')
-  assert.match(reply.text, /Engine 1\.9\.0/)
+  assert.match(reply.text, /Engine 1\.10\.0 .*protocol 2/)
   assert.equal(handles.length, 1)
   fiber.dispose()
   assert.equal(await settled(handles[0].done), true, 'unloading the plugin ended the worker')

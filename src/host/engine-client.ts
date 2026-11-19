@@ -1,4 +1,5 @@
 import {
+  OLDEST_PROTOCOL,
   PROTOCOL_VERSION,
   fromWireResult,
   fromWireVersion,
@@ -57,6 +58,7 @@ export class EngineClient {
   private disposed = false
   private lastError: string | undefined
   private version: WorkerVersion | undefined
+  private probeAttempts = 0
   private tail: Promise<unknown> = Promise.resolve()
   private disabledAt = 0
   private readonly startupMs: number
@@ -89,9 +91,28 @@ export class EngineClient {
     this.lastError = undefined
   }
 
+  /**
+   * True when the worker speaks protocol 2 (engine 1.10.0 and later). Asks the worker once, and answers false when it cannot say:
+   * the version 1 fields work with any worker.
+   */
+  async speaksV2(): Promise<boolean> {
+    if (this.version === undefined && this.probeAttempts < 3) {
+      this.probeAttempts++
+      await this.probe()
+    }
+    return (this.version?.protocol ?? OLDEST_PROTOCOL) >= 2
+  }
+
+  /**
+   * Version 2 fields (preset, anchorErrors, redactSecrets, queryParts, policy) go out only when the worker reported protocol 2; to
+   * a worker that reported 1 they are left out and the request is a version 1 request. The caller reads `result.decision` to
+   * know whether the engine decided.
+   */
   async compress(request: CompressRequest): Promise<CompressResult | undefined> {
+    const wantsV2 = request.preset !== undefined || request.anchorErrors !== undefined || request.redactSecrets !== undefined || request.queryParts !== undefined || request.policy !== undefined
+    const protocol = wantsV2 && (await this.speaksV2()) ? PROTOCOL_VERSION : OLDEST_PROTOCOL
     // a big text takes longer to read: the deadline grows with it, so a healthy worker is not killed for a large result
-    const reply = await this.call(id => toWire(id, request), Math.ceil(request.text.length / 50))
+    const reply = await this.call(id => toWire(id, request, protocol), Math.ceil(request.text.length / 50))
     const result = reply?.ok === true ? (reply.result as Record<string, unknown> | undefined) : undefined
     if (reply && reply.ok !== true) this.note(typeof reply.error === 'string' ? reply.error : 'error_reply', false)
     return result ? fromWireResult(result) : undefined
@@ -102,7 +123,7 @@ export class EngineClient {
     const result = reply?.ok === true ? (reply.result as Record<string, unknown> | undefined) : undefined
     const version = result ? fromWireVersion(result) : undefined
     if (version) {
-      if (version.protocol !== PROTOCOL_VERSION) {
+      if (version.protocol < OLDEST_PROTOCOL || version.protocol > PROTOCOL_VERSION) {
         this.note('protocol_mismatch', true)
         return undefined
       }

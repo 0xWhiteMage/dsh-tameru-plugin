@@ -39,7 +39,7 @@ test('a shortened result names its original, and the original can be read back e
     const item = list[0]!
     const shown = fullText(w, item.currentSeq)
     assert.ok(shown.startsWith(SHORTENED_PREFIX))
-    assert.ok(shown.includes(`${READ_TOOL}, reference ${item.ref}]`), 'the header names the tool and the reference')
+    assert.ok(shown.includes(`${READ_TOOL} ref=${item.ref}]`), 'the header names the tool and the ref= token')
     const original = fullText(w, item.ref)
     assert.equal(original.length, item.originalChars)
     const first = readOriginal(w.session, item.ref, 0, 5000)
@@ -137,7 +137,7 @@ test('restore holds for a few replies, then Tameru may shorten the result again,
     assert.equal(outcome.kind, 'applied')
     const latest = items().find(i => i.ref === item.ref)!
     assert.equal(latest.state, 'shortened')
-    assert.ok(fullText(w, latest.currentSeq).includes(`reference ${item.ref}]`))
+    assert.ok(fullText(w, latest.currentSeq).includes(` ref=${item.ref}]`))
     assert.equal(w.meter.measure(w.session).surfaceTokens, recount(w))
   } finally {
     await client.dispose()

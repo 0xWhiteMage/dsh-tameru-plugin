@@ -46,7 +46,7 @@ export function statusText(input: StatusInput): string {
   const worker = input.worker
   const version = worker?.version
   if (version) {
-    lines.push(`Engine ${version.engineVersion} (matches source commit ${version.vendoredFrom?.slice(0, 7) ?? 'unknown'}), Python ${version.python}.`)
+    lines.push(`Engine ${version.engineVersion} (matches source commit ${version.vendoredFrom?.slice(0, 7) ?? 'unknown'}), protocol ${version.protocol}${version.resultSchema === undefined ? '' : `, result schema ${version.resultSchema}`}, Python ${version.python}.`)
   } else {
     lines.push(`Engine not started yet (Python: ${input.python.path}).`)
   }
@@ -63,6 +63,8 @@ export function statusText(input: StatusInput): string {
   } else {
     lines.push('Nothing shortened in this chat yet.')
   }
+  const reasons = Object.entries(chat?.reasons ?? {})
+  if (reasons.length > 0) lines.push(`The engine's decisions in this chat: ${reasons.map(([reason, count]) => `${reason.replace(/_/g, ' ')} ${count}`).join(', ')}.`)
   if (input.pins) lines.push(`${input.pins} pinned line${input.pins === 1 ? '' : 's'} in this chat (/tameru pins).`)
   return lines.join('\n')
 }

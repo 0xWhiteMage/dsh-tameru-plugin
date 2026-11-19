@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { textOnly, type Message } from './messages.ts'
+import { TRAIL_NOTE_PREFIX, textOnly, type Message } from './messages.ts'
 import type { SessionLike } from './shorten.ts'
 
 /**
@@ -7,7 +7,7 @@ import type { SessionLike } from './shorten.ts'
  * touched, commands run, and how many calls of each tool failed. It is built only from tool-call names and arguments (which the model
  * wrote) and error flags; no text of any tool output is copied, and it says plainly that it is data. The summary itself is left to the Harness's own backend.
  */
-export const TRAIL_PREFIX = '[Tameru Artifact Trail'
+export const TRAIL_PREFIX = TRAIL_NOTE_PREFIX
 
 const MAX_FILES = 20
 const MAX_COMMANDS = 12

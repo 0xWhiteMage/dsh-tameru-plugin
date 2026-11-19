@@ -70,8 +70,8 @@ test('the status text is honest in every state', () => {
   assert.match(statusText({ ...base, enabled: false }), /behaves as stock/)
   assert.match(statusText({ ...base, python: undefined }), /no Python was found/)
   assert.match(statusText(base), /not started yet/)
-  const version = { engineVersion: '1.9.0', vendoredFrom: 'a'.repeat(40), protocol: 1, python: '3.12.14' }
-  assert.match(statusText({ ...base, worker: { state: 'running', version } }), /Engine 1\.9\.0 .*aaaaaaa.*Python 3\.12\.14/)
+  const version = { engineVersion: '1.10.0', vendoredFrom: 'a'.repeat(40), protocol: 2, presets: [], python: '3.12.14' }
+  assert.match(statusText({ ...base, worker: { state: 'running', version } }), /Engine 1\.10\.0 .*aaaaaaa.*protocol 2.*Python 3\.12\.14/)
   assert.match(statusText({ ...base, worker: { state: 'disabled', lastError: 'timeout', version } }), /stopped after repeated failures \(timeout\).*stock/)
   assert.match(statusText({ ...base, worker: { state: 'running', lastError: 'bad_reply' } }), /original text is left as it is/)
 })

@@ -2,12 +2,12 @@
 
 适用于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system)：在工具输出占满上下文之前将其缩短，保留每一条错误，并支持固定、保留与恢复。本地、确定性，不额外调用模型。
 
-> **状态：早期开发（0.1.2，未发布）。** 完整说明与已验证范围见[英文 README](README.md)。**尚未证明能降低成本**：在模拟会话中，默认设置下成本持平，放宽置信度门槛后约高 3%，同时多保留约 0.7/5 个所需事实（见 [docs/REPLAY-VS-STOCK.md](docs/REPLAY-VS-STOCK.md)）。
+> **状态：早期开发（0.2.0，未发布；引擎 1.10.0）。** 完整说明与已验证范围见[英文 README](README.md)。**尚未证明能降低成本**（以下测量基于引擎 1.9.0，未针对 1.10.0 重做；1.10.0 的引擎回放数据仅为回放结果，见 [CHANGELOG](CHANGELOG.md)）：在模拟会话中，默认设置下成本持平，放宽置信度门槛后约高 3%，同时多保留约 0.7/5 个所需事实（见 [docs/REPLAY-VS-STOCK.md](docs/REPLAY-VS-STOCK.md)）。
 
 ## 功能
 
-- **缩短**：当上下文超过 Harness 自身压缩触发点的 75% 时，用引擎的查询式摘录替换较大的旧工具结果；错误、最新几条、模型尚未读到的结果不会被改动。原文保留在对话日志中。
-- **读回原文**：每条被缩短的结果都带有引用编号；模型可用 `tameru_read_original` 读回，你可用 `/tameru view N` 查看。
+- **缩短**：当上下文超过 Harness 自身压缩触发点的 75% 时，用引擎的查询式摘录替换较大的旧工具结果；错误、最新几条、模型尚未读到的结果不会被改动。原文保留在对话日志中。是否采用摘录由引擎自己的 `decide()` 规则决定；摘录中形似凭据的内容会被替换为 `[tameru:redacted]`（引擎放弃缩短时返回的原文不做脱敏，但插件不会使用它）。
+- **读回原文**：每条被缩短的结果都带有引用编号（`ref=N`）和被省略内容的概要（`dropped: …`）；模型可用 `tameru_read_original` 读回，也可用 `grep` 只取匹配的行（带行号），你可用 `/tameru view N` 查看。
 - **保留与恢复**：`/tameru keep N`、`/tameru restore N`、`/tameru unkeep N`。
 - **固定**：`/tameru pin 文字` 将你写的话逐字放进系统提示，任何压缩都不会替换它（最多 5 条、每条 300 字符；形似凭据的内容会被拒绝）。
 - **Artifact Trail**：Harness 压缩之后补充一条简短记录：涉及的文件、运行的命令、不同的错误。

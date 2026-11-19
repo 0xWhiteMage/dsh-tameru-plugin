@@ -1,4 +1,7 @@
 import type { EngineClient } from './engine-client.ts'
+import type { AcceptPolicy, CompressRequest, Dropped } from '../shared/protocol.ts'
+import { legacyDecision } from './legacy-decision.ts'
+import { safeLine } from './trail.ts'
 import {
   KEPT_PREFIX,
   READ_TOOL,
@@ -7,6 +10,7 @@ import {
   alreadyShortened,
   touchedByTameru,
   buildQuery,
+  queryPartsFor,
   hasSpillNotice,
   textOnly,
   type Message,
@@ -50,6 +54,22 @@ export interface ShortenOptions {
 export const PASS_BUDGET_MS = 6000
 /** A result longer than this is left alone: the engine's request limit is 16 MB and a text this size is not worth a step's wait. */
 export const MAX_ENGINE_CHARS = 2_000_000
+
+/** The engine's named option set for this plugin's call (`tameru/presets.json`): extract strategy, no originals stored, 25% minimum saving. */
+export const ENGINE_PRESET = 'dsh-tool-result@1'
+/** Options the plugin adds on top of the preset. Redaction is on because no original is kept outside the chat itself. */
+export const REDACT_SECRETS = true
+/** What a protocol 1 worker is told: the preset's own 25% minimum saving. */
+const LEGACY_MIN_SAVINGS = 0.25
+export const ANCHOR_ERRORS = true
+
+/**
+ * What this plugin accepts, as data for the engine's `decide()` (the engine's `DSH_POLICY` with the user's strength setting as the
+ * confidence floor). The decision is made in the worker; the host acts on `accept` only and records the reason.
+ */
+export function policyOf(options: ShortenOptions): AcceptPolicy {
+  return { minConfidence: options.minConfidence, minSavedRatio: 0, minTokensSaved: 1, allowSanitized: false }
+}
 
 export const DEFAULT_SHORTEN: ShortenOptions = { protectRecent: 4, minResultChars: 6000, share: 0.35, maxPerPass: 24, minConfidence: 0.7 }
 
@@ -154,9 +174,33 @@ export interface Planned {
   afterTokens: number
 }
 
-/** The text the model sees in place of a result: one factual header line, then the engine's extract. */
-export function shortenedText(original: string, extract: string, ref: number): string {
-  return `${SHORTENED_PREFIX}${original.length.toLocaleString('en-US')} to ${extract.length.toLocaleString('en-US')} characters; read the original with ${READ_TOOL}, reference ${ref}]\n${extract}`
+/** Longest the "dropped" part of the header may be. */
+const DROPPED_CHARS = 150
+const WHERE_CHARS = 24
+
+/**
+ * The header's "dropped" summary from the engine's: `412 log lines (line 12), 38 trace lines (Foo.java:88…)`. The category is checked
+ * against a closed pattern and the locator (text from the result) goes through `safeLine`, so nothing from a result can shape the line.
+ */
+export function droppedSummary(dropped: readonly Dropped[]): string {
+  const rows = dropped
+    .filter(row => /^[a-z]{2,16}$/.test(row.category) && Number.isFinite(row.lines) && row.lines > 0)
+    .slice(0, 3)
+    .map(row => ({ text: `${Math.floor(row.lines).toLocaleString('en-US')} ${row.category} lines`, where: safeLine(row.where.replace(/[\[\]]/g, ' '), WHERE_CHARS) }))
+  if (rows.length === 0) return ''
+  const render = (withWhere: number): string => rows.map((row, i) => (i < withWhere && row.where ? `${row.text} (${row.where})` : row.text)).join(', ')
+  for (let n = rows.length; n >= 0; n--) if (render(n).length <= DROPPED_CHARS) return render(n)
+  return render(0).slice(0, DROPPED_CHARS)
+}
+
+/**
+ * The text the model sees in place of a result: one factual header line, then the engine's extract. The header names what was left
+ * out (the engine's `dropped` summary) and ends in `ref=N`, the reference to read the original with, the same token the Hermes
+ * plugin's headers end in.
+ */
+export function shortenedText(original: string, extract: string, ref: number, dropped: readonly Dropped[] = []): string {
+  const summary = droppedSummary(dropped)
+  return `${SHORTENED_PREFIX}${original.length.toLocaleString('en-US')} to ${extract.length.toLocaleString('en-US')} characters;${summary ? ` dropped: ${summary};` : ''} read the original with ${READ_TOOL} ref=${ref}]\n${extract}`
 }
 
 /**
@@ -179,10 +223,13 @@ export function chooseBatch(planned: Planned[], nodeTokens: Map<number, number>,
   return []
 }
 
+/** What a pass needs of the engine client: `compress`, and (from engine 1.10.0) `speaksV2`. A client without `speaksV2` is a protocol 1 one. */
+export type PassClient = Pick<EngineClient, 'compress'> & Partial<Pick<EngineClient, 'speaksV2'>>
+
 export interface PassContext {
   session: SessionLike
   meter: MeterLike
-  client: EngineClient
+  client: PassClient
   header: unknown
   /** Tokens at which this pass starts acting. */
   activationTokens: number
@@ -193,11 +240,17 @@ export interface PassContext {
    * output is not sent to the engine again at every later step. Never filled when the engine itself failed to answer.
    */
   declined?: Set<string>
+  /** Counts of the engine's closed decision reasons, filled by the pass (for `/tameru` and for tests). */
+  reasons?: Record<string, number>
 }
 
-/** Identifies one result and the question it was asked against. A changed question (after a compaction) is a new key. */
-export function declineKey(seq: number, textLength: number, query: string): string {
-  return `${seq}:${textLength}:${query.length}:${query.slice(0, 80)}`
+/**
+ * Identifies one result: its place in the chat and its length, and nothing else. The question is NOT part of it: a result the engine
+ * declined or Tameru shortened is never asked about again because the question later changed (a new user message, a compaction), so a
+ * later step cannot rewrite it a second time. The engine's `stable_key` is not part of it either: it hashes the question as well.
+ */
+export function itemKey(seq: number, textLength: number): string {
+  return `${seq}:${textLength}`
 }
 
 export interface Applied {
@@ -231,6 +284,10 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   const lookup = entries.map(({ seq, message }) => ({ seq, message }))
   const tokensOf = new Map(measurement.nodes.map(node => [node.seq, node.heuristicTokens]))
 
+  const v2 = (await client.speaksV2?.()) === true
+  const note = (reason: string): void => {
+    if (pass.reasons) pass.reasons[reason] = (pass.reasons[reason] ?? 0) + 1
+  }
   const planned: Planned[] = []
   let answered = 0
   let unsure = 0
@@ -239,13 +296,18 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   for (const candidate of candidates) {
     if (Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
     await (async () => {
-      const query = buildQuery(lookup, candidate.index, candidate.callId)
-      const key = declineKey(candidate.seq, candidate.text.length, query)
+      const key = itemKey(candidate.seq, candidate.text.length)
       if (pass.declined?.has(key)) {
         answered++
         return
       }
-      const result = await client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
+      const policy = policyOf(options)
+      // protocol 2: the worker builds the query from the pieces and decides; protocol 1: this host builds the query (the fallback) and decides
+      const fallbackQuery = buildQuery(lookup, candidate.index, candidate.callId)
+      const request: CompressRequest = v2
+        ? { text: candidate.text, query: fallbackQuery, preset: ENGINE_PRESET, anchorErrors: ANCHOR_ERRORS, redactSecrets: REDACT_SECRETS, queryParts: queryPartsFor(lookup, candidate.index, candidate.callId), policy }
+        : { text: candidate.text, query: fallbackQuery, minSavingsRatio: LEGACY_MIN_SAVINGS }
+      const result = await client.compress(request)
       if (!result) {
         // the engine did not answer for this one: a second failure stops it being tried again, so one hard result cannot stall every step
         const failedOnce = `${key}#failed`
@@ -254,20 +316,21 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         return
       }
       answered++
-      if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) {
+      // the engine's decision; only a worker without `decide()` leaves it to the legacy rule, with the same policy
+      const decision = result.decision ?? legacyDecision(result, candidate.text, policy)
+      note(decision.reason)
+      if (!decision.accept) {
+        if (decision.reason === 'low_confidence') unsure++
         pass.declined?.add(key)
         return
       }
-      if (result.confidence === null || result.confidence < options.minConfidence) {
-        unsure++
-        pass.declined?.add(key)
-        return
-      }
-      const newText = shortenedText(candidate.text, result.text, candidate.origin)
+      const newText = shortenedText(candidate.text, result.text, candidate.origin, result.dropped)
       const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
       const beforeTokens = tokensOf.get(candidate.seq) ?? meter.estimateMessage(candidate.message)
       const afterTokens = meter.estimateMessage(replacement)
       if (afterTokens >= beforeTokens) {
+        // the Harness's own meter prices the message with its header: the one check that cannot be made in the worker
+        note('not_enough_tokens')
         pass.declined?.add(key)
         return
       }

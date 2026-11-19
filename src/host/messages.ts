@@ -1,3 +1,5 @@
+import type { QueryCall, QueryParts } from '../shared/protocol.ts'
+
 /** The few shapes of the Harness's session messages that Tameru reads. Everything else is left alone. */
 
 export interface ContentBlock {
@@ -33,6 +35,9 @@ export const KEPT_PREFIX = '[Tameru: kept in full '
 
 /** The tool the model reads originals back with. Its own results are never shortened. */
 export const READ_TOOL = 'tameru_read_original'
+
+/** The first words of a note this plugin writes into the chat (the Artifact Trail): a user-role message, but not the user's. */
+export const TRAIL_NOTE_PREFIX = '[Tameru Artifact Trail'
 
 /** The marker the Harness's own pruner leaves in the middle of a result it trimmed. */
 export const STOCK_PRUNE_MARKER = '[... tool result middle pruned ...]'
@@ -88,13 +93,101 @@ function lastUserText(messages: Array<{ message: Message }>, before: number): st
 }
 
 /**
- * The question the engine extracts against, built from what the task is about: the call that produced the result (tool and
- * arguments) and the user's latest message before it. Capped so a long message cannot dominate.
+ * The question for a worker that only speaks protocol 1 (an engine before 1.10.0): the call that produced the result (tool and
+ * arguments) and the user's latest message before it, capped so a long message cannot dominate. A protocol 2 worker is sent the
+ * pieces (`queryPartsFor`) and builds the query with the engine's own `build_query`; this one is the fallback only.
  */
 export function buildQuery(messages: Array<{ seq: number; message: Message }>, resultIndex: number, callId: string, maxChars = 2000): string {
   const call = findToolCall(messages, resultIndex, callId)
   const parts = [call ? `${call.name} ${call.args}` : '', lastUserText(messages, resultIndex)].filter(part => part.trim().length > 0)
   return parts.join('\n').slice(0, maxChars)
+}
+
+const PART_CHARS = 4000
+const LEAF_CHARS = 600
+const MAX_LEAVES = 32
+
+/** Tool-call arguments cut down to what a query can use: every string at most `LEAF_CHARS`, bounded depth and width. */
+function boundArguments(value: unknown, depth = 0): unknown {
+  if (typeof value === 'string') return value.length > LEAF_CHARS ? value.slice(0, LEAF_CHARS) : value
+  if (depth >= 6) return undefined
+  if (Array.isArray(value)) return value.slice(0, MAX_LEAVES).map(item => boundArguments(item, depth + 1)).filter(item => item !== undefined)
+  if (typeof value === 'object' && value !== null) {
+    const out: Record<string, unknown> = {}
+    for (const [key, item] of Object.entries(value).slice(0, MAX_LEAVES)) {
+      const bounded = boundArguments(item, depth + 1)
+      if (bounded !== undefined) out[key] = bounded
+    }
+    return out
+  }
+  return undefined
+}
+
+function boundedCall(block: ContentBlock): QueryCall {
+  let args: unknown = block.arguments
+  if (typeof args === 'string' && args.length > LEAF_CHARS) {
+    try {
+      args = JSON.parse(args)
+    } catch {
+      // not JSON: the cut string is one leaf
+    }
+  }
+  const bounded = boundArguments(args)
+  return { name: String(block.name ?? '').slice(0, 200), ...(bounded === undefined ? {} : { arguments: bounded }) }
+}
+
+/**
+ * A user message that counts as the user's own words: from the user (or with no source recorded), not a compaction summary and not
+ * a note this plugin or another one wrote. Scaffolding must never be the question.
+ */
+export function realUserText(message: Message): string | undefined {
+  if (message.role !== 'user') return undefined
+  const kind = message.source?.kind
+  if (kind !== undefined && kind !== 'user') return undefined
+  const text = textOnly(message)
+  if (text === undefined || text.trim() === '') return undefined
+  const head = text.trimStart()
+  if (head.startsWith('<compacted-summary>') || head.startsWith(TRAIL_NOTE_PREFIX)) return undefined
+  return text.slice(0, PART_CHARS)
+}
+
+/**
+ * The pieces of the question for the result at `resultIndex`, for the worker's shared `build_query`: the call that produced it,
+ * the assistant turn after it, the last real user message and the first one. Everything is bounded here; the worker bounds it again.
+ */
+export function queryPartsFor(messages: Array<{ seq: number; message: Message }>, resultIndex: number, callId: string): QueryParts {
+  const parts: QueryParts = {}
+  for (let i = resultIndex - 1; i >= 0 && parts.call === undefined; i--) {
+    const message = messages[i]?.message
+    if (message?.role !== 'assistant') continue
+    const block = (message.content ?? []).find(b => b.type === 'tool-call' && b.id === callId)
+    if (block) parts.call = boundedCall(block)
+  }
+  for (let i = resultIndex + 1; i < messages.length; i++) {
+    const message = messages[i]?.message
+    if (message?.role !== 'assistant') continue
+    const content = message.content ?? []
+    parts.after = {
+      text: content.filter(b => b.type === 'text' && typeof b.text === 'string').map(b => b.text as string).join('\n').slice(0, PART_CHARS),
+      calls: content.filter(b => b.type === 'tool-call').slice(0, 8).map(boundedCall),
+    }
+    break
+  }
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const text = messages[i] ? realUserText(messages[i]!.message) : undefined
+    if (text !== undefined) {
+      parts.lastUser = text
+      break
+    }
+  }
+  for (const entry of messages) {
+    const text = realUserText(entry.message)
+    if (text !== undefined) {
+      parts.firstUser = text
+      break
+    }
+  }
+  return parts
 }
 
 /** Rough characters-per-token used only to size things before the Harness's own meter prices them. */

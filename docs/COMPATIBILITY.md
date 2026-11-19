@@ -4,6 +4,7 @@
 
 - **DeepSeek Harness 0.2.2-rc.3.** It was first built and measured on 0.2.2-rc.1; when the desktop app updated to rc.3 the Harness skipped the plugin (`incompatible with dsh 0.2.2-rc.3`), so it was re-tested on rc.3 and the pin moved. `package.json` `engines.dsh` and `DSH_PIN` name exactly that version; the Harness refuses to enable the plugin on any other, and the Harness is a release candidate whose internals can change. Move the pin only after running the whole suite and the in-Harness checks on the new version.
 - **Python 3.12.14** (the interpreter the Harness bundles) and 3.13 for the tests. The engine needs 3.10 or later.
+- **Tameru engine 1.10.0** (commit `404d132`, vendored byte for byte with its `presets.json`), worker protocol 2. The worker still answers protocol 1 requests, and the host sends only protocol 1 fields to a worker that reports 1 (an engine before 1.10.0); both paths are tested with scripted workers, and protocol 2 with the real one.
 - **Node 24** (the Harness's own runtime).
 - **Windows 11.** The code paths are platform-neutral, but nothing here has been run on macOS or Linux.
 
@@ -33,6 +34,10 @@ A plugin must declare every Harness service it uses in `inject`, or Cordis fails
 - **Contrast and layout, measured on the live bar** (Harness 0.2.2-rc.3 web client, sample data): dimmed text is 8.84:1 on its surface in the dark theme and 6.03:1 in the light theme (the Harness's own tertiary colour is 3.66:1 in light, so the bar blends 30% of the primary colour into it); primary text 14.3:1 and 18.7:1. Exactly two text sizes at the default and at an 18 px user font, a 36 px bar, the card flush with the bar with a 6 px gap, all size columns and trailing buttons on one x, and no overflow.
 
 ## Not verified
+
+- **Engine 1.10.0 on this plugin's own measurements.** [MEASURED-VS-STOCK.md](MEASURED-VS-STOCK.md) and [REPLAY-VS-STOCK.md](REPLAY-VS-STOCK.md) describe engine 1.9.0 and were not redone. The 1.10.0 numbers in the [CHANGELOG](../CHANGELOG.md) are the engine's own replay (engine repository `docs/RESULTS-1.10.0.md`), replay-only: no whole-session cost, no real model, no answer-quality check, no bill.
+- **The Python 3.10 to 3.12 range with engine 1.10.0.** The suite ran on 3.13 here; the engine's own determinism checks across 3.10 to 3.13 are the engine repository's.
+- **How a regular expression passed to `grep` behaves on every JavaScript engine version**: it is bounded by a static check, a length limit and a time budget, not by a hard timeout (a single `RegExp.test` cannot be interrupted).
 
 - **The measurements on rc.3.** [MEASURED-VS-STOCK.md](MEASURED-VS-STOCK.md) and [REPLAY-VS-STOCK.md](REPLAY-VS-STOCK.md) were run on 0.2.2-rc.1. The stock trigger formula and the stock pruner's constants (8,192 / 4,096 / 1,024) are identical in rc.3, but the replay was not re-run.
 - **Staying compatible as the Harness updates.** The Harness refuses a plugin whose `engines.dsh` is not its exact version, and the desktop app updates itself, so every release candidate needs this plugin re-tested and re-pinned before it loads.
