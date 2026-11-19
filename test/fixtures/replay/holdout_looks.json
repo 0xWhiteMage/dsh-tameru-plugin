@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "date": "2026-11-19T12:16:58.001Z",
+    "plugin_commit": "7f7044862b427ffeb0102feca616aea2d9d8ca4d",
+    "plugin_dirty": false,
+    "engine_commit": "df30e1fa132a1e39008cc257d2584b616478d39b",
+    "setting_hash": "a8b37679de4825f3f45b58d79105ead58cb3b4acb758c87ceb3c23051e1ed92b",
+    "arm": "T-0",
+    "holdout_hash": "ac9e77dd723d3755b8238c4a1e60d6947e798ddcc0ee489e9d2c10f2b5ca1489",
+    "scenarios": 48
+  },
+  {
+    "date": "2026-11-19T12:17:07.534Z",
+    "plugin_commit": "7f7044862b427ffeb0102feca616aea2d9d8ca4d",
+    "plugin_dirty": true,
+    "engine_commit": "df30e1fa132a1e39008cc257d2584b616478d39b",
+    "setting_hash": "a8b37679de4825f3f45b58d79105ead58cb3b4acb758c87ceb3c23051e1ed92b",
+    "arm": "T-0",
+    "holdout_hash": "ac9e77dd723d3755b8238c4a1e60d6947e798ddcc0ee489e9d2c10f2b5ca1489",
+    "scenarios": 48
+  }
+]

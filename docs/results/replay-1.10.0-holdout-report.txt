@@ -1,0 +1,19 @@
+clusters: 48; arms: ['T-0', 'baseline-1.9.0', 'stock']
+cost T-0 vs baseline-1.9.0: -0.03% [-0.51,+0.44] one-sided upper +0.36; write 1.25: +0.00%
+facts kept T-0 minus baseline-1.9.0: -0.50 pts [-2.68,+1.41] one-sided lower -2.27
+cost T-0 vs stock: -1.27% [-1.83,-0.77] one-sided upper -0.85; write 1.25: -1.40%
+facts kept T-0 minus stock: +5.00 pts [+2.36,+7.92] one-sided lower +2.74
+stock: facts kept 46.2%
+baseline-1.9.0: facts kept 51.8%
+T-0: facts kept 51.2%
+8(a) accepted extracts keep their facts: 90.2% [81.0,97.4] one-sided lower 82.5 (bar: at least 90%, lower bound at least 85%)
+8(b) trigger events where an extract replaced the stock cut: 22.9% [18.0,28.0] one-sided lower 18.8
+second rewrites: 0; shortened per session: 2.5
+  cargo-en: cost vs 1.9.0 -2.1%, facts vs 1.9.0 +6.0 pts
+  gotest-zh: cost vs 1.9.0 +0.5%, facts vs 1.9.0 +0.0 pts
+  jest-en: cost vs 1.9.0 +1.1%, facts vs 1.9.0 -10.0 pts
+  kubectl-zh: cost vs 1.9.0 +0.2%, facts vs 1.9.0 +0.0 pts
+  maven-en: cost vs 1.9.0 +0.3%, facts vs 1.9.0 +0.0 pts
+  metrics-zh: cost vs 1.9.0 -0.1%, facts vs 1.9.0 +0.0 pts
+  pytest-zh: cost vs 1.9.0 +0.1%, facts vs 1.9.0 +0.0 pts
+  sql-en: cost vs 1.9.0 +0.0%, facts vs 1.9.0 +0.0 pts

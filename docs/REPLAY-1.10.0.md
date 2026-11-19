@@ -120,6 +120,30 @@ With write 1.25 every mean keeps its sign (no sign flip anywhere; every figure i
 - **8(a), extracts keep their facts.** Required facts present in an accepted extract's original that its extract kept: development 98.3% to 98.6% for G (cluster one-sided lower bound at least 94.8%) and 97.7% for T gate 0 (lower 93.3%). On validation G 0.7 keeps 94.9% (lower 87.5%, above the 85% bar), but G 0.8 keeps 93.5% (lower 83.9%), T gate 0 91.8% (lower 81.5%) and T gate 0.7 92.2% (lower 82.6%), below it. Only a frozen setting is tested on the holdout; round 2 froze T gate 0, and 8(a) and 8(b) are read for it at the holdout look (on validation its 8(a) lower bound in this round 1 table, 81.5%, is under the 85% bar, so that part can fail there).
 - **Second rewrites (gate 1):** 0 in all 1,080 runs.
 
+## The holdout look (2026-11-19, one look at the frozen setting T-0; replay only)
+
+48 scenarios in 8 families that share no filler, tool, fact format or generator with the development pool (24 with Chinese user messages), engine 1.10.0 (`df30e1f`),
+plugin commit `7f70448`, setting hash `a8b37679...`. `test/fixtures/replay/holdout_looks.json` has **two** entries: the first run stopped at once because the 1.9.0-era baseline arm needs
+`--baseline-vendor`, and read no result; the second is the look whose rows are in `docs/results/replay-1.10.0-holdout-rows.jsonl` (288 rows). Computed by
+`scripts/replay/holdout_report.py` (output in `docs/results/replay-1.10.0-holdout-report.txt`), paired cluster bootstrap by scenario, 48 clusters.
+
+| Quantity | Result | Margin | Met |
+|---|---|---|---|
+| Cost vs the 1.9.0-era plugin | -0.03% [-0.51, +0.44], one-sided upper +0.36 | upper <= +1.0 | yes |
+| Cost vs stock | -1.27% [-1.83, -0.77], upper -0.85 (write 1.25: -1.40%, no sign flip) | reported | |
+| Facts kept vs stock | +5.00 pts [+2.36, +7.92], lower +2.74 | reported | |
+| **Facts kept vs the 1.9.0-era plugin** | **-0.50 pts [-2.68, +1.41], one-sided lower -2.27** | lower >= -1.0 | **no** |
+| **8(a) accepted extracts keep their facts** | **90.2% [81.0, 97.4], one-sided lower 82.5** | point >= 90, lower >= 85 | **no (lower bound)** |
+| 8(b) not inert: extract replaced the stock cut on trigger events | 22.9% [18.0, 28.0], lower 18.8 | lower bound above 0 | yes |
+| Second rewrites of an item | 0 | 0 | yes |
+
+Per family, cost and facts against the 1.9.0-era plugin are 0 or within 1.1% except `jest-en` (facts -10.0 points, cost +1.1%) and `cargo-en` (facts +6.0, cost -2.1%).
+In this holdout the 1.9.0-era plugin held more facts than stock (51.8% against 46.2%), unlike on the development pool, so the new default is no better than it on facts.
+
+**Gate 8 is not met**: the facts-kept margin against the 1.9.0-era plugin and the lower bound of 8(a) both fail, and the single look is spent. A further change of setting needs a new sealed holdout
+registered before it is tuned. What the data supports: against stock, the default holds about 5 more facts per hundred at about 1.3% lower cost in this replay; against the previous
+plugin it is cost-neutral with no demonstrated fact gain. No real model ran.
+
 ## What this does not show
 
 - **Real model behaviour.** A fact "kept" is present in the prompt; whether a model uses it, or would have recovered it by reading the original back, is not measured (the replay model never reads originals).
