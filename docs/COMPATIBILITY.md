@@ -2,9 +2,9 @@
 
 ## Tested against
 
-- **DeepSeek Harness 0.2.2-rc.3.** It was first built and measured on 0.2.2-rc.1; when the desktop app updated to rc.3 the Harness skipped the plugin (`incompatible with dsh 0.2.2-rc.3`), so it was re-tested on rc.3 and the pin moved. `package.json` `engines.dsh` and `DSH_PIN` name exactly that version; the Harness refuses to enable the plugin on any other, and the Harness is a release candidate whose internals can change. Move the pin only after running the whole suite and the in-Harness checks on the new version.
+- **DeepSeek Harness 0.2.2-rc.5.** It was first built and measured on 0.2.2-rc.1; when the desktop app updated to rc.3 the Harness skipped the plugin (`incompatible with dsh 0.2.2-rc.3`), so it was re-tested on rc.3 and the pin moved; the app then updated to rc.5 and the pin moved again after the suite (against the rc.5 packages, 154 of 154) and an in-Harness check on a throwaway home (the plugin loads, the bar renders at 36 px with no overflow and no console error, the host tokens the bar uses are all present). `package.json` `engines.dsh` and `DSH_PIN` name exactly that version; the Harness refuses to enable the plugin on any other, and the Harness is a release candidate whose internals can change. Move the pin only after running the whole suite and the in-Harness checks on the new version.
 - **Python 3.12.14** (the interpreter the Harness bundles) and 3.13 for the tests. The engine needs 3.10 or later.
-- **Tameru engine 1.10.0** (commit `404d132`, vendored byte for byte with its `presets.json`), worker protocol 2. The worker still answers protocol 1 requests, and the host sends only protocol 1 fields to a worker that reports 1 (an engine before 1.10.0); both paths are tested with scripted workers, and protocol 2 with the real one.
+- **Tameru engine 1.10.0** (commit `df30e1f`, vendored byte for byte with its `presets.json`), worker protocol 2. The worker still answers protocol 1 requests, and the host sends only protocol 1 fields to a worker that reports 1 (an engine before 1.10.0); both paths are tested with scripted workers, and protocol 2 with the real one.
 - **Node 24** (the Harness's own runtime).
 - **Windows 11.** The code paths are platform-neutral, but nothing here has been run on macOS or Linux.
 
@@ -31,7 +31,7 @@ A plugin must declare every Harness service it uses in `inject`, or Cordis fails
 - The packed plugin installs into a throwaway Harness home, the composed configuration differs from stock by exactly one row, the plugin loads, `/tameru` runs, the worker starts on the bundled Python and is gone when the Harness stops, and the bar loads in the input dock, with its Results, Pins and Settings sections working against the real route (`scripts/dev_harness.py`).
 - With **DS Bot** installed (checked once, on 0.1.0, and no longer re-checked): 199 rows composed with no duplicate id and both browser bundles loaded with no console error.
 
-- **Contrast and layout, measured on the live bar** (Harness 0.2.2-rc.3 web client, sample data): dimmed text is 8.84:1 on its surface in the dark theme and 6.03:1 in the light theme (the Harness's own tertiary colour is 3.66:1 in light, so the bar blends 30% of the primary colour into it); primary text 14.3:1 and 18.7:1. Exactly two text sizes at the default and at an 18 px user font, a 36 px bar, the card flush with the bar with a 6 px gap, all size columns and trailing buttons on one x, and no overflow.
+- **Contrast and layout, measured on the live bar** (Harness 0.2.2-rc.3 web client, sample data; not re-measured on rc.5, where only the bar's height, overflow and font sizes were re-checked): dimmed text is 8.84:1 on its surface in the dark theme and 6.03:1 in the light theme (the Harness's own tertiary colour is 3.66:1 in light, so the bar blends 30% of the primary colour into it); primary text 14.3:1 and 18.7:1. Exactly two text sizes at the default and at an 18 px user font, a 36 px bar, the card flush with the bar with a 6 px gap, all size columns and trailing buttons on one x, and no overflow.
 
 ## Not verified
 
