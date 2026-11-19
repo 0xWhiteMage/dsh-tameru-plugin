@@ -37,6 +37,8 @@ function git(...args: string[]): string {
 
 async function holdoutScenarios(): Promise<{ scenarios: Scenario[]; arm: ArmSpec; settingHash: string }> {
   const holdout = await import('./replay/holdout.ts')
+  // a burned holdout is refused first, before anything is read or logged
+  holdout.refuseBurned(holdout.holdoutHash().hash)
   if (!existsSync(FROZEN_FILE)) throw new Error('no frozen setting (docs/FROZEN-1.10.0-SETTINGS.md): the holdout is not looked at before one is frozen')
   const frozen = readFileSync(FROZEN_FILE, 'utf8')
   const armName = /^arm:\s*(\S+)\s*$/m.exec(frozen)?.[1]

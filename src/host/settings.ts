@@ -1,5 +1,6 @@
-import { DEFAULT_ACTIVATION, type TameruSettings } from './step.ts'
-import { DEFAULT_SHORTEN } from './shorten.ts'
+import { BETA_DEFAULT, INCUMBENT, SETTINGS_TABLE, acceptValue, strengthFor, type Channel, type Policy, type StrengthLabel } from '../shared/settings-table.ts'
+import { ENGINE_PRESET } from './shorten.ts'
+import type { TameruSettings } from './step.ts'
 
 export interface TameruConfig extends TameruSettings {
   enabled?: boolean
@@ -7,28 +8,61 @@ export interface TameruConfig extends TameruSettings {
   pythonPath?: string
 }
 
-const number = (value: unknown, low: number, high: number): number | undefined =>
-  typeof value === 'number' && Number.isFinite(value) && value >= low && value <= high ? value : undefined
-
-/** Settings from the user's profile, with anything out of range or of the wrong type ignored in favour of the default. */
+/** Settings from the user's profile, with anything out of range or of the wrong type ignored in favour of the default (src/shared/settings-table.ts). */
 export function normalizeSettings(raw: unknown): TameruSettings {
   const config = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
-  const out: TameruSettings = {}
-  if (typeof config.shorten === 'boolean') out.shorten = config.shorten
-  if (config.policy === 'every-step' || config.policy === 'at-trigger' || config.policy === 'hybrid') out.policy = config.policy
-  const activation = number(config.activation, 0.3, 0.95)
-  if (activation !== undefined) out.activation = activation
-  const share = number(config.share, 0.1, 0.9)
-  if (share !== undefined) out.share = share
-  const protectRecent = number(config.protectRecent, 0, 100)
-  if (protectRecent !== undefined) out.protectRecent = Math.floor(protectRecent)
-  const minResultChars = number(config.minResultChars, 1000, 1_000_000)
-  if (minResultChars !== undefined) out.minResultChars = Math.floor(minResultChars)
-  const minConfidence = number(config.minConfidence, 0, 1)
-  if (minConfidence !== undefined) out.minConfidence = minConfidence
-  const maxPerPass = number(config.maxPerPass, 1, 100)
-  if (maxPerPass !== undefined) out.maxPerPass = Math.floor(maxPerPass)
-  return out
+  const out: Record<string, unknown> = {}
+  for (const spec of SETTINGS_TABLE) {
+    if (spec.scope !== 'panel') continue
+    const value = acceptValue(spec.key, config[spec.key])
+    if (value !== undefined) out[spec.key] = value
+  }
+  return out as TameruSettings
 }
 
-export const SETTING_DEFAULTS = { shorten: true, activation: DEFAULT_ACTIVATION, ...DEFAULT_SHORTEN } as const
+/**
+ * The settings in force, resolved once. The panel shows only this object and the pass runs on it, so the label can never say one thing
+ * while the plugin does another.
+ */
+export interface Effective {
+  channel: Channel
+  policy: Policy
+  shorten: boolean
+  strength: StrengthLabel
+  /** The confidence gate in force (a stored value is a hard minimum and is never rewritten). */
+  minConfidence: number
+  /** The fraction of the Harness's trigger at which the pass starts (1 for the trigger policies). */
+  activation: number
+  /** The pay-back share and protected results in force (0 and 0 under `at-trigger`, which sets them itself). */
+  share: number
+  protectRecent: number
+  /** Reserved (stored, not used yet). */
+  lambdaMultiplier: number
+  engineVersion: string | null
+  presetId: string
+}
+
+/**
+ * Stable: the incumbent behaviour whatever beta-only keys say (`every-step`; the strength's gate, default 0.7). Beta: the stored `policy`
+ * and `minConfidence` exactly as stored; with no `policy`, the unconfirmed round 1 candidate (`at-trigger`, gate 0 unless one is stored).
+ */
+export function resolveEffective(settings: TameruSettings, engineVersion: string | null = null): Effective {
+  const channel: Channel = settings.channel === 'beta' ? 'beta' : 'stable'
+  const policy: Policy = channel === 'stable' ? INCUMBENT.policy : (settings.policy ?? BETA_DEFAULT.policy)
+  const unsetGate = channel === 'beta' && policy === 'at-trigger' ? BETA_DEFAULT.triggerMinConfidence : INCUMBENT.minConfidence
+  const minConfidence = settings.minConfidence ?? unsetGate
+  const shorten = settings.shorten !== false
+  return {
+    channel,
+    policy,
+    shorten,
+    strength: strengthFor(shorten, policy, minConfidence),
+    minConfidence,
+    activation: policy === 'every-step' ? (settings.activation ?? INCUMBENT.activation) : 1,
+    share: policy === 'at-trigger' ? 0 : (settings.share ?? INCUMBENT.share),
+    protectRecent: policy === 'at-trigger' ? 0 : (settings.protectRecent ?? INCUMBENT.protectRecent),
+    lambdaMultiplier: settings.lambdaMultiplier ?? 1,
+    engineVersion,
+    presetId: ENGINE_PRESET,
+  }
+}

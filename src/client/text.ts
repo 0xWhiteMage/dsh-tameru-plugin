@@ -2,7 +2,7 @@
  *  plugin uses (src/shared/ui-vocabulary.json, a copy of the engine repository's docs/ui-vocabulary.json); only the few that belong to this
  *  plugin alone are written here. Few words on screen, the detail in hover cards, and nothing that claims or implies a saving. */
 import vocabulary from '../shared/ui-vocabulary.json' with { type: 'json' }
-import { fill, type Status, type StrengthId } from './model.ts'
+import { fill, type Json, type Status, type StrengthId } from './model.ts'
 
 export type Language = 'en' | 'zh'
 type Pair = { en: string; zh: string }
@@ -20,6 +20,9 @@ const LOCAL: Record<Language, {
   waitingTip: string
   restoredTip: string
   unreachable: string
+  beta: string
+  betaTip: string
+  effectiveLine(effective: Json): string
   gaugeReason(reason: string | null): string
 }> = {
   en: {
@@ -30,11 +33,15 @@ const LOCAL: Record<Language, {
     tabs: 'Tameru sections',
     loading: '…',
     customName: 'Custom',
-    customLine: 'Set in your profile\'s Tameru settings.',
+    customLine: 'A gate or policy outside these four, set in your Tameru settings or by the beta channel. Kept as set.',
     trimmed: 'The Harness has also trimmed this one.',
     waitingTip: 'Waiting for the next step.',
     restoredTip: 'In full for a few replies.',
     unreachable: 'Cannot reach the Harness.',
+    beta: 'Beta',
+    betaTip: 'Beta channel: an unconfirmed candidate behaviour is in force. Set channel to stable for the tested behaviour.',
+    effectiveLine: e =>
+      `${e.channel === 'beta' ? 'Beta' : 'Stable'} channel · policy ${e.policy} · confidence gate ${Number(e.minConfidence).toFixed(2)}${e.policy === 'every-step' ? ` · starts at ${Math.round(Number(e.activation) * 100)}%` : ' · at the Harness trigger'}${e.engineVersion ? ` · engine ${e.engineVersion}` : ''}`,
     gaugeReason: reason =>
       ({
         no_request_yet: 'Waiting for the first request.',
@@ -52,11 +59,15 @@ const LOCAL: Record<Language, {
     tabs: 'Tameru 分区',
     loading: '…',
     customName: '自定义',
-    customLine: '在你配置文件的 Tameru 设置中设置。',
+    customLine: '不属于这四档的门槛或策略，来自你的 Tameru 设置或测试版通道。按原样保留。',
     trimmed: 'Harness 也已裁剪这一条。',
     waitingTip: '等待下一步。',
     restoredTip: '在接下来几次回复中完整显示。',
     unreachable: '无法连接 Harness。',
+    beta: '测试版',
+    betaTip: '测试版通道：正在使用尚未确认的候选行为。将 channel 设为 stable 可使用已测试的行为。',
+    effectiveLine: e =>
+      `${e.channel === 'beta' ? '测试版' : '稳定版'}通道 · 策略 ${e.policy} · 置信门槛 ${Number(e.minConfidence).toFixed(2)}${e.policy === 'every-step' ? ` · 从 ${Math.round(Number(e.activation) * 100)}% 开始` : ' · 在 Harness 触发点'}${e.engineVersion ? ` · 引擎 ${e.engineVersion}` : ''}`,
     gaugeReason: reason =>
       ({
         no_request_yet: '正在等待第一次请求。',
@@ -87,6 +98,9 @@ export function build(language: Language) {
     trimmed: local.trimmed,
     waitingTip: local.waitingTip,
     restoredTip: local.restoredTip,
+    beta: local.beta,
+    betaTip: local.betaTip,
+    effectiveLine: local.effectiveLine,
     strengthLabel: say(v.strength.label),
     strengths: {
       off: strengthLine('off'),

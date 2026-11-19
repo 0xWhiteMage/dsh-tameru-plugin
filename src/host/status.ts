@@ -1,6 +1,7 @@
 import type { WorkerStatus } from '../shared/protocol.ts'
 import type { PythonChoice } from './python.ts'
 import type { ChatStats } from './step.ts'
+import type { Effective } from './settings.ts'
 
 export interface StatusInput {
   pluginVersion: string
@@ -10,12 +11,15 @@ export interface StatusInput {
   chat?: ChatStats | undefined
   /** How many lines the user has pinned in this chat. */
   pins?: number
+  /** The settings in force, from `resolveEffective`. */
+  effective?: Effective
 }
 
 const REASONS: Record<string, string> = {
   below_activation: 'the context is still below the point where Tameru starts',
   no_candidates: 'no old large tool result is eligible yet',
   not_confident: 'the engine was not confident enough in its extract to risk losing a fact',
+  longer_than_stock_cut: "the extract would have been longer than the Harness's own cut",
   would_leave_cuts: "the Harness's own cut will handle these results, so Tameru left them to it",
   not_worth_it: 'shortening would not have paid for rewriting the prompt cache',
   surface_changed: 'the chat changed while the engine worked',
@@ -55,6 +59,10 @@ export function statusText(input: StatusInput): string {
     lines.push(`The engine stopped after repeated failures (${worker.lastError ?? 'unknown'}); the Harness is behaving as stock.`)
   } else if (worker?.lastError) {
     lines.push(`Last problem: ${worker.lastError}. When the engine fails, the original text is left as it is.`)
+  }
+  const effective = input.effective
+  if (effective) {
+    lines.push(`Channel ${effective.channel}${effective.channel === 'beta' ? ' (unconfirmed candidates)' : ''}: policy ${effective.policy}, confidence gate ${effective.minConfidence}${effective.policy === 'every-step' ? `, starts at ${Math.round(effective.activation * 100)}% of the Harness's trigger` : ", at the Harness's own trigger"}${effective.shorten ? '' : ' (shortening is off)'}.`)
   }
   const chat = input.chat
   if (chat && chat.shortened > 0) {

@@ -122,6 +122,11 @@ With write 1.25 every mean keeps its sign (no sign flip anywhere; every figure i
 
 ## The holdout look (2026-11-19, one look at the frozen setting T-0; replay only)
 
+> **Caveat found afterwards (2026-11-19, P0):** in this look the `baseline-1.9.0` arm ran with `settings: {}`, which the round 2 default
+> change had turned into `at-trigger` with no gate (it shortened 276 results, all at stock triggers), not the 1.9.0-era `every-step`/0.7
+> behaviour the development and validation baseline rows used (which shortened none). The "vs the 1.9.0-era plugin" lines below compare
+> T-0 with that run. The arm now states its settings. This holdout is burned (`test/fixtures/replay/BURNED-HOLDOUTS.md`) and is not run again.
+
 48 scenarios in 8 families that share no filler, tool, fact format or generator with the development pool (24 with Chinese user messages), engine 1.10.0 (`df30e1f`),
 plugin commit `7f70448`, setting hash `a8b37679...`. `test/fixtures/replay/holdout_looks.json` has **two** entries: the first run stopped at once because the 1.9.0-era baseline arm needs
 `--baseline-vendor`, and read no result; the second is the look whose rows are in `docs/results/replay-1.10.0-holdout-rows.jsonl` (288 rows). Computed by

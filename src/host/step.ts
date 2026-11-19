@@ -2,28 +2,36 @@ import type { EngineClient } from './engine-client.ts'
 import { drainPending, type PendingOp } from './commands.ts'
 import type { TrailState } from './trail.ts'
 import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassEvent, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
+import { resolveEffective } from './settings.ts'
+import { BETA_DEFAULT, INCUMBENT, type Channel, type Policy } from '../shared/settings-table.ts'
 import { STOCK_PRUNE_CUT_CHARS, STOCK_PRUNE_THRESHOLD_CHARS, compactionIsManagedElsewhere, policyFor, stockThreshold, type BackendLike } from './stock.ts'
 
 export interface TameruSettings extends Partial<ShortenOptions> {
   /** Shorten tool results at step boundaries. Default true. */
   shorten?: boolean
-  /** Start acting at this fraction of the Harness's own compaction trigger. Default 0.75. */
+  /** Start acting at this fraction of the Harness's own compaction trigger. Default 0.75 (`every-step` only). */
   activation?: number
+  /** `stable` (default): the incumbent behaviour, whatever `policy` says. `beta`: `policy` is honoured (see src/shared/settings-table.ts). */
+  channel?: Channel
   /**
-   * When to act. `every-step` (default, the shipped behaviour): at every step boundary once the chat is `activation` of the way to the
-   * Harness's trigger, on old results, with the confidence gate. `at-trigger` (the shipped default since the round 2 freeze, see
-   * docs/FROZEN-1.10.0-SETTINGS.md): only when the Harness's own pruner is about to cut, in place of its head/tail cut, with no confidence
-   * gate unless one is set. `hybrid`: at the trigger, ordinary candidates, share rule beyond the stock cut.
+   * When to act (beta channel only; stable always runs `every-step`). `every-step` (the incumbent, stable behaviour): at every step
+   * boundary once the chat is `activation` of the way to the Harness's trigger, on old results, with the confidence gate. `at-trigger`
+   * (the beta default when unset; UNCONFIRMED, its round 1 holdout look failed gate 8, see docs/FROZEN-1.10.0-SETTINGS.md): only when
+   * the Harness's own pruner is about to cut, in place of its head/tail cut, with no confidence gate unless one is set. `hybrid`: at the
+   * trigger, ordinary candidates, share rule beyond the stock cut.
    */
-  policy?: 'every-step' | 'at-trigger' | 'hybrid'
+  policy?: Policy
+  /** Reserved for the expected-value rule: accepted and stored, not used yet. */
+  lambdaMultiplier?: number
 }
 
-export const DEFAULT_ACTIVATION = 0.75
-/** The frozen setting (docs/FROZEN-1.10.0-SETTINGS.md): act where the Harness's own pruner is about to cut. */
-export const DEFAULT_POLICY = 'at-trigger' as const
-/** The gate the frozen setting uses: none, because the stock cut it replaces has no confidence check either (its extract is also never longer than that cut). */
-export const DEFAULT_TRIGGER_CONFIDENCE = 0
-export const policyOfSettings = (settings: TameruSettings): NonNullable<TameruSettings['policy']> => settings.policy ?? DEFAULT_POLICY
+export const DEFAULT_ACTIVATION = INCUMBENT.activation
+/** The stable default: the incumbent behaviour. `at-trigger` and `hybrid` are beta-channel policies. */
+export const DEFAULT_POLICY = INCUMBENT.policy
+/** The gate the beta channel's unset `at-trigger` uses: none (the stock cut it replaces has no confidence check either). */
+export const DEFAULT_TRIGGER_CONFIDENCE = BETA_DEFAULT.triggerMinConfidence
+/** The policy in force (channel rules applied): see `resolveEffective`. */
+export const policyOfSettings = (settings: TameruSettings): Policy => resolveEffective(settings).policy
 
 /** What the pass did in one chat, for `/tameru`. Kept in memory only. */
 export interface ChatStats {
@@ -106,7 +114,7 @@ export async function pressureOf(deps: StepDeps, agent: StepAgent, signal?: Abor
       tokens: meter.measure(agent.session, header).totalTokens,
       contextWindow,
       stockTrigger,
-      startsAt: Math.floor(stockTrigger * (policyOfSettings(deps.settings) !== 'every-step' ? 1 : (deps.settings.activation ?? DEFAULT_ACTIVATION))),
+      startsAt: Math.floor(stockTrigger * resolveEffective(deps.settings).activation),
     },
   }
 }
@@ -131,12 +139,13 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
     const found = await pressureOf(deps, agent, signal)
     if (!found.ok) return skip(found.reason)
     const { pressure } = found
+    const effective = resolveEffective(deps.settings)
     const options: ShortenOptions = {
       protectRecent: deps.settings.protectRecent ?? DEFAULT_SHORTEN.protectRecent,
       minResultChars: deps.settings.minResultChars ?? DEFAULT_SHORTEN.minResultChars,
       share: deps.settings.share ?? DEFAULT_SHORTEN.share,
       maxPerPass: deps.settings.maxPerPass ?? DEFAULT_SHORTEN.maxPerPass,
-      minConfidence: deps.settings.minConfidence ?? (policyOfSettings(deps.settings) === 'at-trigger' ? DEFAULT_TRIGGER_CONFIDENCE : DEFAULT_SHORTEN.minConfidence),
+      minConfidence: effective.minConfidence,
     }
     const outcome = await shortenPass({
       session: agent.session,
@@ -147,7 +156,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       options,
       declined: stats.declined,
       reasons: stats.reasons,
-      ...(policyOfSettings(deps.settings) !== 'every-step' ? { trigger: { ...(deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS }), ...(policyOfSettings(deps.settings) === 'hybrid' ? { hybrid: true } : {}) } } : {}),
+      ...(effective.policy !== 'every-step' ? { trigger: { ...(deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS }), ...(effective.policy === 'hybrid' ? { hybrid: true } : {}) } } : {}),
       ...(deps.observe ? { observe: deps.observe } : {}),
       ...(signal ? { signal } : {}),
     })

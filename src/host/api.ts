@@ -1,9 +1,10 @@
 import { requestHold } from './commands.ts'
 import { MAX_READ_CHARS, listItems, readOriginal, turnOpen, type Item } from './originals.ts'
 import { MAX_PINS, MAX_PIN_CHARS, type PinStore } from './pins.ts'
-import { normalizeSettings } from './settings.ts'
-import { DEFAULT_SHORTEN, type MeterLike, type SessionLike } from './shorten.ts'
-import { DEFAULT_ACTIVATION, chatStatsOf, type ChatStats, type Pressure, type TameruSettings } from './step.ts'
+import { normalizeSettings, resolveEffective, type Effective } from './settings.ts'
+import type { MeterLike, SessionLike } from './shorten.ts'
+import { chatStatsOf, type ChatStats, type Pressure, type TameruSettings } from './step.ts'
+import { SETTING_DEFAULTS, SETTING_KEYS } from '../shared/settings-table.ts'
 import { textOnly } from './messages.ts'
 import type { WorkerStatus } from '../shared/protocol.ts'
 
@@ -33,15 +34,20 @@ const isObject = (value: unknown): value is Record<string, unknown> => typeof va
 const VIEW_CHARS = 3000
 const FAILURE_SHOWN_MS = 30_000
 
-export const SETTING_KEYS = ['shorten', 'activation', 'minConfidence', 'share', 'protectRecent', 'minResultChars', 'maxPerPass'] as const
+export { SETTING_KEYS }
 
-/** The settings in effect, with the default each one falls back to. */
-export function effectiveSettings(settings: TameruSettings, saved?: TameruSettings): { values: Record<string, unknown>; defaults: Record<string, unknown>; saved: boolean } {
-  const defaults: Record<string, unknown> = { shorten: true, activation: DEFAULT_ACTIVATION, ...DEFAULT_SHORTEN }
+/**
+ * The settings as stored (each with the table's default when unset) and, in `effective`, what is actually in force after the channel
+ * rules. The panel shows only `effective`; `values` is for reading back what is stored.
+ */
+export function effectiveSettings(settings: TameruSettings, saved?: TameruSettings, engineVersion: string | null = null): { values: Record<string, unknown>; defaults: Record<string, unknown>; saved: boolean; effective: Effective } {
+  const defaults: Record<string, unknown> = { ...SETTING_DEFAULTS }
   const values: Record<string, unknown> = {}
   for (const key of SETTING_KEYS) values[key] = (settings as Record<string, unknown>)[key] ?? defaults[key]
-  return { values, defaults, saved: saved !== undefined && Object.keys(saved).length > 0 }
+  return { values, defaults, saved: saved !== undefined && Object.keys(saved).length > 0, effective: resolveEffective(settings, engineVersion) }
 }
+
+const engineVersionOf = (env: ApiEnv): string | null => env.engine()?.version?.engineVersion ?? null
 
 function describe(item: Item, queued: Set<number>): Record<string, unknown> {
   return { ref: item.ref, tool: item.toolName, label: item.label, state: item.state, originalChars: item.originalChars, shownChars: item.shownChars, onSurface: item.onSurface, cutByHarness: item.cutByHarness, queued: queued.has(item.ref) }
@@ -123,7 +129,8 @@ async function stateEndpoint(session: SessionLike, env: ApiEnv): Promise<ApiResu
     failure,
     pins: session.id ? env.pins.list(session.id) : [],
     limits: { pins: MAX_PINS, pinChars: MAX_PIN_CHARS, view: VIEW_CHARS, read: MAX_READ_CHARS },
-    settings: effectiveSettings(env.settings, env.saved),
+    settings: effectiveSettings(env.settings, env.saved, engineVersionOf(env)),
+    effective: resolveEffective(env.settings, engineVersionOf(env)),
   }
 }
 
@@ -132,7 +139,7 @@ function settingsEndpoint(body: Record<string, unknown>, env: ApiEnv): ApiResult
   if (patch) {
     const next: Record<string, unknown> = { ...(env.saved as Record<string, unknown>) }
     for (const [key, value] of Object.entries(patch)) {
-      if (!(SETTING_KEYS as readonly string[]).includes(key)) return fail(`unknown setting "${key.slice(0, 40)}"`)
+      if (!SETTING_KEYS.includes(key)) return fail(`unknown setting "${key.slice(0, 40)}"`)
       if (value === null) {
         // back to what the profile (or the default) says
         delete next[key]
@@ -149,5 +156,5 @@ function settingsEndpoint(body: Record<string, unknown>, env: ApiEnv): ApiResult
     for (const key of Object.keys(env.settings)) delete (env.settings as Record<string, unknown>)[key]
     Object.assign(env.settings, env.profile, env.saved)
   }
-  return { ok: true, settings: effectiveSettings(env.settings, env.saved) }
+  return { ok: true, settings: effectiveSettings(env.settings, env.saved, engineVersionOf(env)), effective: resolveEffective(env.settings, engineVersionOf(env)) }
 }

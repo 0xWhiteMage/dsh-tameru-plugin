@@ -188,6 +188,7 @@ const liveState = {
     { ref: 18, tool: 'read_file', label: 'src/checkout.ts', state: 'kept', originalChars: 14_800, shownChars: 14_900, onSurface: true },
   ],
   pins: ['Never touch the production config'], limits: { pins: 5, pinChars: 300 }, settings: { values: { shorten: true, minConfidence: 0.7 }, defaults: {}, saved: false },
+  effective: { channel: 'stable', policy: 'every-step', shorten: true, strength: 'normal', minConfidence: 0.7, activation: 0.75, share: 0.35, protectRecent: 4, lambdaMultiplier: 1, engineVersion: '1.10.0', presetId: 'dsh-tool-result@1' },
 }
 const pressure = (name: string) => (name === 'contextPressure' ? { projectedTokens: 64_000, contextWindow: 128_000 } : undefined)
 
@@ -208,13 +209,20 @@ test('the bar renders with none of the Harness UI parts present: plain fallbacks
 })
 
 test('Off, a custom gate and the other strengths show the right label, and a held output is not counted as shortened', () => {
-  const off = renderBar({ primitives: {}, state: { ...liveState, settings: { values: { shorten: false, minConfidence: 0.7 } } } })
+  const eff = (over: Record<string, unknown>) => ({ ...liveState, effective: { ...liveState.effective, ...over } })
+  const off = renderBar({ primitives: {}, state: eff({ shorten: false }) })
   assert.match(textOf(off), /Strength: Off/)
   assert.match(textOf(off), /\bOff\b/)
-  const more = renderBar({ primitives: {}, state: { ...liveState, settings: { values: { shorten: true, minConfidence: 0.55 } } } })
+  const more = renderBar({ primitives: {}, state: eff({ minConfidence: 0.55 }) })
   assert.match(textOf(more), /Strength: More/)
-  const custom = renderBar({ primitives: {}, state: { ...liveState, settings: { values: { shorten: true, minConfidence: 0.42 } } } })
+  const custom = renderBar({ primitives: {}, state: eff({ minConfidence: 0.42 }) })
   assert.match(textOf(custom), /Strength: Custom/)
+  assert.ok(!/\bBeta\b/.test(textOf(custom)), 'no Beta badge on stable')
+  const beta = renderBar({ primitives: {}, state: eff({ channel: 'beta', policy: 'at-trigger', minConfidence: 0 }) })
+  assert.match(textOf(beta), /Strength: Custom/, 'the unconfirmed beta default is no strength of ours')
+  assert.match(textOf(beta), /\bBeta\b/, 'the beta channel shows its badge')
+  const unknown = renderBar({ primitives: {}, state: { ...liveState, effective: undefined } })
+  assert.ok(!/Strength:/.test(textOf(unknown)), 'without the host\'s effective object no strength is shown, not a guessed Normal')
   const keptOnly = renderBar({ primitives: {}, state: { ...liveState, items: [liveState.items[1]] } })
   assert.match(textOf(keptOnly), /1 kept in full/)
   assert.match(textOf(keptOnly), /Shortened, 0/, 'the launcher stays and reads zero')

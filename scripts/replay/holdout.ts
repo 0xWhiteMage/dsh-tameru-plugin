@@ -170,6 +170,25 @@ export function holdoutHash(): { hash: string; count: number; perScenario: Array
   return { hash: sha256(per.map(p => `${p.id}:${p.sha256}`).join('\n')), count: all.length, perScenario: per }
 }
 
+export const BURNED_FILE = join(HOLDOUT_DIR, 'BURNED-HOLDOUTS.md')
+
+/** Every 64-hex hash listed in BURNED-HOLDOUTS.md. A missing file burns nothing; an unreadable one is an error (fail closed). */
+export function burnedHashes(file = BURNED_FILE): Set<string> {
+  let text: string
+  try {
+    text = readFileSync(file, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return new Set()
+    throw error
+  }
+  return new Set(text.match(/\b[0-9a-f]{64}\b/g) ?? [])
+}
+
+/** Throws when `hash` is a burned holdout: it was looked at and may never confirm a setting again. */
+export function refuseBurned(hash: string, file = BURNED_FILE): void {
+  if (burnedHashes(file).has(hash)) throw new Error(`the holdout ${hash.slice(0, 12)}... is burned (test/fixtures/replay/BURNED-HOLDOUTS.md): it is development data now, never confirmation`)
+}
+
 export function registeredHash(): string | undefined {
   try {
     return readFileSync(HOLDOUT_HASH_FILE, 'utf8').trim().split(/\s+/)[0]

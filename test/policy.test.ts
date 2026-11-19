@@ -1,5 +1,5 @@
-// The two DeepSeek policies: `every-step` (the shipped default) and the opt-in `at-trigger`, which acts only where the Harness's own
-// pruner is about to cut and puts its extract in place of the cut.
+// The DeepSeek policies: `every-step` (the incumbent, and the only policy on the stable channel, the default) and, on the beta channel,
+// `at-trigger`, which acts only where the Harness's own pruner is about to cut and puts its extract in place of the cut, and `hybrid`.
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -15,7 +15,7 @@ import { bigOutput, root, skip, world } from './helpers/harness.ts'
 const python = process.env.TAMERU_TEST_PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3')
 const script = join(root, 'vendor', 'run_worker.py')
 
-test('the policy is a setting: unknown values are ignored (the shipped default is at-trigger, gate 0, since the round 2 freeze)', () => {
+test('the policy is a setting: unknown values are ignored (it takes effect on the beta channel only)', () => {
   assert.deepEqual(normalizeSettings({ policy: 'at-trigger' }), { policy: 'at-trigger' })
   assert.deepEqual(normalizeSettings({ policy: 'every-step' }), { policy: 'every-step' })
   assert.deepEqual(normalizeSettings({ policy: 'sometimes' }), {})
@@ -48,7 +48,7 @@ async function triggerWorld(window: number, settings: TameruSettings) {
 }
 
 test('at-trigger: below the stock trigger nothing is done', { skip }, async () => {
-  const t = await triggerWorld(200_000, { policy: 'at-trigger', minConfidence: 0 })
+  const t = await triggerWorld(200_000, { channel: 'beta', policy: 'at-trigger', minConfidence: 0 })
   try {
     const tokens = t.w.meter.measure(t.w.session).totalTokens
     assert.ok(tokens > 0.75 * 126_000 * 0.5 && tokens < 126_000, `the fixture sits under the 200K trigger (${tokens})`)
@@ -61,7 +61,7 @@ test('at-trigger: below the stock trigger nothing is done', { skip }, async () =
 })
 
 test('at-trigger: at the trigger every result the pruner would cut is eligible, the unread newest included, and an extract is never longer than the cut', { skip }, async () => {
-  const t = await triggerWorld(128_000, { policy: 'at-trigger', minConfidence: 0 })
+  const t = await triggerWorld(128_000, { channel: 'beta', policy: 'at-trigger', minConfidence: 0 })
   try {
     assert.ok(t.w.meter.measure(t.w.session).totalTokens >= 54_464, 'the fixture is at the 128K stock trigger')
     const outcome = await onPreStep(t.deps, t.agent)
@@ -82,7 +82,7 @@ test('at-trigger: at the trigger every result the pruner would cut is eligible, 
 })
 
 test('at-trigger: an extract longer than the stock cut is declined, so the stock cut happens as it would have', { skip }, async () => {
-  const t = await triggerWorld(128_000, { policy: 'at-trigger', minConfidence: 0 })
+  const t = await triggerWorld(128_000, { channel: 'beta', policy: 'at-trigger', minConfidence: 0 })
   try {
     t.deps.stockPruner = { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: 10 }
     const outcome = await onPreStep(t.deps, t.agent)
@@ -106,18 +106,43 @@ test('every-step stays what it was: old results only, the newest and the unread 
   }
 })
 
-test('the shipped default is the frozen setting: at-trigger, no confidence gate unless one is set', async () => {
+test('the default is the incumbent: every-step, gate 0.7; stable ignores a stored policy; beta honours it and defaults to at-trigger, gate 0', async () => {
   const { policyOfSettings, DEFAULT_POLICY, DEFAULT_TRIGGER_CONFIDENCE } = await import('../src/host/step.ts')
-  assert.equal(policyOfSettings({}), 'at-trigger')
-  assert.equal(DEFAULT_POLICY, 'at-trigger')
+  const { resolveEffective } = await import('../src/host/settings.ts')
+  assert.equal(DEFAULT_POLICY, 'every-step')
+  assert.equal(policyOfSettings({}), 'every-step')
+  assert.equal(resolveEffective({}).minConfidence, 0.7)
+  assert.equal(resolveEffective({}).activation, 0.75)
+  for (const policy of ['at-trigger', 'hybrid'] as const) {
+    assert.equal(policyOfSettings({ policy }), 'every-step', `stable ignores policy ${policy}`)
+    assert.equal(policyOfSettings({ channel: 'stable', policy }), 'every-step')
+    assert.equal(policyOfSettings({ channel: 'beta', policy }), policy)
+  }
   assert.equal(DEFAULT_TRIGGER_CONFIDENCE, 0)
-  assert.equal(policyOfSettings({ policy: 'every-step' }), 'every-step')
+  assert.equal(policyOfSettings({ channel: 'beta' }), 'at-trigger')
+  assert.equal(resolveEffective({ channel: 'beta' }).minConfidence, 0, 'the unconfirmed beta default has no gate')
+  assert.equal(resolveEffective({ channel: 'beta', policy: 'at-trigger', minConfidence: 0.85 }).minConfidence, 0.85, 'a stored gate is used exactly as stored on beta')
+  assert.equal(resolveEffective({ channel: 'beta', policy: 'hybrid' }).minConfidence, 0.7)
+  assert.equal(policyOfSettings({ channel: 'beta', policy: 'every-step' }), 'every-step')
+})
+
+test('stable runs the incumbent pass even when the profile stores policy at-trigger: unread and newest results are left alone', { skip }, async () => {
+  const t = await triggerWorld(128_000, { policy: 'at-trigger', minConfidence: 0 })
+  try {
+    const outcome = await onPreStep(t.deps, t.agent)
+    assert.equal(outcome.kind, 'applied')
+    if (outcome.kind !== 'applied') return
+    assert.ok(!outcome.applied.some(a => a.originalSeq === t.pending), 'the unread result is not touched, as under every-step')
+    assert.ok(outcome.applied.length <= 13 - 4, 'the newest four read results are protected')
+  } finally {
+    await t.client.dispose()
+  }
 })
 
 test('defect fix: at the trigger a pass that would drop the prompt under it while leaving results the stock pruner cuts is skipped', { skip }, async () => {
   // every result is declined at a gate no extract reaches, except none: use a high gate so most are declined, and check that nothing
   // is written when that would leave stock-cuttable results behind below the trigger
-  const t = await triggerWorld(128_000, { policy: 'at-trigger', minConfidence: 1 })
+  const t = await triggerWorld(128_000, { channel: 'beta', policy: 'at-trigger', minConfidence: 1 })
   try {
     const before = t.w.meter.measure(t.w.session).totalTokens
     const outcome = await onPreStep(t.deps, t.agent)
@@ -132,7 +157,7 @@ test('defect fix: at the trigger a pass that would drop the prompt under it whil
 })
 
 test('hybrid: acts only at the trigger and never writes an extract longer than the stock cut for a result the pruner would cut', { skip }, async () => {
-  const t = await triggerWorld(128_000, { policy: 'hybrid', minConfidence: 0 })
+  const t = await triggerWorld(128_000, { channel: 'beta', policy: 'hybrid', minConfidence: 0 })
   try {
     const outcome = await onPreStep(t.deps, t.agent)
     if (outcome.kind === 'applied') {

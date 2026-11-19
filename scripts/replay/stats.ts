@@ -44,6 +44,37 @@ export interface Row {
   cuts_replaced: number
   /** Mean milliseconds the pass took per step (not reproducible, and ignored by every comparison). */
   pass_ms: number
+  /** Optional (rows written before P0 lack them; no comparison reads them): how often each pass ended with each reason. */
+  pass_reasons?: Record<string, number>
+  /** Optional: one record per act and per decline (consecutive repeats of the same outcome for the same result are folded). */
+  records?: ReplayRecord[]
+}
+
+/** What kind of moment an act or decline happened at. `forecast` and `cold` are reserved (not emitted yet). */
+export type ReplayEventType = 'trigger' | 'forecast' | 'every-step' | 'cold' | 'none'
+
+export interface ReplayRecord {
+  /** Step index in the scenario. */
+  step: number
+  /** The result's identity (`seq:length`), as the plugin keys it. */
+  key: string
+  event: ReplayEventType
+  outcome: 'act' | 'decline'
+  /** `ok` for an act; otherwise the engine's `decide()` reason or the plugin's (`would_leave_cuts`, `longer_than_stock_cut`, `share`, `protected`, ...). */
+  reason: string
+  /** `engine`: the engine's decision; `plugin`: the plugin set it aside. */
+  stage: 'engine' | 'plugin'
+  original_chars: number
+  /** The extract's length and the sha256 of its text (the text itself is never logged); null when the engine was not asked. */
+  extract_chars: number | null
+  extract_sha256: string | null
+  /** Per needed fact whose value is in the original: is the value in the extract, and is its whole original line? */
+  facts: Array<{ fact: number; value_present: boolean; line_present: boolean }>
+  /** Reserved for the expected-value rule and calibration (always null for now). */
+  p_hat: null
+  value: null
+  loss: null
+  stratum: null
 }
 
 export const rowKey = (r: Pick<Row, 'scenario' | 'window' | 'seed'>): string => `${r.scenario}|${r.window}|${r.seed}`

@@ -75,3 +75,15 @@ test('rows survive a jsonl round trip byte for byte and keep the shared field or
   assert.equal(toJsonl(fromJsonl(toJsonl(rows))), toJsonl(rows))
   assert.deepEqual(Object.keys(rows[0]!).slice(0, 10), ['bench', 'engine', 'split', 'scenario', 'family', 'cluster', 'arm', 'window', 'seed', 'cost'])
 })
+
+test('rows with the optional per-act/per-decline records stay backward compatible: same leading fields, round trip, arm-vs-itself exactly 0', () => {
+  const rec = { step: 3, key: '12:9000', event: 'every-step' as const, outcome: 'decline' as const, reason: 'share', stage: 'plugin' as const, original_chars: 9000, extract_chars: 800, extract_sha256: 'a'.repeat(64), facts: [{ fact: 0, value_present: true, line_present: false }], p_hat: null, value: null, loss: null, stratum: null }
+  const rows = sample('a').map(r => ({ ...r, pass_reasons: { below_activation: 2, applied: 1 }, records: [rec] }))
+  assert.deepEqual(Object.keys(rows[0]!).slice(0, 10), ['bench', 'engine', 'split', 'scenario', 'family', 'cluster', 'arm', 'window', 'seed', 'cost'])
+  assert.equal(toJsonl(fromJsonl(toJsonl(rows))), toJsonl(rows))
+  assert.deepEqual(selfCheck([...rows, ...sample('b', 5000)]).failures, [])
+  for (const m of METRICS) {
+    const d = pairedDifference(rows, sample('a'), m.name)
+    if (d) assert.deepEqual([d.mean, d.lo, d.hi], [0, 0, 0], `${m.name}: records change no metric`)
+  }
+})

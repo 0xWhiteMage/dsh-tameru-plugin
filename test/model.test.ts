@@ -8,6 +8,7 @@ const state = (extra: Record<string, unknown> = {}) => ({
   engine: { state: 'running' },
   chat: { pending: 0 },
   settings: { values: { shorten: true, minConfidence: 0.7 } },
+  effective: { channel: 'stable', policy: 'every-step', shorten: true, strength: 'normal', minConfidence: 0.7, activation: 0.75 },
   items: [],
   gauge: { tokens: 50_000, contextWindow: 128_000, stockTrigger: 100_000, startsAt: 75_000 },
   ...extra,
@@ -34,17 +35,20 @@ test('a row\'s size cells show before and after, and a held row shows only what 
   assert.equal(sizeCells({ state: 'restored', originalChars: 3_000, shownChars: 3_100 }).held, true)
 })
 
-test('Off, Less, Normal and More map to the settings and back; anything else is custom; Off is just shortening off', () => {
+test('Off, Less, Normal and More map to the settings and back; anything else is custom; Off is just shortening off; nothing is guessed', () => {
   assert.deepEqual(STRENGTHS.map(s => s.id), ['off', 'less', 'normal', 'more'])
   assert.deepEqual(strengthPatch('off'), { shorten: false })
   assert.deepEqual(strengthPatch('less'), { shorten: true, minConfidence: 0.85 })
   assert.deepEqual(strengthPatch('normal'), { shorten: true, minConfidence: 0.7 })
   assert.deepEqual(strengthPatch('more'), { shorten: true, minConfidence: 0.55 })
-  for (const id of ['less', 'normal', 'more'] as const) assert.equal(strengthOf(strengthPatch(id)), id)
-  assert.equal(strengthOf({ shorten: false, minConfidence: 0.55 }), 'off', 'off wins over the gate')
-  assert.equal(strengthOf({ shorten: true }), 'normal', 'no gate set is the default')
-  assert.equal(strengthOf(undefined), 'normal')
-  assert.equal(strengthOf({ shorten: true, minConfidence: 0.42 }), 'custom')
+  const eff = (over: Record<string, unknown>) => ({ channel: 'stable', policy: 'every-step', shorten: true, minConfidence: 0.7, ...over })
+  for (const id of ['less', 'normal', 'more'] as const) assert.equal(strengthOf(eff(strengthPatch(id))), id)
+  assert.equal(strengthOf(eff({ shorten: false, minConfidence: 0.55 })), 'off', 'off wins over the gate')
+  assert.equal(strengthOf(eff({ minConfidence: 0.42 })), 'custom')
+  assert.equal(strengthOf(eff({ policy: 'at-trigger', minConfidence: 0.7 })), 'custom', 'a strength is a gate under every-step only')
+  assert.equal(strengthOf(undefined), null, 'no effective object: no label')
+  assert.equal(strengthOf({ shorten: true }), null, 'a missing gate is not read as Normal')
+  assert.equal(strengthOf(eff({ policy: 'sometimes' })), null)
   assert.ok(0.55 < 0.7 && 0.7 < 0.85, 'more shortening means a lower gate')
 })
 
@@ -72,7 +76,7 @@ test('the one phrase: the most important true thing wins; none claims a saving; 
   assert.equal(statusOf(state({ failure: 'reference 4 was summarised away', chat: { pending: 2 } }), false, false).key, 'problem', 'a problem outranks waiting changes')
   assert.equal(statusOf(state(), false, true).key, 'problem', 'a problem the bar itself recorded')
   assert.deepEqual(statusOf(state({ chat: { pending: 2 } }), false, false), { key: 'waiting', tone: 'working', n: 2 })
-  assert.deepEqual(statusOf(state({ settings: { values: { shorten: false } } }), false, false), { key: 'off', tone: 'off' })
+  assert.deepEqual(statusOf(state({ effective: { channel: 'stable', policy: 'every-step', shorten: false, minConfidence: 0.7 } }), false, false), { key: 'off', tone: 'off' })
   const items = [{ ref: 3, state: 'shortened', onSurface: true }, { ref: 9, state: 'shortened', onSurface: true }, { ref: 5, state: 'shortened', onSurface: false }, { ref: 7, state: 'kept', onSurface: true }]
   assert.deepEqual(statusOf(state({ items }), false, false), { key: 'shortened', tone: 'idle', n: 2 }, 'a summarised-away result and a kept one are not counted')
   assert.deepEqual(statusOf(state({ items: [items[3]] }), false, false), { key: 'keptOnly', tone: 'idle', n: 1 })

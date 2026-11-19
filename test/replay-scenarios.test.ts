@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { HOLDOUT_FAMILIES, HOLDOUT_LOOKS_FILE, LOOK_TOKEN, holdoutHash, loadHoldout, registeredHash } from '../scripts/replay/holdout.ts'
+import { HOLDOUT_FAMILIES, HOLDOUT_LOOKS_FILE, LOOK_TOKEN, burnedHashes, holdoutHash, loadHoldout, refuseBurned, registeredHash } from '../scripts/replay/holdout.ts'
 import { developmentPool, scenariosFor, splitOf } from '../scripts/replay/scenarios.ts'
 import { root } from './helpers/harness.ts'
 
@@ -72,4 +72,25 @@ test('the normal runner cannot read the holdout: the loader needs the look token
   const runner = readFileSync(join(root, 'scripts', 'replay.ts'), 'utf8')
   assert.match(runner, /await import\('\.\/replay\/holdout\.ts'\)/)
   assert.ok(!/^import[^\n]*holdout/im.test(runner))
+})
+
+test('the round 1 holdout is burned: the runner refuses --holdout for it before logging anything', () => {
+  const round1 = 'ac9e77dd723d3755b8238c4a1e60d6947e798ddcc0ee489e9d2c10f2b5ca1489'
+  assert.ok(burnedHashes().has(round1))
+  assert.throws(() => refuseBurned(round1), /burned/)
+  assert.doesNotThrow(() => refuseBurned('0'.repeat(64)))
+  assert.equal(burnedHashes(join(root, 'no-such-file.md')).size, 0)
+  const { hash } = holdoutHash()
+  assert.equal(hash, round1, 'the current holdout is the burned round 1 set')
+  // the guard was checked above before this ever runs the --holdout path; it must stop at once and log no look
+  const before = readFileSync(HOLDOUT_LOOKS_FILE, 'utf8')
+  let failed = false
+  try {
+    execFileSync(process.execPath, [join(root, 'scripts', 'replay.ts'), '--holdout', '--out', join(root, 'never-written.jsonl')], { stdio: 'pipe', env: { ...process.env, REPLAY_BASELINE_VENDOR: '' } })
+  } catch (error) {
+    failed = true
+    assert.match(String((error as { stderr?: Buffer }).stderr), /is burned/)
+  }
+  assert.ok(failed)
+  assert.equal(readFileSync(HOLDOUT_LOOKS_FILE, 'utf8'), before, 'no look was logged')
 })

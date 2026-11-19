@@ -11,7 +11,7 @@ import { readSurface, type PassEvent } from '../../src/host/shorten.ts'
 import { onPreStep, type ChatStats, type StepAgent, type StepDeps, type TameruSettings } from '../../src/host/step.ts'
 import { stockThreshold } from '../../src/host/stock.ts'
 import { world } from '../../test/helpers/harness.ts'
-import type { Row } from './stats.ts'
+import type { ReplayEventType, ReplayRecord, Row } from './stats.ts'
 import type { Scenario } from './scenarios.ts'
 
 export const OUTPUT_CAP = 8000
@@ -38,7 +38,9 @@ const h = (name: string, gate: number, share: number, extra: TameruSettings = {}
  */
 export const ARMS: ArmSpec[] = [
   { name: 'stock', engine: 'none', settings: {} },
-  { name: 'baseline-1.9.0', engine: '1.9.0', settings: {} },
+  // the 1.9.0-era plugin's own behaviour, stated explicitly: with `settings: {}` this arm followed whatever the shipped default was, so
+  // after the round 2 default change it ran at-trigger with no gate (that is how the round 1 holdout look's baseline rows were made)
+  { name: 'baseline-1.9.0', engine: '1.9.0', settings: { policy: 'every-step', minConfidence: 0.7 } },
   ...GATES.map(gate => ({ name: `G-${gate}`, engine: '1.10.0' as const, settings: { policy: 'every-step' as const, minConfidence: gate } })),
   { name: 'T-0', engine: '1.10.0', settings: { policy: 'at-trigger', minConfidence: 0 } },
   { name: 'T-0.7', engine: '1.10.0', settings: { policy: 'at-trigger', minConfidence: 0.7 } },
@@ -78,8 +80,36 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
   const appliedOrigins = new Map<number, number>()
   let possible = 0
   let kept = 0
+  let stepIndex = 0
+  const records: ReplayRecord[] = []
+  const lastRecord = new Map<string, ReplayRecord>()
+  const seen = new Map<string, { original: string; extract: string }>()
+  const passReasons: Record<string, number> = {}
+  const factsOf = (original: string, extract: string): ReplayRecord['facts'] =>
+    sc.needed.flatMap((v, fact) => {
+      if (!original.includes(v)) return []
+      const line = original.split('\n').find(l => l.includes(v))!.trim()
+      return [{ fact, value_present: extract.includes(v), line_present: extract.includes(line) }]
+    })
+  const record = (key: string, event: ReplayEventType | undefined, outcome: ReplayRecord['outcome'], reason: string, stage: ReplayRecord['stage']): void => {
+    const last = lastRecord.get(key)
+    if (last && last.outcome === outcome && last.reason === reason) return // a repeat of the same outcome at a later step
+    const texts = seen.get(key)
+    const originalChars = texts ? Array.from(texts.original).length : Number(key.split(':')[1] ?? 0)
+    const r: ReplayRecord = {
+      step: stepIndex, key, event: event ?? 'none', outcome, reason, stage, original_chars: originalChars,
+      extract_chars: texts ? Array.from(texts.extract).length : null,
+      extract_sha256: texts ? createHash('sha256').update(texts.extract).digest('hex') : null,
+      facts: texts ? factsOf(texts.original, texts.extract) : [],
+      p_hat: null, value: null, loss: null, stratum: null,
+    }
+    records.push(r)
+    lastRecord.set(key, r)
+  }
   const observe = (e: PassEvent): void => {
     if (e.kind === 'decision') {
+      seen.set(e.key, { original: e.original, extract: e.extract })
+      if (!e.accept) record(e.key, e.event, 'decline', e.reason, 'engine')
       if (decided.has(e.key)) return
       decided.set(e.key, e.accept)
       if (e.accept) {
@@ -89,14 +119,20 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
           if (e.extract.includes(v)) kept++
         }
       }
-    } else appliedOrigins.set(e.origin, (appliedOrigins.get(e.origin) ?? 0) + 1)
+    } else if (e.kind === 'decline') {
+      record(e.key, e.event, 'decline', e.reason, 'plugin')
+    } else {
+      record(e.key, e.event, 'act', 'ok', 'plugin')
+      appliedOrigins.set(e.origin, (appliedOrigins.get(e.origin) ?? 0) + 1)
+    }
   }
   const deps: StepDeps = {
     client: client as EngineClient,
     meter: () => w.meter,
     resolveModelInfo: async () => ({ context: { contextWindow: window }, defaultMaxTokens: OUTPUT_CAP }),
     backendFor: () => ({ config: { auto: true } }),
-    settings: arm.settings,
+    // every arm states its own policy; the beta channel lets `policy` take effect (stable would force every-step)
+    settings: { channel: 'beta', ...arm.settings },
     stats,
     observe,
   }
@@ -132,6 +168,7 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
   }
 
   for (const [i, step] of sc.steps.entries()) {
+    stepIndex = i
     w.step({ name: step.tool, args: step.args }, step.output)
     // would the Harness's own pruner cut at this step, and how many results would it cut
     const triggered = total() >= threshold
@@ -140,6 +177,8 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
       const started = performance.now()
       const outcome = await onPreStep(deps, agent)
       passMs.push(performance.now() - started)
+      const passReason = outcome.kind === 'applied' ? 'applied' : outcome.reason
+      passReasons[passReason] = (passReasons[passReason] ?? 0) + 1
       if (outcome.kind === 'applied') {
         shortened += outcome.applied.length
         if (triggered && wouldCut > 0) {
@@ -200,5 +239,7 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
     cuts_eligible: cutsEligible,
     cuts_replaced: cutsReplaced,
     pass_ms: passMs.length ? passMs.reduce((a, b) => a + b, 0) / passMs.length : 0,
+    pass_reasons: passReasons,
+    records,
   }
 }

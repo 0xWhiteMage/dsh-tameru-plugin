@@ -3,7 +3,7 @@
 // move. The rules are docs/PLUGIN-UI.md in the engine repository, shared with the Hermes plugin. Every class is `tameru-*`.
 import { createPortal } from 'react-dom'
 import { Component, useCallback, useEffect, useRef, useState } from 'react'
-import { STRENGTHS, gaugeOf, groupsOf, emptyReasonKey, readTab, sizeCells, statusOf, strengthOf, strengthPatch, writeTab, type Json, type StrengthId, type TabId } from './model.ts'
+import { gaugeOf, groupsOf, emptyReasonKey, isBeta, readTab, sizeCells, statusOf, strengthOf, strengthPatch, writeTab, type Json, type StrengthId, type TabId } from './model.ts'
 import { copy, type Copy } from './text.ts'
 import { Drawn, Fragment, Icon, Ring, Tip, focusables, h, useAnchor, useDismiss } from './ui.ts'
 
@@ -51,6 +51,8 @@ const STYLE = `
 .tameru-strength { gap: 4px; padding: 0 8px 0 10px; font-size: var(--t-fs-s); line-height: var(--t-lh-s); } .tameru-strength svg { flex: none; }
 .tameru-launch { gap: 4px; min-width: 28px; padding: 0 8px; font-size: var(--t-fs-s); line-height: var(--t-lh-s); font-variant-numeric: tabular-nums; }
 .tameru-ib { width: 28px; padding: 0; }
+.tameru-beta { flex: none; padding: 0 6px; border: 1px solid var(--t-line); border-radius: 999px; font-size: var(--t-fs-s); line-height: var(--t-lh-s); color: var(--t-fg2); cursor: default; }
+.tameru-effective { color: var(--t-fg3); font-size: var(--t-fs-s); }
 .tameru-strength:hover, .tameru-launch:hover, .tameru-ib:hover:not(:disabled) { color: var(--t-fg2); }
 .tameru-strength[aria-expanded="true"], .tameru-launch.on { background: var(--t-hover); color: var(--t-fg1); } .tameru-ib:disabled { cursor: default; }
 @container (max-width: 600px) { .tameru-word { display: none; } }
@@ -367,7 +369,10 @@ function Bar(props: Json) {
   const pick = (id: StrengthId) => { setChosen({ strength: id }); void send(strengthPatch(id), () => setChosen({})) }
 
   const live = state?.live === true
-  const strength: StrengthId | 'custom' = live ? (chosen.strength ?? strengthOf(state!.settings.values)) : 'normal'
+  // the label comes from the host's resolved `effective` object only; without one there is no strength to show
+  const resolved = live ? strengthOf(state!.effective) : null
+  const strength: StrengthId | 'custom' | null = resolved === null ? null : (chosen.strength ?? resolved)
+  const beta = live && isBeta(state!.effective)
   const status = statusOf(state, failed, problem !== null)
   const phrase = t.status(status)
   const gauge = gaugeOf(pressure, state)
@@ -421,7 +426,8 @@ function Bar(props: Json) {
               !state ? h('div', { className: 'tameru-line' }, failed ? t.unreachable : t.loading) : h(Fragment, null,
                 problemLine,
                 tab === 'pins' && live ? h(Pins, { state, sessionId: sessionId!, refresh: () => void load(undefined, true), t, onProblem: raw => setProblem({ kind: 'pins', raw }) })
-                  : h(Fragment, null, notice ? h('div', { className: 'tameru-line', role: 'status' }, notice) : null, results))))),
+                  : h(Fragment, null, notice ? h('div', { className: 'tameru-line', role: 'status' }, notice) : null, results,
+                      live && state!.effective ? h('div', { className: 'tameru-line tameru-effective' }, t.effectiveLine(state!.effective)) : null))))),
     document.body) : null
 
   const fullParts = gauge ? t.full(gauge.percent) : null
@@ -441,7 +447,8 @@ function Bar(props: Json) {
       live ? h(Fragment, null,
         h('span', { className: 'tameru-sep', 'aria-hidden': true }),
         h('div', { className: 'tameru-controls' },
-          h(StrengthMenu, { current: strength, t, onPick: pick }),
+          beta ? h(Tip, { label: t.betaTip }, h('span', { className: 'tameru-beta' }, t.beta)) : null,
+          strength !== null ? h(StrengthMenu, { current: strength, t, onPick: pick }) : null,
           h('button', { type: 'button', id: 'tameru-launch-results', className: `tameru-launch${open && tab === 'results' ? ' on' : ''}`, 'aria-expanded': open && tab === 'results', 'aria-controls': open ? 'tameru-card' : undefined, 'aria-label': `${t.tabShortened}, ${shortened.length}`, onKeyDown: launcherKey('results'), onClick: () => launch('results') },
             h(Icon, { name: 'list' }), String(shortened.length)),
           h('button', { type: 'button', id: 'tameru-launch-pins', className: `tameru-launch${open && tab === 'pins' ? ' on' : ''}`, 'aria-expanded': open && tab === 'pins', 'aria-controls': open ? 'tameru-card' : undefined, 'aria-label': `${t.tabPins}, ${pinCount}`, onKeyDown: launcherKey('pins'), onClick: () => launch('pins') },

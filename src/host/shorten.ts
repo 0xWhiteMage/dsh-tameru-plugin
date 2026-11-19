@@ -17,6 +17,7 @@ import {
   type SessionEvent,
 } from './messages.ts'
 import { RESTORE_REPLIES } from './originals.ts'
+import { INCUMBENT } from '../shared/settings-table.ts'
 
 /** The parts of the Harness's Session this pass uses. `eventAt` is deprecated for new code but is what the stock pruner uses too. */
 export interface SessionLike {
@@ -46,10 +47,6 @@ export interface ShortenOptions {
   minConfidence: number
 }
 
-/**
- * `minConfidence` 0.7: on the engine's own task cases (see docs/MEASURED-VS-STOCK.md) extracts the engine was less than 70% sure of lost
- * a required fact in a large share of cases, while those it was surer of rarely did. It trades savings for not silently losing facts.
- */
 /** The most time one pass spends asking the engine. */
 export const PASS_BUDGET_MS = 6000
 /** A result longer than this is left alone: the engine's request limit is 16 MB and a text this size is not worth a step's wait. */
@@ -71,7 +68,8 @@ export function policyOf(options: ShortenOptions): AcceptPolicy {
   return { minConfidence: options.minConfidence, minSavedRatio: 0, minTokensSaved: 1, allowSanitized: false }
 }
 
-export const DEFAULT_SHORTEN: ShortenOptions = { protectRecent: 4, minResultChars: 6000, share: 0.35, maxPerPass: 24, minConfidence: 0.7 }
+/** The incumbent values, from the one settings table (src/shared/settings-table.ts). */
+export const DEFAULT_SHORTEN: ShortenOptions = { protectRecent: INCUMBENT.protectRecent, minResultChars: INCUMBENT.minResultChars, share: INCUMBENT.share, maxPerPass: INCUMBENT.maxPerPass, minConfidence: INCUMBENT.minConfidence }
 
 export interface Entry {
   seq: number
@@ -254,9 +252,18 @@ export interface PassContext {
   observe?: (event: PassEvent) => void
 }
 
+/** What kind of moment a pass acted at. `forecast` and `cold` are reserved for the planned event detection and are not emitted yet. */
+export type PassEventType = 'trigger' | 'forecast' | 'every-step' | 'cold' | 'none'
+
+/**
+ * For measurements only. `decision`: the engine's answer for one result (`reason` is its `decide()` reason). `decline`: the plugin set an
+ * item aside after or instead of asking (`longer_than_stock_cut`, `not_enough_tokens`, `share`, `would_leave_cuts`, `surface_changed`,
+ * `aborted`, `protected`, `max_per_pass`). `applied`: the replacement was written.
+ */
 export type PassEvent =
-  | { kind: 'decision'; key: string; accept: boolean; reason: string; original: string; extract: string }
-  | { kind: 'applied'; key: string; origin: number }
+  | { kind: 'decision'; key: string; accept: boolean; reason: string; original: string; extract: string; event?: PassEventType }
+  | { kind: 'decline'; key: string; reason: string; event?: PassEventType }
+  | { kind: 'applied'; key: string; origin: number; event?: PassEventType }
 
 /**
  * Identifies one result: its place in the chat and its length, and nothing else. The question is NOT part of it: a result the engine
@@ -293,9 +300,20 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (measurement.totalTokens < pass.activationTokens) return { kind: 'skipped', reason: 'below_activation' }
   if (compactionOpen(session)) return { kind: 'skipped', reason: 'compaction_open' }
   const entries = readSurface(session)
-  const candidates = findCandidates(session, entries, options, pass.trigger !== undefined && !pass.trigger.hybrid)
-    .sort((a, b) => b.text.length - a.text.length)
-    .slice(0, options.maxPerPass)
+  const eventType: PassEventType = pass.trigger ? 'trigger' : 'every-step'
+  const includeUnread = pass.trigger !== undefined && !pass.trigger.hybrid
+  const ranked = findCandidates(session, entries, options, includeUnread).sort((a, b) => b.text.length - a.text.length)
+  const candidates = ranked.slice(0, options.maxPerPass)
+  if (pass.observe) {
+    // measurements only: what was set aside before the engine was asked
+    for (const late of ranked.slice(options.maxPerPass)) pass.observe({ kind: 'decline', key: itemKey(late.seq, late.text.length), reason: 'max_per_pass', event: eventType })
+    if (options.protectRecent > 0) {
+      const seen = new Set(ranked.map(c => c.seq))
+      for (const kept of findCandidates(session, entries, { ...options, protectRecent: 0 }, includeUnread)) {
+        if (!seen.has(kept.seq)) pass.observe({ kind: 'decline', key: itemKey(kept.seq, kept.text.length), reason: 'protected', event: eventType })
+      }
+    }
+  }
   if (candidates.length === 0) return { kind: 'skipped', reason: 'no_candidates' }
   const generation = session.surface.replaceGeneration
   const lookup = entries.map(({ seq, message }) => ({ seq, message }))
@@ -336,7 +354,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       // the engine's decision; only a worker without `decide()` leaves it to the legacy rule, with the same policy
       const decision = result.decision ?? legacyDecision(result, candidate.text, policy)
       note(decision.reason)
-      pass.observe?.({ kind: 'decision', key, accept: decision.accept, reason: decision.reason, original: candidate.text, extract: result.text })
+      pass.observe?.({ kind: 'decision', key, accept: decision.accept, reason: decision.reason, original: candidate.text, extract: result.text, event: eventType })
       if (!decision.accept) {
         if (decision.reason === 'low_confidence') unsure++
         pass.declined?.add(key)
@@ -345,6 +363,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       const newText = shortenedText(candidate.text, result.text, candidate.origin, result.dropped)
       if (pass.trigger && newText.length > pass.trigger.cutChars) {
         note('longer_than_stock_cut')
+        pass.observe?.({ kind: 'decline', key, reason: 'longer_than_stock_cut', event: eventType })
         pass.declined?.add(key)
         return
       }
@@ -354,6 +373,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       if (afterTokens >= beforeTokens) {
         // the Harness's own meter prices the message with its header: the one check that cannot be made in the worker
         note('not_enough_tokens')
+        pass.observe?.({ kind: 'decline', key, reason: 'not_enough_tokens', event: eventType })
         pass.declined?.add(key)
         return
       }
@@ -371,6 +391,13 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     const firstCut = cuts.length ? Math.min(...cuts.map(item => item.candidate.seq)) : Infinity
     batch = [...cuts, ...others.filter(item => item.candidate.seq > firstCut), ...chooseBatch(others.filter(item => item.candidate.seq < firstCut), tokensOf, session.surface.nodes, options.share)]
   } else batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)
+  const setAside = (items: Planned[], reason: string): void => {
+    for (const item of items) pass.observe?.({ kind: 'decline', key: itemKey(item.candidate.seq, item.candidate.text.length), reason, event: eventType })
+  }
+  if (pass.observe) {
+    const chosen = new Set(batch)
+    setAside(planned.filter(item => !chosen.has(item)), 'share')
+  }
   if (batch.length === 0) return { kind: 'skipped', reason: 'not_worth_it' }
   if (pass.trigger) {
     // The stock pruner runs only while the prompt is still at the trigger. If these replacements bring it under while results it would
@@ -379,17 +406,29 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     const inBatch = new Set(batch.map(item => item.candidate.seq))
     const left = entries.some(({ seq, event, message }) => event.type === 'tool/result' && !inBatch.has(seq) && Array.from(textOnly(message) ?? '').length > pass.trigger!.thresholdChars)
     const projected = measurement.totalTokens - batch.reduce((sum, item) => sum + (item.beforeTokens - item.afterTokens), 0)
-    if (left && projected < pass.activationTokens) return { kind: 'skipped', reason: 'would_leave_cuts' }
+    if (left && projected < pass.activationTokens) {
+      setAside(batch, 'would_leave_cuts')
+      return { kind: 'skipped', reason: 'would_leave_cuts' }
+    }
   }
 
   // The engine took time. Write only if nothing was replaced or compacted meanwhile.
-  if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
-  if (session.surface.replaceGeneration !== generation || compactionOpen(session)) return { kind: 'skipped', reason: 'surface_changed' }
+  if (pass.signal?.aborted) {
+    setAside(batch, 'aborted')
+    return { kind: 'skipped', reason: 'aborted' }
+  }
+  if (session.surface.replaceGeneration !== generation || compactionOpen(session)) {
+    setAside(batch, 'surface_changed')
+    return { kind: 'skipped', reason: 'surface_changed' }
+  }
   const onSurface = new Set(session.surface.nodes)
   const applied: Applied[] = []
   for (const item of [...batch].sort((a, b) => a.candidate.seq - b.candidate.seq)) {
     const { seq, event } = item.candidate
-    if (!onSurface.has(seq)) continue
+    if (!onSurface.has(seq)) {
+      setAside([item], 'surface_changed')
+      continue
+    }
     try {
       // The price event must sit immediately before its replacement: the Harness's meter subtracts it from the replaced node.
       session.append('compaction/prune', {
@@ -399,7 +438,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       })
       const { origin } = item.candidate
       const written = session.append('tool/result', { ...event.data, message: item.replacement }, { surfaceOp: { op: 'replace', startSeq: seq, endSeq: seq }, sourceEventSeqs: origin === seq ? [seq] : [origin, seq] })
-      pass.observe?.({ kind: 'applied', key: itemKey(seq, item.candidate.text.length), origin })
+      pass.observe?.({ kind: 'applied', key: itemKey(seq, item.candidate.text.length), origin, event: eventType })
       applied.push({ originalSeq: seq, replacementSeq: written.seq, toolName: item.candidate.toolName, beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })
     } catch {
       break // what was written is a complete pair; stop before anything half-written

@@ -9,7 +9,7 @@ import { filePins, pinsSection } from './pins.ts'
 import { scanForTrail, trailMessage } from './trail.ts'
 import { handleApi, type ApiEnv } from './api.ts'
 import { readSaved, writeSaved } from './saved-settings.ts'
-import { normalizeSettings, type TameruConfig } from './settings.ts'
+import { normalizeSettings, resolveEffective, type TameruConfig } from './settings.ts'
 import { statusText } from './status.ts'
 import { chatStatsOf, onPreStep, pressureOf, type ChatStats, type StepAgent, type StepDeps, type TameruSettings } from './step.ts'
 import { drainPending, runCommand } from './commands.ts'
@@ -192,7 +192,7 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
       if (client && !client.status().version) await client.probe()
       const session = agent?.session as SessionLike | undefined
       const chat = session ? stats.get(session) : undefined
-      const status = (): string => statusText({ pluginVersion: version, enabled, python, worker: client?.status(), chat, pins: session?.id ? pins.list(session.id).length : 0 })
+      const status = (): string => statusText({ pluginVersion: version, enabled, python, worker: client?.status(), chat, pins: session?.id ? pins.list(session.id).length : 0, effective: resolveEffective(settings, client?.status()?.version?.engineVersion ?? null) })
       if (!session) return { kind: 'success', text: status() }
       return runCommand(rawInput, { session, meter: ctx.get?.('tokenMeter'), stats: chatStatsOf(stats, session), pins, status })
     },

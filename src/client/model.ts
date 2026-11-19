@@ -1,5 +1,7 @@
 // The bar's decisions, with no React and no DOM, so they can be tested directly. The rules are docs/PLUGIN-UI.md in the engine repository.
 
+import { POLICIES, STRENGTHS, strengthFor, type Policy, type StrengthId, type StrengthLabel } from '../shared/settings-table.ts'
+
 export type Json = Record<string, any>
 
 /** `<1K` below a thousand characters, whole K up to 999,999, whole M above. Always short enough for a 40 px column. */
@@ -11,23 +13,22 @@ export function compactChars(chars: number): string {
   return `${Math.round(chars / 1_000_000)}M`
 }
 
-/** Off, or how sure the engine must be: the confidence gate for each strength. Normal is the shipped default. */
-export const STRENGTHS = [
-  { id: 'off' },
-  { id: 'less', minConfidence: 0.85 },
-  { id: 'normal', minConfidence: 0.7 },
-  { id: 'more', minConfidence: 0.55 },
-] as const
-export type StrengthId = (typeof STRENGTHS)[number]['id']
+export { STRENGTHS }
+export type { StrengthId, StrengthLabel }
 
-/** The strength in force, from the plugin's settings. `custom` when the profile file sets a gate that is none of ours. */
-export function strengthOf(values: Json | undefined): StrengthId | 'custom' {
-  if (!values) return 'normal'
-  if (values.shorten === false) return 'off'
-  if (typeof values.minConfidence !== 'number') return 'normal'
-  const match = STRENGTHS.find(strength => 'minConfidence' in strength && Math.abs(strength.minConfidence - values.minConfidence) < 0.005)
-  return match?.id ?? 'custom'
+/**
+ * The strength label, from the host's resolved `effective` object only (state.effective). Nothing is guessed: an object without the keys
+ * the label needs gives `null`, and the bar then shows no strength rather than a default it cannot vouch for.
+ */
+export function strengthOf(effective: Json | null | undefined): StrengthLabel | null {
+  if (!effective || typeof effective !== 'object') return null
+  const { shorten, policy, minConfidence } = effective
+  if (typeof shorten !== 'boolean' || !(POLICIES as readonly unknown[]).includes(policy) || typeof minConfidence !== 'number') return null
+  return strengthFor(shorten, policy as Policy, minConfidence)
 }
+
+/** True when the host says the beta channel is in force. */
+export const isBeta = (effective: Json | null | undefined): boolean => effective?.channel === 'beta'
 
 /** The settings change that puts a strength in force. Any strength but Off also switches shortening back on. */
 export function strengthPatch(id: StrengthId): Json {
@@ -60,7 +61,7 @@ export function statusOf(state: Json | null, failed: boolean, problem: boolean):
   if (state.engine?.state === 'disabled') return { key: 'notRunningRetrying', tone: 'problem' }
   if (problem || (typeof state.failure === 'string' && state.failure)) return { key: 'problem', tone: 'problem' }
   if (state.chat?.pending > 0) return { key: 'waiting', tone: 'working', n: state.chat.pending }
-  if (strengthOf(state.settings?.values) === 'off') return { key: 'off', tone: 'off' }
+  if (strengthOf(state.effective) === 'off') return { key: 'off', tone: 'off' }
   const { shortened, kept } = groupsOf(state)
   if (shortened.length > 0) return { key: 'shortened', tone: 'idle', n: shortened.length }
   if (kept.length > 0) return { key: 'keptOnly', tone: 'idle', n: kept.length }
