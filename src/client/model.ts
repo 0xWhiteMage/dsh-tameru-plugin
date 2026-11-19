@@ -98,6 +98,7 @@ export function emptyReasonKey(skip: string | null | undefined, belowStart: bool
     case 'no_candidates': return 'noCandidates'
     case 'not_confident': return 'notConfident'
     case 'not_worth_it': return 'tooSmall'
+    case 'would_leave_cuts': return 'tooSmall'
     case 'engine_unavailable': return 'engineSilent'
     case 'off': return 'off'
     default: return belowStart ? 'belowStart' : 'noCandidates'

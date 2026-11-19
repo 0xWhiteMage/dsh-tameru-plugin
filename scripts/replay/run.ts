@@ -30,15 +30,41 @@ export interface ArmSpec {
 const hash = (m: unknown): string => createHash('sha1').update(JSON.stringify(m)).digest('hex')
 
 const GATES = [0.5, 0.6, 0.7, 0.8, 0.85]
-/** Every arm the policy comparison runs: stock, the 1.9.0-era plugin, policy G at each gate, policy T at two gates (7 settings tried). */
+const g = (name: string, gate: number, share: number, activation: number, extra: TameruSettings = {}): ArmSpec => ({ name, engine: '1.10.0', settings: { policy: 'every-step', minConfidence: gate, share, activation, ...extra } })
+const h = (name: string, gate: number, share: number, extra: TameruSettings = {}): ArmSpec => ({ name, engine: '1.10.0', settings: { policy: 'hybrid', minConfidence: gate, share, ...extra } })
+/**
+ * Every arm: stock, the 1.9.0-era plugin, round 1 (policy G at five gates, policy T at two: 7 settings) and round 2 (19 new settings,
+ * declared in the engine's analysis plan before they were run). Order inside a family is from less to more conservative (later wins ties).
+ */
 export const ARMS: ArmSpec[] = [
   { name: 'stock', engine: 'none', settings: {} },
   { name: 'baseline-1.9.0', engine: '1.9.0', settings: {} },
-  ...GATES.map(g => ({ name: `G-${g}`, engine: '1.10.0' as const, settings: { policy: 'every-step' as const, minConfidence: g } })),
+  ...GATES.map(gate => ({ name: `G-${gate}`, engine: '1.10.0' as const, settings: { policy: 'every-step' as const, minConfidence: gate } })),
   { name: 'T-0', engine: '1.10.0', settings: { policy: 'at-trigger', minConfidence: 0 } },
   { name: 'T-0.7', engine: '1.10.0', settings: { policy: 'at-trigger', minConfidence: 0.7 } },
+  // round 2
+  g('G1', 0.85, 0.35, 0.9),
+  g('G2', 0.85, 0.5, 0.75),
+  g('G3', 0.85, 0.65, 0.75),
+  g('G4', 0.85, 0.5, 0.9),
+  g('G5', 0.85, 0.65, 0.9),
+  g('G6', 0.85, 0.5, 1.0),
+  g('G7', 0.85, 0.65, 1.0),
+  g('G8', 0.85, 0.5, 0.9, { minResultChars: 12000 }),
+  g('G9', 0.85, 0.65, 0.9, { minResultChars: 12000 }),
+  g('G10', 0.85, 0.5, 0.9, { protectRecent: 8 }),
+  g('G11', 0.85, 0.5, 0.9, { maxPerPass: 8 }),
+  g('G12', 0.7, 0.5, 0.9),
+  g('G13', 0.7, 0.65, 1.0),
+  { name: 'T3', engine: '1.10.0', settings: { policy: 'at-trigger', minConfidence: 0.85 } },
+  h('H1', 0.85, 0.35),
+  h('H2', 0.85, 0.5),
+  h('H3', 0.85, 0.65),
+  h('H4', 0.7, 0.5),
+  h('H5', 0.85, 0.5, { protectRecent: 8 }),
 ]
-export const SETTINGS_TRIED = GATES.length + 2
+export const ROUND1_ARMS = 7
+export const SETTINGS_TRIED = ARMS.filter(a => a.engine === '1.10.0').length
 
 const textLength = (m: any): number => (m.content ?? []).reduce((s: number, b: any) => s + (b.type === 'text' ? Array.from(b.text as string).length : 0), 0)
 

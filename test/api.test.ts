@@ -25,7 +25,7 @@ async function panel(options: { settings?: Json; steps?: number } = {}) {
   w.ctx.set('commands', { register: () => {} })
   w.ctx.provide('llm')
   w.ctx.set('llm', { imageRequestPricing: () => undefined, resolveModelInfo: async () => ({ context: { contextWindow: 128_000 }, defaultMaxTokens: 8000 }) })
-  w.ctx.plugin({ name, inject, apply }, { pythonPath: PYTHON, ...(options.settings ?? {}) })
+  w.ctx.plugin({ name, inject, apply }, { pythonPath: PYTHON, policy: 'every-step', ...(options.settings ?? {}) })
   await new Promise(resolve => setTimeout(resolve, 150))
   for (let i = 0; i < (options.steps ?? 8); i++) w.step({ name: 'bash', args: { command: `step ${i}` } }, bigOutput(`s${i}`))
   w.pendingCall({ name: 'bash', args: { command: 'npm test' } }, bigOutput('pending'))

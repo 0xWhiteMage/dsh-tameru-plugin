@@ -56,6 +56,8 @@ export interface Selection {
   settingsTried: number
   devG: Verdict[]
   devT: Verdict[]
+  devH: Verdict[]
+  chosenH: string | undefined
   chosenG: string | undefined
   chosenT: string | undefined
   validation: Verdict[]
@@ -67,16 +69,20 @@ export interface Selection {
 }
 
 export function select(rows: Row[]): Selection {
-  const gArms = ARMS.filter(a => a.name.startsWith('G-')).map(a => a.name)
-  const tArms = ARMS.filter(a => a.name.startsWith('T-')).map(a => a.name)
+  const family = (policy: string): string[] => ARMS.filter(a => a.settings.policy === policy).map(a => a.name)
+  const gArms = family('every-step')
+  const tArms = family('at-trigger')
+  const hArms = family('hybrid')
   const devG = gArms.map(a => verdict(rows, a, 'dev'))
   const devT = tArms.map(a => verdict(rows, a, 'dev'))
   const chosenG = bestOf(devG)?.arm
+  const devH = hArms.map(a => verdict(rows, a, 'dev'))
   const chosenT = bestOf(devT)?.arm
-  const validation = [chosenG, chosenT].filter((x): x is string => x !== undefined).map(a => verdict(rows, a, 'validation'))
+  const chosenH = bestOf(devH)?.arm
+  const validation = [chosenG, chosenT, chosenH].filter((x): x is string => x !== undefined).map(a => verdict(rows, a, 'validation'))
   const best = bestOf(validation)
   const validationAll = ARMS.filter(a => a.engine === '1.10.0').map(a => verdict(rows, a.name, 'validation'))
-  return { settingsTried: SETTINGS_TRIED, devG, devT, chosenG, chosenT, validation, validationAll, winner: best?.arm, improves: best?.facts !== undefined && best.facts.mean > 0 }
+  return { settingsTried: SETTINGS_TRIED, devG, devT, devH, chosenG, chosenT, chosenH, validation, validationAll, winner: best?.arm, improves: best?.facts !== undefined && best.facts.mean > 0 }
 }
 
 // ---- tables ---------------------------------------------------------------------------------------------------------------------------
@@ -155,7 +161,11 @@ export function fullReport(rows: Row[]): { text: string; selection: Selection } 
     parts.push(`\nCache-price sensitivity, ${split}:\n\n${windowTable(rows, split)}`)
     parts.push(`\nGate 8(a) and 8(b) quantities, ${split}:\n\n${gateTable(rows, split)}`)
   }
-  parts.push(`\n### Selection (settings tried: ${selection.settingsTried})\n\nPolicy G on dev, by gate:\n\n${selectionTable(selection.devG)}\n\nPolicy T on dev, by gate:\n\n${selectionTable(selection.devT)}\n\nChosen on dev: G ${selection.chosenG ?? 'none'}, T ${selection.chosenT ?? 'none'}.\n\nOn validation:\n\n${selectionTable(selection.validation)}\n\nEvery 1.10.0 arm on validation, for information (selection used the development choices only):\n\n${selectionTable(selection.validationAll)}\n\nWinner: ${selection.winner ?? 'none'}${selection.winner ? (selection.improves ? '' : ' (but facts kept are not above the 1.9.0-era plugin)') : ''}.`)
+  parts.push(`\n### Selection (settings tried: ${selection.settingsTried})\n\nPolicy G on dev, by gate:\n\n${selectionTable(selection.devG)}\n\nPolicy T on dev, by gate:\n\n${selectionTable(selection.devT)}\n\nPolicy H on dev:
+
+${selectionTable(selection.devH)}
+
+Chosen on dev: G ${selection.chosenG ?? 'none'}, T ${selection.chosenT ?? 'none'}, H ${selection.chosenH ?? 'none'}.\n\nOn validation:\n\n${selectionTable(selection.validation)}\n\nEvery 1.10.0 arm on validation, for information (selection used the development choices only):\n\n${selectionTable(selection.validationAll)}\n\nWinner: ${selection.winner ?? 'none'}${selection.winner ? (selection.improves ? '' : ' (but facts kept are not above the 1.9.0-era plugin)') : ''}.`)
   return { text: parts.join('\n'), selection }
 }
 

@@ -70,7 +70,7 @@ async function stepWorld(options: { window?: number; backend?: any; info?: any }
     meter: () => w.meter,
     resolveModelInfo: async () => options.info ?? { context: { contextWindow: options.window ?? 128_000 }, defaultMaxTokens: 8000 },
     backendFor: () => options.backend ?? { config: { auto: true } },
-    settings: { protectRecent: 2 },
+    settings: { protectRecent: 2, policy: 'every-step' },
     stats,
   }
   const agent = { session: w.session } as unknown as StepAgent

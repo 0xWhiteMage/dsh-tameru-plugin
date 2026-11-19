@@ -16,6 +16,7 @@ const REASONS: Record<string, string> = {
   below_activation: 'the context is still below the point where Tameru starts',
   no_candidates: 'no old large tool result is eligible yet',
   not_confident: 'the engine was not confident enough in its extract to risk losing a fact',
+  would_leave_cuts: "the Harness's own cut will handle these results, so Tameru left them to it",
   not_worth_it: 'shortening would not have paid for rewriting the prompt cache',
   surface_changed: 'the chat changed while the engine worked',
   compaction_open: 'the Harness is compacting',

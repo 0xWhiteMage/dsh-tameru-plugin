@@ -11,13 +11,19 @@ export interface TameruSettings extends Partial<ShortenOptions> {
   activation?: number
   /**
    * When to act. `every-step` (default, the shipped behaviour): at every step boundary once the chat is `activation` of the way to the
-   * Harness's trigger, on old results, with the confidence gate. `at-trigger` (opt-in, measured in docs/REPLAY-1.10.0.md): only when
-   * the Harness's own pruner is about to cut, in place of its head/tail cut.
+   * Harness's trigger, on old results, with the confidence gate. `at-trigger` (the shipped default since the round 2 freeze, see
+   * docs/FROZEN-1.10.0-SETTINGS.md): only when the Harness's own pruner is about to cut, in place of its head/tail cut, with no confidence
+   * gate unless one is set. `hybrid`: at the trigger, ordinary candidates, share rule beyond the stock cut.
    */
-  policy?: 'every-step' | 'at-trigger'
+  policy?: 'every-step' | 'at-trigger' | 'hybrid'
 }
 
 export const DEFAULT_ACTIVATION = 0.75
+/** The frozen setting (docs/FROZEN-1.10.0-SETTINGS.md): act where the Harness's own pruner is about to cut. */
+export const DEFAULT_POLICY = 'at-trigger' as const
+/** The gate the frozen setting uses: none, because the stock cut it replaces has no confidence check either (its extract is also never longer than that cut). */
+export const DEFAULT_TRIGGER_CONFIDENCE = 0
+export const policyOfSettings = (settings: TameruSettings): NonNullable<TameruSettings['policy']> => settings.policy ?? DEFAULT_POLICY
 
 /** What the pass did in one chat, for `/tameru`. Kept in memory only. */
 export interface ChatStats {
@@ -100,7 +106,7 @@ export async function pressureOf(deps: StepDeps, agent: StepAgent, signal?: Abor
       tokens: meter.measure(agent.session, header).totalTokens,
       contextWindow,
       stockTrigger,
-      startsAt: Math.floor(stockTrigger * (deps.settings.policy === 'at-trigger' ? 1 : (deps.settings.activation ?? DEFAULT_ACTIVATION))),
+      startsAt: Math.floor(stockTrigger * (policyOfSettings(deps.settings) !== 'every-step' ? 1 : (deps.settings.activation ?? DEFAULT_ACTIVATION))),
     },
   }
 }
@@ -130,7 +136,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       minResultChars: deps.settings.minResultChars ?? DEFAULT_SHORTEN.minResultChars,
       share: deps.settings.share ?? DEFAULT_SHORTEN.share,
       maxPerPass: deps.settings.maxPerPass ?? DEFAULT_SHORTEN.maxPerPass,
-      minConfidence: deps.settings.minConfidence ?? DEFAULT_SHORTEN.minConfidence,
+      minConfidence: deps.settings.minConfidence ?? (policyOfSettings(deps.settings) === 'at-trigger' ? DEFAULT_TRIGGER_CONFIDENCE : DEFAULT_SHORTEN.minConfidence),
     }
     const outcome = await shortenPass({
       session: agent.session,
@@ -141,7 +147,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       options,
       declined: stats.declined,
       reasons: stats.reasons,
-      ...(deps.settings.policy === 'at-trigger' ? { trigger: deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS } } : {}),
+      ...(policyOfSettings(deps.settings) !== 'every-step' ? { trigger: { ...(deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS }), ...(policyOfSettings(deps.settings) === 'hybrid' ? { hybrid: true } : {}) } } : {}),
       ...(deps.observe ? { observe: deps.observe } : {}),
       ...(signal ? { signal } : {}),
     })

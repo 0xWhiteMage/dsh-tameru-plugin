@@ -249,7 +249,7 @@ export interface PassContext {
    * none is protected, the pay-back rule does not apply (the cut rewrites the same prompt from the same place), and an extract that
    * is longer than the cut would leave is declined, so the stock cut happens as it would have.
    */
-  trigger?: { thresholdChars: number; cutChars: number }
+  trigger?: { thresholdChars: number; cutChars: number; /** `hybrid`: the ordinary candidates and options, acting only at the trigger (see `policy: 'hybrid'`). */ hybrid?: boolean }
   /** A listener for what the pass decided and wrote, for measurements. It must not throw and changes nothing. */
   observe?: (event: PassEvent) => void
 }
@@ -276,7 +276,7 @@ export interface Applied {
 }
 
 export type PassOutcome =
-  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'surface_changed' | 'aborted' }
+  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'would_leave_cuts' | 'surface_changed' | 'aborted' }
   | { kind: 'applied'; applied: Applied[]; freedTokens: number; candidates: number }
 
 /**
@@ -285,7 +285,7 @@ export type PassOutcome =
  */
 export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   const { session, meter, client } = pass
-  const options: ShortenOptions = pass.trigger
+  const options: ShortenOptions = pass.trigger && !pass.trigger.hybrid
     ? { ...pass.options, protectRecent: 0, minResultChars: Math.max(pass.options.minResultChars, pass.trigger.thresholdChars + 1), share: 0 }
     : pass.options
   if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
@@ -293,7 +293,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (measurement.totalTokens < pass.activationTokens) return { kind: 'skipped', reason: 'below_activation' }
   if (compactionOpen(session)) return { kind: 'skipped', reason: 'compaction_open' }
   const entries = readSurface(session)
-  const candidates = findCandidates(session, entries, options, pass.trigger !== undefined)
+  const candidates = findCandidates(session, entries, options, pass.trigger !== undefined && !pass.trigger.hybrid)
     .sort((a, b) => b.text.length - a.text.length)
     .slice(0, options.maxPerPass)
   if (candidates.length === 0) return { kind: 'skipped', reason: 'no_candidates' }
@@ -362,8 +362,25 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   }
   if (answered === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
   if (planned.length === 0) return { kind: 'skipped', reason: unsure > 0 ? 'not_confident' : 'no_candidates' }
-  const batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)
+  let batch: Planned[]
+  if (pass.trigger?.hybrid) {
+    // what the stock pruner would cut is replaced without a pay-back test (the cut rewrites the prompt from there anyway); an item it would
+    // not cut keeps the share rule, except after the first replaced cut, whose rewrite it shares
+    const cuts = planned.filter(item => item.candidate.text.length > pass.trigger!.thresholdChars)
+    const others = planned.filter(item => item.candidate.text.length <= pass.trigger!.thresholdChars)
+    const firstCut = cuts.length ? Math.min(...cuts.map(item => item.candidate.seq)) : Infinity
+    batch = [...cuts, ...others.filter(item => item.candidate.seq > firstCut), ...chooseBatch(others.filter(item => item.candidate.seq < firstCut), tokensOf, session.surface.nodes, options.share)]
+  } else batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)
   if (batch.length === 0) return { kind: 'skipped', reason: 'not_worth_it' }
+  if (pass.trigger) {
+    // The stock pruner runs only while the prompt is still at the trigger. If these replacements bring it under while results it would
+    // cut stay in full, nothing cuts them and the prompt is back at the trigger a few steps later (a repeated cache rewrite): so write
+    // only if the pruner will still run, or nothing it would cut is left.
+    const inBatch = new Set(batch.map(item => item.candidate.seq))
+    const left = entries.some(({ seq, event, message }) => event.type === 'tool/result' && !inBatch.has(seq) && Array.from(textOnly(message) ?? '').length > pass.trigger!.thresholdChars)
+    const projected = measurement.totalTokens - batch.reduce((sum, item) => sum + (item.beforeTokens - item.afterTokens), 0)
+    if (left && projected < pass.activationTokens) return { kind: 'skipped', reason: 'would_leave_cuts' }
+  }
 
   // The engine took time. Write only if nothing was replaced or compacted meanwhile.
   if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
