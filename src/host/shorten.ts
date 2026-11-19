@@ -126,13 +126,14 @@ export function compactionOpen(session: SessionLike): boolean {
  * old enough. Everything after the last assistant message has not been read by the model yet and is never touched, and the
  * newest `protectRecent` results are kept as they are.
  */
-export function findCandidates(session: SessionLike, entries: Entry[], options: ShortenOptions): Candidate[] {
+export function findCandidates(session: SessionLike, entries: Entry[], options: ShortenOptions, includeUnread = false): Candidate[] {
   let lastAssistant = -1
   entries.forEach((entry, index) => {
     if (entry.message.role === 'assistant') lastAssistant = index
   })
-  // Results after the last assistant message are unread and never eligible; among the rest, the newest `protectRecent` are kept too.
-  const read = entries.map((entry, index) => ({ entry, index })).filter(({ entry, index }) => entry.event.type === 'tool/result' && index < lastAssistant)
+  // Results after the last assistant message are unread and never eligible (except where the Harness's own pruner is about to cut them
+  // anyway: `includeUnread`, trigger policy only); among the rest, the newest `protectRecent` are kept too.
+  const read = entries.map((entry, index) => ({ entry, index })).filter(({ entry, index }) => entry.event.type === 'tool/result' && (includeUnread || index < lastAssistant))
   const eligible = read.slice(0, Math.max(0, read.length - options.protectRecent))
   const found: Candidate[] = []
   for (const { entry, index } of eligible) {
@@ -242,7 +243,20 @@ export interface PassContext {
   declined?: Set<string>
   /** Counts of the engine's closed decision reasons, filled by the pass (for `/tameru` and for tests). */
   reasons?: Record<string, number>
+  /**
+   * Trigger policy (opt-in `policy: 'at-trigger'`): the pass runs only when the Harness's own pruner is about to cut, and an extract
+   * takes the place of the pruner's head/tail cut. Every result that cut would hit is eligible (unread ones too, the newest included),
+   * none is protected, the pay-back rule does not apply (the cut rewrites the same prompt from the same place), and an extract that
+   * is longer than the cut would leave is declined, so the stock cut happens as it would have.
+   */
+  trigger?: { thresholdChars: number; cutChars: number }
+  /** A listener for what the pass decided and wrote, for measurements. It must not throw and changes nothing. */
+  observe?: (event: PassEvent) => void
 }
+
+export type PassEvent =
+  | { kind: 'decision'; key: string; accept: boolean; reason: string; original: string; extract: string }
+  | { kind: 'applied'; key: string; origin: number }
 
 /**
  * Identifies one result: its place in the chat and its length, and nothing else. The question is NOT part of it: a result the engine
@@ -270,13 +284,16 @@ export type PassOutcome =
  * re-checked first, so a session that changed while the engine worked is left alone.
  */
 export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
-  const { session, meter, client, options } = pass
+  const { session, meter, client } = pass
+  const options: ShortenOptions = pass.trigger
+    ? { ...pass.options, protectRecent: 0, minResultChars: Math.max(pass.options.minResultChars, pass.trigger.thresholdChars + 1), share: 0 }
+    : pass.options
   if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
   const measurement = meter.measure(session, pass.header)
   if (measurement.totalTokens < pass.activationTokens) return { kind: 'skipped', reason: 'below_activation' }
   if (compactionOpen(session)) return { kind: 'skipped', reason: 'compaction_open' }
   const entries = readSurface(session)
-  const candidates = findCandidates(session, entries, options)
+  const candidates = findCandidates(session, entries, options, pass.trigger !== undefined)
     .sort((a, b) => b.text.length - a.text.length)
     .slice(0, options.maxPerPass)
   if (candidates.length === 0) return { kind: 'skipped', reason: 'no_candidates' }
@@ -319,12 +336,18 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       // the engine's decision; only a worker without `decide()` leaves it to the legacy rule, with the same policy
       const decision = result.decision ?? legacyDecision(result, candidate.text, policy)
       note(decision.reason)
+      pass.observe?.({ kind: 'decision', key, accept: decision.accept, reason: decision.reason, original: candidate.text, extract: result.text })
       if (!decision.accept) {
         if (decision.reason === 'low_confidence') unsure++
         pass.declined?.add(key)
         return
       }
       const newText = shortenedText(candidate.text, result.text, candidate.origin, result.dropped)
+      if (pass.trigger && newText.length > pass.trigger.cutChars) {
+        note('longer_than_stock_cut')
+        pass.declined?.add(key)
+        return
+      }
       const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
       const beforeTokens = tokensOf.get(candidate.seq) ?? meter.estimateMessage(candidate.message)
       const afterTokens = meter.estimateMessage(replacement)
@@ -359,6 +382,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       })
       const { origin } = item.candidate
       const written = session.append('tool/result', { ...event.data, message: item.replacement }, { surfaceOp: { op: 'replace', startSeq: seq, endSeq: seq }, sourceEventSeqs: origin === seq ? [seq] : [origin, seq] })
+      pass.observe?.({ kind: 'applied', key: itemKey(seq, item.candidate.text.length), origin })
       applied.push({ originalSeq: seq, replacementSeq: written.seq, toolName: item.candidate.toolName, beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })
     } catch {
       break // what was written is a complete pair; stop before anything half-written

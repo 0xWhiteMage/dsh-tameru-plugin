@@ -8,6 +8,10 @@
 export const STOCK_THRESHOLD_RATIO = 0.8
 export const STOCK_HEADROOM_TOKENS = 65_536
 
+/** The stock tool-result pruner's defaults (`dsh-compaction-tool-result-pruner`): above 8,192 characters keep 4,096, a marker and 1,024. */
+export const STOCK_PRUNE_THRESHOLD_CHARS = 8192
+export const STOCK_PRUNE_CUT_CHARS = 4096 + 1024 + '\n\n[... tool result middle pruned ...]\n\n'.length
+
 export interface StockInput {
   contextWindow: number
   /** Output tokens one request reserves (the request's own cap, else the model's default, else 0). */

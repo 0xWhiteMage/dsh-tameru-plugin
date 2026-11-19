@@ -2,6 +2,8 @@
 
 **Short answer.** With the settings it ships, Tameru is cost-neutral on these simulated sessions (+0.0%) because it almost never acts. Lowering its confidence gate makes it act, and then sessions cost **about 3% more**, in exchange for keeping **about 0.7 more of 5 needed facts** in context. No setting tried made a session cheaper. Do not read anything here as a claim that Tameru saves a Harness user money. The per-output result is in [MEASURED-VS-STOCK.md](MEASURED-VS-STOCK.md).
 
+> **Superseded for plugin 0.2.0 (engine 1.10.0) by [REPLAY-1.10.0.md](REPLAY-1.10.0.md).** `scripts/replay.ts` has since been rewritten (shared row format, cluster bootstrap, new scenario families); this page and `docs/results/replay-full.*` record the earlier run with engine 1.9.0 and are kept as they were.
+
 ## What was run
 
 `scripts/replay.ts` (rows and tables: `docs/results/replay-full.json`, `replay-full.md`). 40 simulated sessions of 60 steps (160 runs in all, each session run as stock and under three Tameru settings): 10 seeds × 2 context windows (128K, 200K) × 2 query styles, each run once as stock and under three Tameru settings on identical tool outputs (6,000 to 30,000 characters each, mixed log, compiler and test-runner style, with 5 needed configuration values buried one per output among distractors and stale values).

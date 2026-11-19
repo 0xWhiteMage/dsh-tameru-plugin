@@ -1,0 +1,1 @@
+ac9e77dd723d3755b8238c4a1e60d6947e798ddcc0ee489e9d2c10f2b5ca1489  48 fresh holdout scenarios in 8 families (sha256 over "id:sha256(canonical scenario)" lines, sorted by id; scripts/replay/holdout.ts)

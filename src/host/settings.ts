@@ -15,6 +15,7 @@ export function normalizeSettings(raw: unknown): TameruSettings {
   const config = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
   const out: TameruSettings = {}
   if (typeof config.shorten === 'boolean') out.shorten = config.shorten
+  if (config.policy === 'every-step' || config.policy === 'at-trigger') out.policy = config.policy
   const activation = number(config.activation, 0.3, 0.95)
   if (activation !== undefined) out.activation = activation
   const share = number(config.share, 0.1, 0.9)

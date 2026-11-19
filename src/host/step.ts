@@ -1,14 +1,20 @@
 import type { EngineClient } from './engine-client.ts'
 import { drainPending, type PendingOp } from './commands.ts'
 import type { TrailState } from './trail.ts'
-import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
-import { compactionIsManagedElsewhere, policyFor, stockThreshold, type BackendLike } from './stock.ts'
+import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassEvent, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
+import { STOCK_PRUNE_CUT_CHARS, STOCK_PRUNE_THRESHOLD_CHARS, compactionIsManagedElsewhere, policyFor, stockThreshold, type BackendLike } from './stock.ts'
 
 export interface TameruSettings extends Partial<ShortenOptions> {
   /** Shorten tool results at step boundaries. Default true. */
   shorten?: boolean
   /** Start acting at this fraction of the Harness's own compaction trigger. Default 0.75. */
   activation?: number
+  /**
+   * When to act. `every-step` (default, the shipped behaviour): at every step boundary once the chat is `activation` of the way to the
+   * Harness's trigger, on old results, with the confidence gate. `at-trigger` (opt-in, measured in docs/REPLAY-1.10.0.md): only when
+   * the Harness's own pruner is about to cut, in place of its head/tail cut.
+   */
+  policy?: 'every-step' | 'at-trigger'
 }
 
 export const DEFAULT_ACTIVATION = 0.75
@@ -45,6 +51,10 @@ export interface StepDeps {
   backendFor: (agent: StepAgent) => BackendLike | undefined
   settings: TameruSettings
   stats: WeakMap<object, ChatStats>
+  /** The stock pruner's cut, for `policy: 'at-trigger'` (default: the Harness's own defaults). */
+  stockPruner?: { thresholdChars: number; cutChars: number }
+  /** A listener for what each pass decided and wrote (measurements only). */
+  observe?: (event: PassEvent) => void
   log?: { info(message: string): unknown; warn(message: string): unknown }
 }
 
@@ -90,7 +100,7 @@ export async function pressureOf(deps: StepDeps, agent: StepAgent, signal?: Abor
       tokens: meter.measure(agent.session, header).totalTokens,
       contextWindow,
       stockTrigger,
-      startsAt: Math.floor(stockTrigger * (deps.settings.activation ?? DEFAULT_ACTIVATION)),
+      startsAt: Math.floor(stockTrigger * (deps.settings.policy === 'at-trigger' ? 1 : (deps.settings.activation ?? DEFAULT_ACTIVATION))),
     },
   }
 }
@@ -131,6 +141,8 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       options,
       declined: stats.declined,
       reasons: stats.reasons,
+      ...(deps.settings.policy === 'at-trigger' ? { trigger: deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS } } : {}),
+      ...(deps.observe ? { observe: deps.observe } : {}),
       ...(signal ? { signal } : {}),
     })
     stats.passes++

@@ -57,6 +57,7 @@ In the Harness's own dark theme. The bar closed; the card on results; a result o
 | `protectRecent` | `4` | The newest read tool results always left as they are. |
 | `minResultChars` | `6000` | Results shorter than this are never touched. |
 | `maxPerPass` | `24` | Most results shortened at one step boundary. |
+| `policy` | `every-step` | When to act. `every-step` is the shipped behaviour. `at-trigger` (profile setting only, experimental, measured in [docs/REPLAY-1.10.0.md](docs/REPLAY-1.10.0.md), replay only) acts only where the Harness's own pruner is about to cut and puts the extract in place of its head/tail cut. |
 
 ## How it stays out of the way
 
