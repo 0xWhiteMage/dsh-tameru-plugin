@@ -10,7 +10,8 @@ export const DRAWS = 2000
 export interface Row {
   bench: 'replay'
   engine: string
-  split: 'dev' | 'validation' | 'holdout'
+  /** `burned-r1`: the round-1 holdout, burned, used as development data in round 2 (never confirmation). */
+  split: 'dev' | 'validation' | 'holdout' | 'burned-r1'
   scenario: string
   family: string
   cluster: string
@@ -48,6 +49,14 @@ export interface Row {
   pass_reasons?: Record<string, number>
   /** Optional: one record per act and per decline (consecutive repeats of the same outcome for the same result are folded). */
   records?: ReplayRecord[]
+  /** Optional (P1b, round 2): what post-hoc pricing needs (scripts/replay/pricing.ts). Per model request [cached shared prefix tokens,
+   *  whole prompt tokens, idle seconds since the previous request]; per compaction request [step, context tokens re-read]. */
+  requests?: Array<[number, number, number]>
+  summary_requests?: Array<[number, number]>
+  summary_output_tokens?: number
+  /** Steps at which the prompt was at or above the stock trigger before anything acted, and the largest prompt sent. */
+  trigger_crossings?: number
+  max_prompt_tokens?: number
 }
 
 /** What kind of moment an act or decline happened at. `forecast` and `cold` are reserved (not emitted yet). */
@@ -181,6 +190,12 @@ export const metricByName = (name: string): Metric => {
   const m = METRICS.find(x => x.name === name)
   if (!m) throw new Error(`unknown metric ${name}`)
   return m
+}
+
+/** The paired difference B - A on any statistic of the pairs, with its cluster interval. */
+export function pairedStat(aRows: Row[], bRows: Row[], stat: (pairs: Pair[]) => number | undefined, draws = DRAWS, seed = SEED): Interval | undefined {
+  const pairs = paired(aRows, bRows)
+  return clusterBootstrap(pairs.map(p => ({ cluster: p.b.cluster, value: p })), stat, draws, seed)
 }
 
 /** The paired difference B - A on one metric, with its cluster interval. */

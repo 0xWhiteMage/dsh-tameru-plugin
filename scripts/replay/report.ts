@@ -69,7 +69,7 @@ export interface Selection {
 }
 
 export function select(rows: Row[]): Selection {
-  const family = (policy: string): string[] => ARMS.filter(a => a.settings.policy === policy).map(a => a.name)
+  const family = (policy: string): string[] => ARMS.filter(a => a.settings.policy === policy && !a.reference && !a.aliasOf).map(a => a.name)
   const gArms = family('every-step')
   const tArms = family('at-trigger')
   const hArms = family('hybrid')
@@ -81,7 +81,7 @@ export function select(rows: Row[]): Selection {
   const chosenH = bestOf(devH)?.arm
   const validation = [chosenG, chosenT, chosenH].filter((x): x is string => x !== undefined).map(a => verdict(rows, a, 'validation'))
   const best = bestOf(validation)
-  const validationAll = ARMS.filter(a => a.engine === '1.10.0').map(a => verdict(rows, a.name, 'validation'))
+  const validationAll = ARMS.filter(a => a.engine === '1.10.0' && !a.aliasOf).map(a => verdict(rows, a.name, 'validation'))
   return { settingsTried: SETTINGS_TRIED, devG, devT, devH, chosenG, chosenT, chosenH, validation, validationAll, winner: best?.arm, improves: best?.facts !== undefined && best.facts.mean > 0 }
 }
 
@@ -109,7 +109,7 @@ export function table(rows: Row[], split: string): string {
 export function windowTable(rows: Row[], split: string): string {
   const out = ['| arm | window | cost vs stock, write 1.0 | cost vs stock, write 1.25 | sign flips |', '|---|--:|--|--|--|']
   for (const a of ARMS.filter(x => x.name !== 'stock')) {
-    for (const window of [128_000, 200_000, undefined]) {
+    for (const window of [128_000, 200_000, 252_000, undefined]) {
       const mine = armRows(rows, a.name, split, window)
       const stock = armRows(rows, 'stock', split, window)
       if (!mine.length) continue

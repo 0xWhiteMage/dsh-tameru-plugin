@@ -196,3 +196,13 @@ export function registeredHash(): string | undefined {
     return undefined
   }
 }
+
+/**
+ * The round-1 holdout as DEVELOPMENT DATA for round 2 (rows labelled `burned-r1`). Allowed only because its hash is listed as burned:
+ * this never logs a look, never touches `holdout_looks.json` and is not the look machinery. Throws when the set is not burned.
+ */
+export function loadBurnedAsDev(file = BURNED_FILE): Scenario[] {
+  const { hash } = holdoutHash()
+  if (!burnedHashes(file).has(hash)) throw new Error('the round-1 holdout is not listed as burned: it may not be used as development data')
+  return FAMILIES.flatMap(spec => Array.from({ length: PER_FAMILY }, (_, i) => generate(spec, i)))
+}

@@ -4,6 +4,9 @@
 //                          [--baseline-vendor DIR]   (DIR holds run_worker.py and tameru/ of the 1.9.0-era plugin: git archive 922d171 vendor)
 //   node scripts/replay.ts --report rows.jsonl [more.jsonl] [--selection out.json]
 //   node scripts/replay.ts --selfcheck rows.jsonl
+//   node scripts/replay.ts --reprice rows.jsonl [more.jsonl] [--json out.json]   # every price profile, post hoc (scripts/replay/pricing.ts)
+//   --split dev+validation+burned-r1 adds the burned round-1 holdout as development data (rows labelled burned-r1; no look is logged)
+//   Every non-reference arm must be in the settings-tried ledger (REPLAY_LEDGER, else docs/results/settings-tried-ledger.json).
 //   node scripts/replay.ts --holdout --out rows.jsonl        # the one logged look; needs docs/FROZEN-1.10.0-SETTINGS.md and a matching hash
 //
 // Rows are in the shared jsonl format (see scripts/replay/stats.ts); differences are paired and use a seeded cluster bootstrap by
@@ -14,7 +17,9 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EngineClient } from '../src/host/engine-client.ts'
 import { nodeWorkerSpawn } from '../src/host/process.ts'
+import { refuseUnledgered } from './replay/ledger.ts'
 import { fullReport } from './replay/report.ts'
+import { repriceReport } from './replay/reprice.ts'
 import { ARMS, WINDOWS, runArm, type ArmSpec } from './replay/run.ts'
 import { scenariosFor, sha256, splitOf, type Scenario } from './replay/scenarios.ts'
 import { fromJsonl, selfCheck, toJsonl, type Row } from './replay/stats.ts'
@@ -27,7 +32,7 @@ const option = (name: string): string | undefined => {
   const i = argv.indexOf(`--${name}`)
   return i >= 0 ? argv[i + 1] : undefined
 }
-const files = (): string[] => argv.slice(argv.indexOf('--report') + 1).filter(a => !a.startsWith('--') && a.endsWith('.jsonl'))
+const files = (after = '--report'): string[] => argv.slice(argv.indexOf(after) + 1).filter(a => !a.startsWith('--') && a.endsWith('.jsonl'))
 
 const FROZEN_FILE = join(root, 'docs', 'FROZEN-1.10.0-SETTINGS.md')
 
@@ -61,6 +66,7 @@ async function run(): Promise<void> {
   const isHoldout = flag('holdout')
   let scenarios: Scenario[]
   let arms: ArmSpec[]
+  const burned = new Set<string>()
   if (isHoldout) {
     const h = await holdoutScenarios()
     scenarios = h.scenarios
@@ -68,9 +74,19 @@ async function run(): Promise<void> {
   } else {
     const which = option('split') ?? 'dev+validation'
     if (which.includes('holdout')) throw new Error('the holdout is read only with --holdout (one logged look)')
-    scenarios = [...(which.includes('dev') ? scenariosFor('dev') : []), ...(which.includes('validation') ? scenariosFor('validation') : [])]
+    const parts = which.split('+')
+    scenarios = [...(parts.includes('dev') ? scenariosFor('dev') : []), ...(parts.includes('validation') ? scenariosFor('validation') : [])]
+    if (parts.includes('burned-r1')) {
+      const { loadBurnedAsDev } = await import('./replay/holdout.ts')
+      for (const s of loadBurnedAsDev()) {
+        burned.add(s.id)
+        scenarios.push(s)
+      }
+    }
     const wanted = option('arms')?.split(',')
     arms = wanted ? ARMS.filter(a => wanted.includes(a.name)) : ARMS
+    if (wanted && arms.length !== wanted.length) throw new Error(`unknown arm in --arms: ${wanted.filter(w => !ARMS.some(a => a.name === w)).join(', ')}`)
+    refuseUnledgered(arms)
   }
   const [shard, shards] = (option('shard') ?? '1/1').split('/').map(Number) as [number, number]
   scenarios = scenarios.filter((_, i) => i % shards === shard - 1)
@@ -92,7 +108,7 @@ async function run(): Promise<void> {
     for (const sc of scenarios) {
       for (const window of WINDOWS) {
         for (const arm of arms) {
-          rows.push(await runArm(arm, sc, window, clientFor(arm.engine), isHoldout ? 'holdout' : splitOf(sc.id), arm.engine === 'none' ? 'none' : arm.engine))
+          rows.push(await runArm(arm, sc, window, clientFor(arm.engine), isHoldout ? 'holdout' : burned.has(sc.id) ? 'burned-r1' : splitOf(sc.id), arm.engine === 'none' ? 'none' : arm.engine))
           process.stderr.write('.')
         }
       }
@@ -111,6 +127,16 @@ async function main(): Promise<void> {
     const check = selfCheck(rows)
     console.log(check.ok ? 'arm-vs-itself is exactly 0 on every metric' : `FAILED:\n${check.failures.join('\n')}`)
     process.exitCode = check.ok ? 0 : 1
+    return
+  }
+  if (flag('reprice')) {
+    const rows = files('--reprice').flatMap(f => fromJsonl(readFileSync(resolve(f), 'utf8')))
+    const { text, json } = repriceReport(rows)
+    console.log(text)
+    const out = option('json')
+    if (out) writeFileSync(out, `${JSON.stringify(json, null, 2)}
+`)
+    process.exitCode = json.selfCheckOk ? 0 : 1
     return
   }
   if (flag('report')) {
