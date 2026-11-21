@@ -57,6 +57,15 @@ export interface Row {
   /** Steps at which the prompt was at or above the stock trigger before anything acted, and the largest prompt sent. */
   trigger_crossings?: number
   max_prompt_tokens?: number
+  /** Optional (P2b, session corpus rows only): the corpus language (en / zh / mixed), the task style, the real-output share of the
+   *  slice, every needed fact's presence at the end (line check and value-only), each question's held flag, and the run's wall time
+   *  in ms (not reproducible; no comparison reads it). */
+  lang?: string
+  style?: string
+  real_share?: number
+  corpus_facts?: Array<{ id: string; kind: string; position: string; line_present: boolean; value_present: boolean }>
+  questions_held?: Array<{ id: string; stratum: string; held: boolean }>
+  run_ms?: number
 }
 
 /** What kind of moment an act or decline happened at. `forecast` and `cold` are reserved (not emitted yet). */

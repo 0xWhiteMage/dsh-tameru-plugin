@@ -4,6 +4,7 @@
 // no randomness outside `rng`. The fresh holdout lives in `holdout.ts` and is not importable from here.
 import { createHash } from 'node:crypto'
 import { rng } from './stats.ts'
+import type { CorpusInfo } from './corpus.ts'
 
 export interface Step {
   tool: string
@@ -21,6 +22,8 @@ export interface Scenario {
   steps: Step[]
   /** Values the final answer needs. */
   needed: string[]
+  /** Set for a session-corpus scenario (scripts/replay/corpus.ts): its facts are judged by the corpus's line check, not by `needed`. */
+  corpus?: CorpusInfo
 }
 
 export type Rand = () => number

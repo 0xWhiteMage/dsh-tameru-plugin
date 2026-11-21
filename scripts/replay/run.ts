@@ -18,6 +18,7 @@ import { idleGaps } from './pricing.ts'
 import { rng } from './stats.ts'
 import type { ReplayEventType, ReplayRecord, Row } from './stats.ts'
 import type { Scenario } from './scenarios.ts'
+import { factPresence, promptText, searchable } from './corpus.ts'
 
 export const OUTPUT_CAP = 8000
 const OVERHEAD_TOKENS = 4000 // system prompt and tool schemas, identical in both arms and always cached after the first request
@@ -25,6 +26,8 @@ const SUMMARY_TOKENS = 2000
 const SUMMARY_OUTPUT_WEIGHT = 4
 /** 252K is the round-2 gated window (stock trigger 178,464 tokens); 200K is kept for comparison with round 1. */
 export const WINDOWS = [128_000, 200_000, 252_000]
+/** The round-2 session corpus windows (scripts/replay/corpus.ts): 128K and 252K gated, 500K gated for DeepSeek, 1M report-only. */
+export { CORPUS_WINDOWS } from './corpus.ts'
 export const SUMMARY_OUTPUT_TOKENS = SUMMARY_TOKENS
 
 export interface ArmSpec {
@@ -106,8 +109,14 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
   const lastRecord = new Map<string, ReplayRecord>()
   const seen = new Map<string, { original: string; extract: string }>()
   const passReasons: Record<string, number> = {}
+  const corpusFacts = sc.corpus?.facts
   const factsOf = (original: string, extract: string): ReplayRecord['facts'] =>
-    sc.needed.flatMap((v, fact) => {
+    corpusFacts
+      ? corpusFacts.flatMap((f, fact) => {
+          if (!original.includes(f.line)) return []
+          return [{ fact, ...factPresence(f, searchable(extract)) }]
+        })
+      : sc.needed.flatMap((v, fact) => {
       if (!original.includes(v)) return []
       const line = original.split('\n').find(l => l.includes(v))!.trim()
       return [{ fact, value_present: extract.includes(v), line_present: extract.includes(line) }]
@@ -133,7 +142,15 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
       if (!e.accept) record(e.key, e.event, 'decline', e.reason, 'engine')
       if (decided.has(e.key)) return
       decided.set(e.key, e.accept)
-      if (e.accept) {
+      if (e.accept && corpusFacts) {
+        let s: ReturnType<typeof searchable> | undefined
+        for (const f of corpusFacts) {
+          if (!e.original.includes(f.line)) continue
+          possible++
+          s ??= searchable(e.extract)
+          if (factPresence(f, s).line_present) kept++
+        }
+      } else if (e.accept) {
         for (const v of sc.needed) {
           if (!e.original.includes(v)) continue
           possible++
@@ -230,8 +247,25 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
     previous = entries
     previousAll = all
   }
-  const finalText = w.session.deriveMessages().map((m: any) => JSON.stringify(m.content)).join('\n')
-  const factsHeld = sc.needed.filter(v => finalText.includes(v)).length
+  const finalMessages = w.session.deriveMessages()
+  let factsHeld: number
+  let corpusFields: Partial<Row> = {}
+  if (sc.corpus) {
+    // the session corpus's fact check (ADAPTERS.md): the fact line, or one line with key and value; real facts by their gold line
+    const s = searchable(promptText(finalMessages))
+    const presence = new Map(sc.corpus.facts.map(f => [f.id, factPresence(f, s)]))
+    factsHeld = [...presence.values()].filter(p => p.line_present).length
+    corpusFields = {
+      lang: sc.corpus.language,
+      style: sc.style,
+      real_share: sc.corpus.chars ? sc.corpus.real_chars / sc.corpus.chars : 0,
+      corpus_facts: sc.corpus.facts.map(f => ({ id: f.id, kind: f.kind, position: f.position, ...presence.get(f.id)! })),
+      questions_held: sc.corpus.questions.map(q => ({ id: q.id, stratum: q.stratum, held: q.fact_ids.every(id => presence.get(id)!.line_present) })),
+    }
+  } else {
+    const finalText = finalMessages.map((m: any) => JSON.stringify(m.content)).join('\n')
+    factsHeld = sc.needed.filter(v => finalText.includes(v)).length
+  }
   await w.ctx.fiber.dispose()
   const cost = (read: number, write: number): number =>
     requests.reduce((s, [cached, all]) => s + read * cached + write * (all - cached), 0) + summaries.reduce((s, [, replay]) => s + read * replay + SUMMARY_TOKENS * SUMMARY_OUTPUT_WEIGHT, 0)
@@ -270,5 +304,6 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
     summary_output_tokens: SUMMARY_TOKENS,
     trigger_crossings: crossings,
     max_prompt_tokens: requests.reduce((m, [, all]) => Math.max(m, all), 0),
+    ...corpusFields,
   }
 }

@@ -8,6 +8,11 @@
 //   --split dev+validation+burned-r1 adds the burned round-1 holdout as development data (rows labelled burned-r1; no look is logged)
 //   Every non-reference arm must be in the settings-tried ledger (REPLAY_LEDGER, else docs/results/settings-tried-ledger.json).
 //   node scripts/replay.ts --holdout --out rows.jsonl        # the one logged look; needs docs/FROZEN-1.10.0-SETTINGS.md and a matching hash
+//   node scripts/replay.ts --corpus DIR --split dev+validation --windows 128000,252000 --arms ... --out rows.jsonl [--shard k/n]
+//                          [--per-family K --subsample-seed S] [--ids a,b] [--no-records]
+//       the round-2 session corpus (scripts/replay/corpus.ts; DIR = the engine build CLI's --out, e.g. dev/session_corpus); dev and
+//       validation only, the holdout is refused. `--per-family K` runs a deterministic stratified subsample (K per family, logged in
+//       OUT.subsample.json). Reports: node scripts/replay.ts --corpus-report rows.jsonl [...] [--json out.json]
 //
 // Rows are in the shared jsonl format (see scripts/replay/stats.ts); differences are paired and use a seeded cluster bootstrap by
 // scenario, with the number of clusters printed next to every interval. See scripts/replay/run.ts for what is real and what is simulated.
@@ -22,6 +27,7 @@ import { fullReport } from './replay/report.ts'
 import { repriceReport } from './replay/reprice.ts'
 import { ARMS, WINDOWS, runArm, type ArmSpec } from './replay/run.ts'
 import { scenariosFor, sha256, splitOf, type Scenario } from './replay/scenarios.ts'
+import { CORPUS_WINDOWS, loadScenarioWindows, readIndex, stratifiedSubsample, type CorpusSplit, type IndexEntry } from './replay/corpus.ts'
 import { fromJsonl, selfCheck, toJsonl, type Row } from './replay/stats.ts'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -60,9 +66,80 @@ async function holdoutScenarios(): Promise<{ scenarios: Scenario[]; arm: ArmSpec
   return { scenarios: holdout.loadHoldout(holdout.LOOK_TOKEN), arm, settingHash }
 }
 
+function engineClients(baselineVendor: string | undefined): { clientFor: (engine: ArmSpec['engine']) => EngineClient | undefined; dispose: () => Promise<void> } {
+  const clients = new Map<string, EngineClient>()
+  const clientFor = (engine: ArmSpec['engine']): EngineClient | undefined => {
+    if (engine === 'none') return undefined
+    let c = clients.get(engine)
+    if (!c) {
+      const dir = engine === '1.9.0' ? baselineVendor : join(root, 'vendor')
+      if (!dir) throw new Error('--baseline-vendor DIR is needed for the 1.9.0 arm (git archive 922d171 vendor)')
+      c = new EngineClient(nodeWorkerSpawn(python, join(dir, 'run_worker.py'), root), { timeoutMs: 60_000 })
+      clients.set(engine, c)
+    }
+    return c
+  }
+  return { clientFor, dispose: async () => { for (const c of clients.values()) await c.dispose() } }
+}
+
+/** The round-2 session corpus (dev and validation only): each scenario file is read once and sliced at every window. */
+async function runCorpus(dir: string, out: string): Promise<void> {
+  const which = option('split') ?? 'dev+validation'
+  if (which.includes('holdout') || flag('holdout')) throw new Error('the session corpus holdout is sealed: this runner never reads it')
+  const splits = which.split('+') as CorpusSplit[]
+  let entries: Array<IndexEntry & { split: CorpusSplit }> = splits.flatMap(split => readIndex(dir, split).map(e => ({ ...e, split })))
+  const windows = (option('windows') ?? CORPUS_WINDOWS.join(',')).split(',').map(Number)
+  for (const w of windows) if (!(CORPUS_WINDOWS as readonly number[]).includes(w)) throw new Error(`window ${w} is not a corpus replay window (${CORPUS_WINDOWS.join(', ')})`)
+  const wanted = option('arms')?.split(',')
+  if (!wanted) throw new Error('--arms is required with --corpus')
+  const arms = ARMS.filter(a => wanted.includes(a.name))
+  if (arms.length !== wanted.length) throw new Error(`unknown arm in --arms: ${wanted.filter(w => !ARMS.some(a => a.name === w)).join(', ')}`)
+  refuseUnledgered(arms)
+  const perFamily = option('per-family')
+  if (perFamily) {
+    const seed = option('subsample-seed')
+    if (!seed) throw new Error('--per-family needs --subsample-seed (logged)')
+    entries = stratifiedSubsample(entries, Number(perFamily), seed)
+    writeFileSync(`${out}.subsample.json`, `${JSON.stringify({ rule: 'within every family, ids ordered by sha256(seed + ":" + id), first K taken', per_family: Number(perFamily), seed, splits, windows, ids: entries.map(e => e.id) }, null, 1)}
+`)
+  }
+  const ids = option('ids')?.split(',')
+  if (ids) entries = entries.filter(e => ids.includes(e.id))
+  const [shard, shards] = (option('shard') ?? '1/1').split('/').map(Number) as [number, number]
+  entries = entries.filter((_, i) => i % shards === shard - 1)
+  const keepRecords = !flag('no-records')
+  const { clientFor, dispose } = engineClients(option('baseline-vendor') ?? process.env.REPLAY_BASELINE_VENDOR)
+  const lines: string[] = []
+  try {
+    for (const e of entries) {
+      const sliced = loadScenarioWindows(dir, e.split, e, windows)
+      for (const sc of sliced) {
+        for (const arm of arms) {
+          const started = performance.now()
+          const row = await runArm(arm, sc, sc.corpus!.window, clientFor(arm.engine), e.split, arm.engine === 'none' ? 'none' : arm.engine)
+          row.run_ms = Math.round(performance.now() - started)
+          if (!keepRecords) delete row.records
+          lines.push(JSON.stringify(row))
+          process.stderr.write('.')
+        }
+      }
+      writeFileSync(out, lines.length ? `${lines.join('\n')}
+` : '') // after every scenario, so a stopped run keeps its rows
+    }
+  } finally {
+    await dispose()
+  }
+  process.stderr.write('\n')
+  writeFileSync(out, lines.length ? `${lines.join('\n')}
+` : '')
+  console.log(`wrote ${lines.length} rows to ${out}`)
+}
+
 async function run(): Promise<void> {
   const out = option('out')
   if (!out) throw new Error('--out FILE.jsonl is required')
+  const corpusDir = option('corpus')
+  if (corpusDir) return runCorpus(corpusDir, out)
   const isHoldout = flag('holdout')
   let scenarios: Scenario[]
   let arms: ArmSpec[]
@@ -135,6 +212,17 @@ async function main(): Promise<void> {
     console.log(text)
     const out = option('json')
     if (out) writeFileSync(out, `${JSON.stringify(json, null, 2)}
+`)
+    process.exitCode = json.selfCheckOk ? 0 : 1
+    return
+  }
+  if (flag('corpus-report')) {
+    const { corpusReport } = await import('./replay/corpus-report.ts')
+    const rows = files('--corpus-report').flatMap(f => fromJsonl(readFileSync(resolve(f), 'utf8')))
+    const { text, json } = corpusReport(rows)
+    console.log(text)
+    const out = option('json')
+    if (out) writeFileSync(out, `${JSON.stringify(json, null, 1)}
 `)
     process.exitCode = json.selfCheckOk ? 0 : 1
     return
