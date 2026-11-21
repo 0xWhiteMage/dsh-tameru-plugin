@@ -54,7 +54,7 @@ test('the label the panel shows equals the host\'s resolved strength, for every 
 test('unset is the incumbent on stable; legacy gates show their strength or Custom and are never rewritten', () => {
   assert.deepEqual(
     (({ engineVersion, presetId, ...rest }) => rest)(resolveEffective({})),
-    { channel: 'stable', policy: 'every-step', shorten: true, strength: 'normal', minConfidence: 0.7, activation: 0.75, share: 0.35, protectRecent: 4, lambdaMultiplier: 1 },
+    { channel: 'stable', policy: 'every-step', shorten: true, strength: 'normal', minConfidence: 0.7, activation: 0.75, share: 0.35, protectRecent: 4, lambdaMultiplier: 1, priceProfile: 'deepseek-v4-pro', evStrength: 'normal' },
   )
   assert.equal(resolveEffective({}).presetId, 'dsh-tool-result@1')
   const legacy: Record<number, string> = { 0.5: 'custom', 0.55: 'more', 0.7: 'normal', 0.85: 'less', 0.9: 'custom' }
@@ -65,6 +65,26 @@ test('unset is the incumbent on stable; legacy gates show their strength or Cust
   }
   const beta = resolveEffective({ channel: 'beta' })
   assert.deepEqual([beta.policy, beta.minConfidence, beta.activation, beta.share, beta.protectRecent, beta.strength], ['at-trigger', 0, 1, 0, 0, 'custom'])
+})
+
+test('plan: beta-only, the stock trigger and no protection, the strength becomes the EV strength', () => {
+  const stable = resolveEffective({ policy: 'plan' })
+  assert.equal(stable.policy, 'every-step', 'stable always runs the incumbent')
+  const strengths: Array<[number, 'less' | 'normal' | 'more']> = [[0.85, 'less'], [0.7, 'normal'], [0.55, 'more']]
+  for (const [gate, ev] of strengths) {
+    const e = resolveEffective({ channel: 'beta', policy: 'plan', minConfidence: gate })
+    assert.equal(e.policy, 'plan')
+    assert.equal(e.evStrength, ev, `gate ${gate} picks EV strength ${ev}`)
+    assert.equal(e.activation, 1)
+    assert.equal(e.share, 0)
+    assert.equal(e.protectRecent, 0)
+    assert.equal(e.strength, 'custom', 'a non-every-step policy shows Custom')
+    assert.equal(e.priceProfile, 'deepseek-v4-pro')
+  }
+  const custom = resolveEffective({ channel: 'beta', policy: 'plan', minConfidence: 0.9 })
+  assert.equal(custom.evStrength, 'normal', 'a gate none of the strengths set falls back to normal')
+  const priced = resolveEffective({ channel: 'beta', policy: 'plan', priceProfile: 'deepseek-flash' })
+  assert.equal(priced.priceProfile, 'deepseek-flash')
 })
 
 test('one settings table: defaults, keys, validation and the README table all come from it', () => {

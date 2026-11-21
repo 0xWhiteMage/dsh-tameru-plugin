@@ -75,14 +75,8 @@ def _call(value, name: str) -> dict:
     return {"name": call_name, "arguments": arguments}
 
 
-def query_from_parts(parts) -> str:
-    """The one query for a tool result, from the pieces the host holds. Raises ``RequestError``.
-
-    ``parts``: ``call`` (the tool call that produced the result), ``after`` (``text`` and ``calls`` of the assistant turn that
-    followed), ``last_user`` and ``first_user`` (real user messages only: the host leaves scaffolding out). The engine's
-    ``build_query`` puts the tool name and its arguments before any user text, so they survive its length cap."""
-    from tameru.transcript import build_query
-
+def _parts_to_messages(parts) -> tuple:
+    """``(messages, index)`` for the tool result described by ``parts``. Raises ``RequestError``."""
     if not isinstance(parts, dict) or set(parts) - {"call", "after", "last_user", "first_user"}:
         raise RequestError("bad_query_parts")
     first = _text(parts.get("first_user"), "query_parts")
@@ -109,7 +103,28 @@ def query_from_parts(parts) -> str:
             "content": _text(after.get("text"), "query_parts"),
             "tool_calls": [_call(item, "query_parts") for item in calls],
         })
+    return messages, index
+
+
+def query_from_parts(parts) -> str:
+    """The one query for a tool result, from the pieces the host holds. Raises ``RequestError``.
+
+    ``parts``: ``call`` (the tool call that produced the result), ``after`` (``text`` and ``calls`` of the assistant turn that
+    followed), ``last_user`` and ``first_user`` (real user messages only: the host leaves scaffolding out). The engine's
+    ``build_query`` puts the tool name and its arguments before any user text, so they survive its length cap."""
+    from tameru.transcript import build_query
+
+    messages, index = _parts_to_messages(parts)
     return build_query(messages, index, max_chars=QUERY_CHARS)
+
+
+def selector_query_from_parts(parts) -> str:
+    """The selector query for the same ``parts``: ``build_query`` without the producing call's name and
+    arguments, so the destructive selector pre-filters gate on the user's question instead."""
+    from tameru.transcript import build_selector_query
+
+    messages, index = _parts_to_messages(parts)
+    return build_selector_query(messages, index, max_chars=QUERY_CHARS)
 
 
 def _policy(value):
@@ -162,6 +177,10 @@ def _compress(request: dict) -> dict:
         options = protocol.validate_request(request)
     except protocol.ProtocolError as error:
         raise RequestError(error.code) from None
+    if options.pop("derive_selector_query", False):
+        if parts is None:
+            raise RequestError("derive_needs_parts")
+        options["selector_query"] = selector_query_from_parts(parts)
     sanitized = protocol.request_was_sanitized(request)
     result = compress_context(**options)
     reply = protocol.result_to_dict(result, sanitized=sanitized, preset=request.get("preset"))
@@ -174,6 +193,18 @@ def _compress(request: dict) -> dict:
         decision = decide(result, policy, original=options["context"], sanitized=sanitized)
         reply["decision"] = {"accept": bool(decision.accept), "reason": str(decision.reason), "basis": str(decision.basis or "")[:80]}
     return reply
+
+
+def _plan(request: dict) -> dict:
+    """A protocol-3 ``plan`` request: validate the body, run the pure planner, reply with the dict form."""
+    from tameru import protocol
+    from tameru.plan import plan
+
+    try:
+        inp = protocol.validate_plan_request(request)
+    except protocol.ProtocolError as error:
+        raise RequestError(error.code) from None
+    return protocol.plan_to_dict(plan(inp))
 
 
 def _version() -> dict:
@@ -200,6 +231,8 @@ def handle(request: object) -> tuple[object, dict, bool]:
         op = request.get("op")
         if op == "compress":
             return ident, {"id": ident, "ok": True, "result": _compress(request)}, False
+        if op == "plan":
+            return ident, {"id": ident, "ok": True, "result": _plan(request)}, False
         if op == "version":
             return ident, {"id": ident, "ok": True, "result": _version()}, False
         if op == "ping":

@@ -1,4 +1,4 @@
-// Engine 1.10.0 through the worker: protocol 2, the preset, the engine's own decision, the shared query, redaction, and hostile input.
+// Engine 1.10.0 through the worker: protocols 2 and 3, the preset, the engine's own decision, the shared query, redaction, and hostile input.
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -57,8 +57,8 @@ test('the version reply names the engine, the protocol, the result schema and th
   const { replies } = await run([j({ id: 1, op: 'version' })])
   const result = replies[0].result
   assert.equal(result.engine, '1.10.0')
-  assert.equal(result.protocol, 2)
-  assert.equal(result.result_schema, 2)
+  assert.equal(result.protocol, 3)
+  assert.equal(result.result_schema, 3)
   assert.deepEqual(result.presets, ['dsh-tool-result@1', 'tool-result@1'])
   assert.equal(result.engine_version, '1.10.0', 'the version 1 key is still there')
 })
@@ -74,7 +74,7 @@ test('a protocol 2 request is answered with the engine\'s decision and its close
   const first = replies[0].result
   assert.deepEqual(first.decision, { accept: true, reason: 'ok', basis: '' })
   assert.equal(first.preset, 'dsh-tool-result@1')
-  assert.equal(first.result_schema, 2)
+  assert.equal(first.result_schema, 3)
   assert.ok(first.text.includes('Foo.java:42'))
   assert.ok(Array.isArray(first.dropped) && first.dropped.length >= 1 && first.dropped.length <= 3)
   assert.match(first.stable_key, /^[0-9a-f]{16}$/)
@@ -91,12 +91,14 @@ test('version 1 requests keep working and may not carry version 2 fields', async
     j({ id: 2, op: 'compress', protocol: 1, text: log, query: 'q', preset: 'dsh-tool-result@1' }),
     j({ id: 3, op: 'compress', text: log, query: 'why did the build fail' }),
     j({ id: 4, op: 'compress', protocol: 3, text: log, query: 'q' }),
+    j({ id: 5, op: 'compress', protocol: 4, text: log, query: 'q' }),
   ])
   assert.equal(replies[0].ok, true)
   assert.equal(replies[0].result.decision, undefined, 'no policy was sent, so no decision')
   assert.equal(replies[1].error, 'field_needs_protocol_2')
   assert.equal(replies[2].ok, true)
-  assert.equal(replies[3].error, 'bad_protocol')
+  assert.equal(replies[3].ok, true, 'protocol 3 is a live version')
+  assert.equal(replies[4].error, 'bad_protocol')
 })
 
 test('redact_secrets: a planted credential never reaches the extract or the dropped summary; a fail-open returns the original', async () => {

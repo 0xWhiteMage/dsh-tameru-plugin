@@ -82,6 +82,9 @@ export const ARMS: ArmSpec[] = [
   g('G12', 0.7, 0.5, 0.9),
   g('G13', 0.7, 0.65, 1.0),
   { name: 'T3', ledgerId: 'T3', engine: '1.10.0', settings: { policy: 'at-trigger', minConfidence: 0.85 } },
+  // P3: `policy: 'plan'` — the engine's plan() covers the whole stock cut set at the trigger (extract where the EV rule accepts, the
+  // stock stub otherwise). The strength names the EV strength; the gate value is what the strength menu writes for it (Normal = 0.7).
+  { name: 'P-normal', ledgerId: 'P1', engine: '1.10.0', settings: { policy: 'plan', minConfidence: 0.7, priceProfile: 'deepseek-v4-pro' } },
   h('H1', 0.85, 0.35),
   h('H2', 0.85, 0.5),
   h('H3', 0.85, 0.65),

@@ -1,4 +1,4 @@
-import { BETA_DEFAULT, INCUMBENT, SETTINGS_TABLE, acceptValue, strengthFor, type Channel, type Policy, type StrengthLabel } from '../shared/settings-table.ts'
+import { BETA_DEFAULT, INCUMBENT, SETTINGS_TABLE, acceptValue, evStrengthFor, strengthFor, type Channel, type Policy, type PriceProfile, type StrengthLabel } from '../shared/settings-table.ts'
 import { ENGINE_PRESET } from './shorten.ts'
 import type { TameruSettings } from './step.ts'
 
@@ -38,6 +38,10 @@ export interface Effective {
   protectRecent: number
   /** Reserved (stored, not used yet). */
   lambdaMultiplier: number
+  /** The engine price profile `plan`'s EV rule prices rewrites with (beta, `plan` only). */
+  priceProfile: PriceProfile
+  /** The strength in force for `plan`'s EV rule (`less`/`normal`/`more`); the stored gate's strength, else `normal`. */
+  evStrength: 'less' | 'normal' | 'more'
   engineVersion: string | null
   presetId: string
 }
@@ -59,9 +63,11 @@ export function resolveEffective(settings: TameruSettings, engineVersion: string
     strength: strengthFor(shorten, policy, minConfidence),
     minConfidence,
     activation: policy === 'every-step' ? (settings.activation ?? INCUMBENT.activation) : 1,
-    share: policy === 'at-trigger' ? 0 : (settings.share ?? INCUMBENT.share),
-    protectRecent: policy === 'at-trigger' ? 0 : (settings.protectRecent ?? INCUMBENT.protectRecent),
+    share: policy === 'at-trigger' || policy === 'plan' ? 0 : (settings.share ?? INCUMBENT.share),
+    protectRecent: policy === 'at-trigger' || policy === 'plan' ? 0 : (settings.protectRecent ?? INCUMBENT.protectRecent),
     lambdaMultiplier: settings.lambdaMultiplier ?? 1,
+    priceProfile: settings.priceProfile ?? 'deepseek-v4-pro',
+    evStrength: evStrengthFor(minConfidence),
     engineVersion,
     presetId: ENGINE_PRESET,
   }

@@ -3,9 +3,13 @@
 // (SETTING_KEYS), the strengths the panel offers, and the settings table in README.md. A test fails if any of them drifts from this file.
 
 export type Channel = 'stable' | 'beta'
-export type Policy = 'every-step' | 'at-trigger' | 'hybrid'
+export type Policy = 'every-step' | 'at-trigger' | 'hybrid' | 'plan'
 export const CHANNELS: readonly Channel[] = ['stable', 'beta']
-export const POLICIES: readonly Policy[] = ['every-step', 'at-trigger', 'hybrid']
+export const POLICIES: readonly Policy[] = ['every-step', 'at-trigger', 'hybrid', 'plan']
+
+/** The engine's DeepSeek price profiles (from its `prices.json`); `priceProfile` picks one for the EV rule. */
+export const PRICE_PROFILES = ['deepseek-flash', 'deepseek-v4-pro'] as const
+export type PriceProfile = (typeof PRICE_PROFILES)[number]
 
 export interface SettingSpec {
   key: string
@@ -32,7 +36,8 @@ export const SETTINGS_TABLE: readonly SettingSpec[] = [
   { key: 'pythonPath', type: 'string', default: undefined, defaultText: "the Harness's bundled Python", channel: 'stable', scope: 'profile', description: 'A Python 3.10+ interpreter for the engine. On Windows there is no fallback to a bare `python`.' },
   { key: 'shorten', type: 'boolean', default: true, channel: 'stable', scope: 'panel', description: '`false` stops shortening but keeps `/tameru` (the strength menu\'s Off).' },
   { key: 'channel', type: 'enum', values: CHANNELS, default: 'stable', channel: 'stable', scope: 'panel', description: '`stable` always runs the incumbent behaviour (`every-step`, whatever `policy` says). `beta` honours `policy`; with no `policy` set it runs the unconfirmed round 1 candidate, `at-trigger` with no confidence gate (its holdout look failed gate 8).' },
-  { key: 'policy', type: 'enum', values: POLICIES, default: 'every-step', defaultText: '`every-step` (`at-trigger` on beta when unset)', channel: 'beta', scope: 'panel', description: 'When to act (beta channel only). `every-step`: at every step boundary past `activation`, old results only, with the confidence gate. `at-trigger`: only where the Harness\'s own pruner is about to cut, the extract in place of its head/tail cut. `hybrid`: at the trigger, ordinary candidates, share rule beyond the stock cut. Measured in [docs/REPLAY-1.10.0.md](docs/REPLAY-1.10.0.md), replay only.' },
+  { key: 'policy', type: 'enum', values: POLICIES, default: 'every-step', defaultText: '`every-step` (`at-trigger` on beta when unset)', channel: 'beta', scope: 'panel', description: 'When to act (beta channel only). `every-step`: at every step boundary past `activation`, old results only, with the confidence gate. `at-trigger`: only where the Harness\'s own pruner is about to cut, the extract in place of its head/tail cut. `hybrid`: at the trigger, ordinary candidates, share rule beyond the stock cut. `plan`: at the trigger, the engine\'s `plan()` covers every result stock would cut — an extract when the EV rule accepts it, the stock cut otherwise. Measured in [docs/REPLAY-PLAN-P3.md](docs/REPLAY-PLAN-P3.md), replay only.' },
+  { key: 'priceProfile', type: 'enum', values: PRICE_PROFILES, default: 'deepseek-v4-pro', channel: 'beta', scope: 'panel', description: 'The engine price profile `plan`\'s EV rule prices rewrites with. The strength picks the EV strength instead of a confidence gate: Less `less`, Normal `normal`, More `more`.' },
   { key: 'activation', type: 'number', min: 0.3, max: 0.95, default: 0.75, channel: 'stable', scope: 'panel', description: 'Start acting at this fraction of the Harness\'s own compaction trigger (`every-step` only; the trigger policies act at 1.0).' },
   { key: 'minConfidence', type: 'number', min: 0, max: 1, default: 0.7, defaultText: '`0.7` (`0` for `at-trigger` on beta when unset)', channel: 'stable', scope: 'panel', description: 'The engine must be at least this confident in an extract, or the result is left alone. Less, Normal and More set 0.85, 0.7 and 0.55; any other stored value shows as Custom and is kept as a hard minimum.' },
   { key: 'share', type: 'number', min: 0.1, max: 0.9, default: 0.35, channel: 'stable', scope: 'panel', description: 'A change must free at least this share of the tokens it makes the provider rewrite.' },
@@ -91,6 +96,12 @@ export function strengthFor(shorten: boolean, policy: Policy, gate: number): Str
   if (policy !== 'every-step') return 'custom'
   const match = STRENGTHS.find(strength => 'minConfidence' in strength && Math.abs(strength.minConfidence - gate) < 0.005)
   return match?.id ?? 'custom'
+}
+
+/** `plan`'s EV strength for a stored gate: the menu entry whose gate it is, else `normal` (the menu's own mapping, not a threshold). */
+export function evStrengthFor(gate: number): 'less' | 'normal' | 'more' {
+  const match = STRENGTHS.find(strength => 'minConfidence' in strength && Math.abs(strength.minConfidence - gate) < 0.005)
+  return match?.id === 'less' || match?.id === 'more' ? match.id : 'normal'
 }
 
 /** Accept one raw value for `key`, or undefined when it is of the wrong type or out of range. */

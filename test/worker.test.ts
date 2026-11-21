@@ -49,8 +49,8 @@ test('the worker shortens a log, keeps the error, and says what the engine is', 
     assert.equal(code, 0)
     assert.equal(replies[0].result.engine_version, '1.10.0')
     assert.match(replies[0].result.vendored_from, /^[0-9a-f]{40}$/)
-    assert.equal(replies[0].result.protocol, 2)
-    assert.equal(replies[0].result.result_schema, 2)
+    assert.equal(replies[0].result.protocol, 3)
+    assert.equal(replies[0].result.result_schema, 3)
     assert.ok(replies[0].result.presets.includes('dsh-tool-result@1'))
     const result = replies[1].result
     assert.equal(result.fail_open, false)
@@ -165,7 +165,7 @@ test('the client works end to end over a real worker and stops it on dispose', a
   try {
     const version = await client.probe()
     assert.equal(version?.engineVersion, '1.10.0')
-    assert.equal(version?.protocol, 2)
+    assert.equal(version?.protocol, 3)
     const result = await client.compress({ text: log, query: 'why did the build fail' })
     assert.ok(result && !result.failOpen)
     assert.ok(result.text.includes('Foo.java:42'))

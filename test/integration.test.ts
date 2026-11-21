@@ -52,7 +52,7 @@ test('a pre-step waterfall shortens old large results through the real services 
     // /tameru now reports it
     const reply = await registered[0].handler({ agent })
     assert.match(reply.text, /In this chat: shortened \d+ tool results?/)
-    assert.match(reply.text, /Engine 1\.10\.0 .*protocol 2/)
+    assert.match(reply.text, /Engine 1\.10\.0 .*protocol 3/)
     assert.match(reply.text, /decisions in this chat: ok \d+/)
     // the model's way back is in the Harness's own tool registry, and the user's verbs work through the registered command
     assert.ok(ctx.tools.definitions().some((definition: { name: string }) => definition.name === 'tameru_read_original'))

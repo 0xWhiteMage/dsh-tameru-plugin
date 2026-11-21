@@ -109,7 +109,7 @@ test('no arm is defined with empty settings; the 1.9.0-era arm states every-step
   assert.equal(base.engine, '1.9.0')
   assert.deepEqual(base.settings, { policy: 'every-step', minConfidence: 0.7, activation: 0.75, share: 0.35 })
   assert.deepEqual(BASELINE_190_SETTINGS, base.settings)
-  assert.equal(SETTINGS_TRIED, 26)
+  assert.equal(SETTINGS_TRIED, 27)
 })
 
 test('every non-reference arm is in the settings-tried ledger, and the runner refuses one that is not', () => {

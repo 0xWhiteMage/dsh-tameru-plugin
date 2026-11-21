@@ -2,8 +2,10 @@ import type { EngineClient } from './engine-client.ts'
 import { drainPending, type PendingOp } from './commands.ts'
 import type { TrailState } from './trail.ts'
 import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassEvent, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
+import { planPass } from './plan.ts'
+import { STOCK_PRUNE_DEFAULTS } from './stub.ts'
 import { resolveEffective } from './settings.ts'
-import { BETA_DEFAULT, INCUMBENT, type Channel, type Policy } from '../shared/settings-table.ts'
+import { BETA_DEFAULT, INCUMBENT, type Channel, type Policy, type PriceProfile } from '../shared/settings-table.ts'
 import { STOCK_PRUNE_CUT_CHARS, STOCK_PRUNE_THRESHOLD_CHARS, compactionIsManagedElsewhere, policyFor, stockThreshold, type BackendLike } from './stock.ts'
 
 export interface TameruSettings extends Partial<ShortenOptions> {
@@ -18,9 +20,12 @@ export interface TameruSettings extends Partial<ShortenOptions> {
    * boundary once the chat is `activation` of the way to the Harness's trigger, on old results, with the confidence gate. `at-trigger`
    * (the beta default when unset; UNCONFIRMED, its round 1 holdout look failed gate 8, see docs/FROZEN-1.10.0-SETTINGS.md): only when
    * the Harness's own pruner is about to cut, in place of its head/tail cut, with no confidence gate unless one is set. `hybrid`: at the
-   * trigger, ordinary candidates, share rule beyond the stock cut.
+   * trigger, ordinary candidates, share rule beyond the stock cut. `plan`: at the trigger, the engine's `plan()` covers every result
+   * stock would cut — an extract where the EV rule accepts it, the stock cut otherwise; the strength picks the EV strength.
    */
   policy?: Policy
+  /** The engine price profile `plan`'s EV rule prices rewrites with (beta, `plan` only). */
+  priceProfile?: PriceProfile
   /** Reserved for the expected-value rule: accepted and stored, not used yet. */
   lambdaMultiplier?: number
 }
@@ -46,6 +51,12 @@ export interface ChatStats {
   passes: number
   /** How often the engine's decision came out with each closed reason code (`ok`, `low_confidence`, `no_gain`, ...). */
   reasons: Record<string, number>
+  /** `plan`: prompt tokens at the previous step, and the mean growth over this chat's steps (for `n_eff`). */
+  prevTokens?: number
+  stepTokensSum?: number
+  stepTokensCount?: number
+  /** `plan`: `passes` at the last act (the hysteresis input). */
+  lastPlanAct?: number
   /** Why the latest pass did nothing, if it did nothing. */
   lastSkip?: string
   /** Why the latest queued change could not be applied, for the panel to show once. */
@@ -65,8 +76,8 @@ export interface StepDeps {
   backendFor: (agent: StepAgent) => BackendLike | undefined
   settings: TameruSettings
   stats: WeakMap<object, ChatStats>
-  /** The stock pruner's cut, for `policy: 'at-trigger'` (default: the Harness's own defaults). */
-  stockPruner?: { thresholdChars: number; cutChars: number }
+  /** The stock pruner's cut, for `policy: 'at-trigger'`/`'hybrid'`/`'plan'` (default: the Harness's own defaults). */
+  stockPruner?: { thresholdChars: number; cutChars: number; headChars?: number; tailChars?: number }
   /** A listener for what each pass decided and wrote (measurements only). */
   observe?: (event: PassEvent) => void
   log?: { info(message: string): unknown; warn(message: string): unknown }
@@ -140,6 +151,12 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
     if (!found.ok) return skip(found.reason)
     const { pressure } = found
     const effective = resolveEffective(deps.settings)
+    // the session's own growth: mean tokens a step adds, for `plan`'s `n_eff` (only positive deltas are "added")
+    if (stats.prevTokens !== undefined && pressure.tokens !== stats.prevTokens) {
+      stats.stepTokensSum = (stats.stepTokensSum ?? 0) + Math.max(0, pressure.tokens - stats.prevTokens)
+      stats.stepTokensCount = (stats.stepTokensCount ?? 0) + 1
+    }
+    stats.prevTokens = pressure.tokens
     const options: ShortenOptions = {
       protectRecent: deps.settings.protectRecent ?? DEFAULT_SHORTEN.protectRecent,
       minResultChars: deps.settings.minResultChars ?? DEFAULT_SHORTEN.minResultChars,
@@ -147,7 +164,27 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       maxPerPass: deps.settings.maxPerPass ?? DEFAULT_SHORTEN.maxPerPass,
       minConfidence: effective.minConfidence,
     }
-    const outcome = await shortenPass({
+    const outcome = effective.policy === 'plan'
+      ? await planPass({
+          session: agent.session,
+          meter,
+          client: deps.client,
+          header: pressure.header,
+          activationTokens: pressure.stockTrigger,
+          stockPruner: {
+            thresholdChars: deps.stockPruner?.thresholdChars ?? STOCK_PRUNE_DEFAULTS.thresholdChars,
+            headChars: deps.stockPruner?.headChars ?? STOCK_PRUNE_DEFAULTS.headChars,
+            tailChars: deps.stockPruner?.tailChars ?? STOCK_PRUNE_DEFAULTS.tailChars,
+          },
+          ev: { priceProfile: effective.priceProfile, strength: effective.evStrength },
+          ...(stats.lastPlanAct !== undefined ? { stepsSinceLastAct: stats.passes - stats.lastPlanAct } : {}),
+          meanStepTokens: stats.stepTokensCount ? stats.stepTokensSum! / stats.stepTokensCount : undefined,
+          declined: stats.declined,
+          reasons: stats.reasons,
+          ...(deps.observe ? { observe: deps.observe } : {}),
+          ...(signal ? { signal } : {}),
+        })
+      : await shortenPass({
       session: agent.session,
       meter,
       client: deps.client,
@@ -159,11 +196,12 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       ...(effective.policy !== 'every-step' ? { trigger: { ...(deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS }), ...(effective.policy === 'hybrid' ? { hybrid: true } : {}) } } : {}),
       ...(deps.observe ? { observe: deps.observe } : {}),
       ...(signal ? { signal } : {}),
-    })
+        })
     stats.passes++
     if (outcome.kind === 'applied') {
       stats.shortened += outcome.applied.length
       stats.freedTokens += outcome.freedTokens
+      if (effective.policy === 'plan') stats.lastPlanAct = stats.passes
       delete stats.lastSkip
       deps.log?.info(`dsh-tameru: shortened ${outcome.applied.length} tool result(s), about ${outcome.freedTokens} tokens (Harness compaction would start at ${pressure.stockTrigger})`)
     } else {

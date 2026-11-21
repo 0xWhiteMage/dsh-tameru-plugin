@@ -1,11 +1,15 @@
 import {
   OLDEST_PROTOCOL,
   PROTOCOL_VERSION,
+  fromWirePlan,
   fromWireResult,
   fromWireVersion,
+  planToWire,
   toWire,
   type CompressRequest,
   type CompressResult,
+  type PlanReply,
+  type PlanRequest,
   type WorkerStatus,
   type WorkerVersion,
 } from '../shared/protocol.ts'
@@ -96,11 +100,20 @@ export class EngineClient {
    * the version 1 fields work with any worker.
    */
   async speaksV2(): Promise<boolean> {
+    return this.speaksProtocol(2)
+  }
+
+  /** True when the worker speaks protocol 3 (selector queries and `plan` requests). */
+  async speaksV3(): Promise<boolean> {
+    return this.speaksProtocol(3)
+  }
+
+  private async speaksProtocol(version: number): Promise<boolean> {
     if (this.version === undefined && this.probeAttempts < 3) {
       this.probeAttempts++
       await this.probe()
     }
-    return (this.version?.protocol ?? OLDEST_PROTOCOL) >= 2
+    return (this.version?.protocol ?? OLDEST_PROTOCOL) >= version
   }
 
   /**
@@ -109,13 +122,29 @@ export class EngineClient {
    * know whether the engine decided.
    */
   async compress(request: CompressRequest): Promise<CompressResult | undefined> {
-    const wantsV2 = request.preset !== undefined || request.anchorErrors !== undefined || request.redactSecrets !== undefined || request.queryParts !== undefined || request.policy !== undefined
-    const protocol = wantsV2 && (await this.speaksV2()) ? PROTOCOL_VERSION : OLDEST_PROTOCOL
+    const wantsV2 = request.preset !== undefined || request.anchorErrors !== undefined || request.redactSecrets !== undefined || request.queryParts !== undefined || request.policy !== undefined || request.deriveSelectorQuery !== undefined
+    const protocol = request.deriveSelectorQuery !== undefined && (await this.speaksV3()) ? PROTOCOL_VERSION
+      : wantsV2 && (await this.speaksV2()) ? 2 : OLDEST_PROTOCOL
     // a big text takes longer to read: the deadline grows with it, so a healthy worker is not killed for a large result
     const reply = await this.call(id => toWire(id, request, protocol), Math.ceil(request.text.length / 50))
     const result = reply?.ok === true ? (reply.result as Record<string, unknown> | undefined) : undefined
     if (reply && reply.ok !== true) this.note(typeof reply.error === 'string' ? reply.error : 'error_reply', false)
     return result ? fromWireResult(result) : undefined
+  }
+
+  /**
+   * A `plan` request (protocol 3): the pure planner over the items the host describes. `undefined` when the worker
+   * cannot answer — the caller treats that like every other engine miss (leave everything as it is).
+   */
+  async plan(request: PlanRequest): Promise<PlanReply | undefined> {
+    if (!(await this.speaksV3())) {
+      this.note('no_protocol_3', false)
+      return undefined
+    }
+    const reply = await this.call(id => planToWire(id, request))
+    const result = reply?.ok === true ? (reply.result as Record<string, unknown> | undefined) : undefined
+    if (reply && reply.ok !== true) this.note(typeof reply.error === 'string' ? reply.error : 'error_reply', false)
+    return result ? fromWirePlan(result) : undefined
   }
 
   async probe(): Promise<WorkerVersion | undefined> {

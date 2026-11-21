@@ -69,7 +69,7 @@ test('mounted as a Cordis plugin, the plugin registers one command, and unloadin
   assert.deepEqual(registered.map(c => c.name), ['tameru'])
   const reply = await registered[0].handler({})
   assert.equal(reply.kind, 'success')
-  assert.match(reply.text, /Engine 1\.10\.0 .*protocol 2/)
+  assert.match(reply.text, /Engine 1\.10\.0 .*protocol 3/)
   assert.equal(handles.length, 1)
   fiber.dispose()
   assert.equal(await settled(handles[0].done), true, 'unloading the plugin ended the worker')

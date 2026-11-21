@@ -10,7 +10,7 @@ import { REGISTERED, registeredConfigs, sensitivityConfigs, ttlOf, type PriceCon
 import { PRIMARY_DRAWS, REFERENCE, costOf, pooled, repricedSelfCheck, weighted, type Group } from './reprice.ts'
 import { armStat, fmt, fmtInterval, pairedDifference, pairedStat, selfCheck, type Interval, type Row } from './stats.ts'
 
-const ARM_ORDER = ['stock', 'baseline-1.9.0', 'default-1.10.0', 'G-0.7', 'G-0.85', 'T-0', 'T-0.7']
+const ARM_ORDER = ['stock', 'baseline-1.9.0', 'default-1.10.0', 'G-0.7', 'G-0.85', 'T-0', 'T-0.7', 'P-normal']
 /** Round-2 analysis plan section 3, the DeepSeek plugin: 128K, 252K, 500K gated; 1M report-only. */
 export const GATED = new Set([128_000, 252_000, 500_000])
 const SPLITS = ['dev', 'validation'] as const
