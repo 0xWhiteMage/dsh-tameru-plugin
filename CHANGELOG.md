@@ -94,7 +94,7 @@ What the engine reports for the DeepSeek plugin's call settings on its sealed sp
 - `docs/MEASURED-VS-STOCK.md`: the first measurement against the stock pruner, with its limits (per output, not per session; no cost claim). `scripts/compare_stock.ts` reproduces it.
 - Skeleton: the plugin loads in DeepSeek Harness, starts the Tameru engine as an isolated Python worker, and `/tameru` reports the plugin and engine versions. Nothing is shortened yet.
 - The worker protocol (version 1): a fixed list of accepted fields, no disk, network or model options, UTF-8 over stdin and stdout, exits when stdin closes.
-- Fail-open engine client: a slow, crashed or misbehaving worker leaves every original untouched and rests for five minutes after repeated failures before being tried again.
+- Fail-open engine client: a slow, crashed or misbehaving worker leaves every original untouched and, after repeated failures, rests until 20 steps or 60 s have passed — whichever comes first — before being tried again.
 - Engine vendored from tameru-compaction-system commit `9f1f1c4` (Tameru 1.9.0), with a check that the copy is identical.
 
 - Contract tests against the real Harness packages (Cordis and the managed subprocess service), extracted on demand by `scripts/extract_harness.py`. They found two defects, both fixed: cleanup must be registered with `ctx.effect` (there is no `dispose` event), and a write to an already-ended worker must not raise an unhandled pipe error, which would stop the whole Harness.

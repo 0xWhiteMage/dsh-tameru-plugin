@@ -36,6 +36,8 @@ export interface EngineClientOptions {
   startupMs?: number
   /** How long the engine rests after it was turned off by repeated failures before it is tried again. */
   cooldownMs?: number
+  /** Host steps while disabled after which the worker is retried, whichever of this or `cooldownMs` comes first. */
+  recoverySteps?: number
   now?: () => number
 }
 
@@ -67,6 +69,8 @@ export class EngineClient {
   private disabledAt = 0
   private readonly startupMs: number
   private readonly cooldownMs: number
+  private readonly recoverySteps: number
+  private disabledSteps = 0
 
   private readonly spawn: Spawn
 
@@ -77,7 +81,8 @@ export class EngineClient {
     this.windowMs = options.windowMs ?? 60_000
     this.now = options.now ?? Date.now
     this.startupMs = options.startupMs ?? 15_000
-    this.cooldownMs = options.cooldownMs ?? 300_000
+    this.cooldownMs = options.cooldownMs ?? 60_000
+    this.recoverySteps = options.recoverySteps ?? 20
   }
 
   status(): WorkerStatus {
@@ -88,9 +93,15 @@ export class EngineClient {
     }
   }
 
+  /** One host step went by: counts toward the end of a rest while the engine is disabled. */
+  noteStep(): void {
+    if (this.disabled) this.disabledSteps++
+  }
+
   /** Start answering requests again after the worker was turned off by repeated failures. */
   reset(): void {
     this.disabled = false
+    this.disabledSteps = 0
     this.failures = []
     this.lastError = undefined
   }
@@ -197,13 +208,17 @@ export class EngineClient {
 
   private async callNow(build: (id: number) => Record<string, unknown>, extraMs = 0, capMs?: number): Promise<Record<string, unknown> | undefined> {
     if (this.disposed) return undefined
-    // after repeated failures the engine rests, then is tried again: a bad minute must not switch it off until the Harness restarts
-    if (this.disabled && this.now() - this.disabledAt >= this.cooldownMs) {
+    // after repeated failures the engine rests, then is tried again: a bad minute must not switch it off until the
+    // Harness restarts. The rest ends after `recoverySteps` host steps or `cooldownMs`, whichever comes first — a
+    // disable lasting the whole session after transient contention is too harsh. Steps come from the host's
+    // `noteStep()`, not engine calls: one step can make many calls, and counting calls could end the rest inside
+    // the step that caused it.
+    if (this.disabled) {
+      if (this.disabledSteps < this.recoverySteps && this.now() - this.disabledAt < this.cooldownMs) return undefined
       this.reset()
       // a single trial: one more failure rests the engine again at once
       this.failures = Array.from({ length: Math.max(0, this.maxFailures - 1) }, () => this.now())
     }
-    if (this.disabled) return undefined
     const fresh = this.worker === undefined
     const worker = await this.ensureWorker()
     if (!worker) return undefined

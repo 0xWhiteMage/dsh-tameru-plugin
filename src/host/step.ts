@@ -137,6 +137,8 @@ export async function pressureOf(deps: StepDeps, agent: StepAgent, signal?: Abor
 
 /** The outcome of the pass, or the reason it did not run. Never throws: a problem here must never cost the user a turn. */
 export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: AbortSignal): Promise<PassOutcome | { kind: 'skipped'; reason: string }> {
+  deps.client?.noteStep?.()  // optional: the stock replay arm has no client, and test doubles may not count steps
+  deps.bgClient?.noteStep?.()
   const stats = chatStatsOf(deps.stats, agent.session)
   const skip = (reason: string) => {
     stats.lastSkip = reason

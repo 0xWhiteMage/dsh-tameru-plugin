@@ -212,6 +212,35 @@ test('after the rest the engine gets one trial: a single failure rests it again 
   assert.equal(starts, 4, 'no second trial before the next rest ends')
 })
 
+test('the rest also ends after twenty steps, whichever of steps or time comes first', async () => {
+  let clock = 0
+  let starts = 0
+  const bad = () => fake()
+  const good = fake((request, push) => push(ok(request.id, compressed)))
+  const client = new EngineClient(() => (starts++ < 3 ? bad().process : good.process), { timeoutMs: 5, startupMs: 0, maxFailures: 3, cooldownMs: 60_000, recoverySteps: 20, now: () => clock })
+  for (let i = 0; i < 3; i++) assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined)
+  assert.equal(client.status().state, 'disabled')
+  for (let i = 0; i < 19; i++) client.noteStep()
+  assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined, 'still resting one step short')
+  assert.equal(starts, 3, 'no worker started while resting')
+  client.noteStep()
+  assert.equal((await client.compress({ text: 'x', query: 'q' }))?.text, 'short', 'the twentieth step retries')
+  assert.equal(client.status().state, 'running')
+  await client.dispose()
+})
+
+test('many engine calls inside one step do not end the rest', async () => {
+  let clock = 0
+  let starts = 0
+  const client = new EngineClient(() => (starts++, fake().process), { timeoutMs: 5, startupMs: 0, maxFailures: 3, cooldownMs: 60_000, recoverySteps: 20, now: () => clock })
+  for (let i = 0; i < 3; i++) assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined)
+  assert.equal(client.status().state, 'disabled')
+  for (let i = 0; i < 50; i++) assert.equal(await client.compress({ text: 'x', query: 'q' }), undefined, 'still resting: calls are not steps')
+  assert.equal(starts, 3, 'the rest outlasted fifty calls with no step in between')
+  assert.equal(client.status().state, 'disabled')
+  await client.dispose()
+})
+
 test('a late reply from a worker that was killed is not taken for the answer to the next request', async () => {
   let starts = 0
   let pushFromFirst: (line: string) => void = () => {}
