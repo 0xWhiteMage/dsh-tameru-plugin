@@ -265,7 +265,6 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       const key = declineKey(candidate.seq, candidate.text.length, query)
       if (pass.declined?.has(key)) {
         answered++
-      pass.declined?.delete(`${key}#failed`)
         return
       }
       calls++
@@ -286,6 +285,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         return
       }
       answered++
+      pass.declined?.delete(`${key}#failed`)
       if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) {
         pass.declined?.add(key)
         return
