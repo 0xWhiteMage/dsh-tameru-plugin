@@ -29,13 +29,27 @@ SKIP_PACKAGES = (
     "@deepseek-ai/dsh-office-to-pdf",
 )
 # names Windows maps to devices, or to another name, whatever folder they are in
-WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(1, 10)), *(f"LPT{n}" for n in range(1, 10))}
+WINDOWS_RESERVED = {
+    "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CONERR$",
+    *(f"{port}{n}" for port in ("COM", "LPT") for n in (*"123456789", "\u00b9", "\u00b2", "\u00b3")),
+}
 
 
 def unsafe_name(name: object) -> bool:
     if not isinstance(name, str) or name in ("", ".", "..") or any(c in name for c in "/\\:\0"):
         return True
-    return name[-1] in ". " or name.split(".", 1)[0].rstrip(" ").upper() in WINDOWS_RESERVED
+    if name[-1] in ". " or name.split(".", 1)[0].rstrip(" ").upper() in WINDOWS_RESERVED:
+        return True
+    return bool(getattr(os.path, "isreserved", None) and os.path.isreserved(name))
+
+
+def is_link(path: Path) -> bool:
+    """A symlink, or on Windows any reparse point such as a junction."""
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    return path.is_symlink() or bool(getattr(info, "st_file_attributes", 0) & 0x400)
 
 
 SKIP_SUFFIXES = (".map", ".d.ts", ".png", ".jpg", ".svg", ".woff", ".woff2", ".ttf", ".gif", ".webp", ".ico", ".node")
@@ -89,8 +103,8 @@ def main() -> int:
             print(error)
             return 1
         # the folders leading to `out` are this checkout's own: a link among them would send the files elsewhere
-        for folder in (out.parent, out.parent.parent):
-            if folder.is_symlink() or (folder.exists() and not folder.is_dir()):
+        for folder in (out, out.parent, out.parent.parent):
+            if is_link(folder) or (folder.exists() and not folder.is_dir()):
                 print(f"{folder} is a link or not a folder; remove it and run again")
                 return 1
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -103,9 +117,7 @@ def main() -> int:
                 handle.seek(base + offset)
                 with open(path, "xb") as file:
                     file.write(handle.read(size))
-            if out.is_symlink():
-                out.unlink()
-            elif out.exists():
+            if out.exists():
                 shutil.rmtree(out)
             staging.rename(out)
         except BaseException:
