@@ -265,15 +265,19 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       const key = declineKey(candidate.seq, candidate.text.length, query)
       if (pass.declined?.has(key)) {
         answered++
+      pass.declined?.delete(`${key}#failed`)
         return
       }
       calls++
       // the step waits for this pass: a slow engine or an abort ends it at the budget, and a reply that comes later is dropped
       const reply = await within(client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 }), PASS_BUDGET_MS - (Date.now() - started), pass.signal)
+      // a turn the user stopped says nothing about this result, whatever the engine said
+      if (pass.signal?.aborted) {
+        late = true
+        return
+      }
       const result = reply === LATE ? undefined : reply
       if (reply === LATE) late = true
-      // a turn the user stopped says nothing about this result
-      if (reply === LATE && pass.signal?.aborted) return
       if (!result) {
         // the engine did not answer for this one in time: a second failure stops it being tried again, so one hard result cannot stall every step
         const failedOnce = `${key}#failed`
@@ -302,6 +306,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
     })()
   }
+  if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
   if (answered === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
   if (planned.length === 0) return { kind: 'skipped', reason: unsure > 0 ? 'not_confident' : 'no_candidates' }
   const batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)
