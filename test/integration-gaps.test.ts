@@ -61,9 +61,11 @@ test('protected-recent boundaries on real session events never include unread ou
 
 test('empty Harness session yields no candidates without starting the engine', { skip }, async () => {
   const w = await world()
-  const client = new EngineClient(() => { assert.fail('no tool output means no worker') })
+  let spawns = 0
+  const client = new EngineClient(() => { spawns++; throw new Error('unexpected worker startup') })
   try {
     assert.deepEqual(await shortenPass({ session: w.session, meter: w.meter, client, activationTokens: 0, header: undefined, options: DEFAULT_SHORTEN }), { kind: 'skipped', reason: 'no_candidates' })
+    assert.equal(spawns, 0, 'no tool output means no worker')
   } finally {
     await client.dispose()
     await w.ctx.fiber.dispose()

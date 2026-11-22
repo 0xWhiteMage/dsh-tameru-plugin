@@ -78,15 +78,17 @@ test('disposing during asynchronous startup reaps the worker and does not send q
   let supply!: (worker: WorkerProcess) => void
   const spawn = new Promise<WorkerProcess>(resolve => { supply = resolve })
   let killed = 0
+  let sent = 0
   const client = new EngineClient(() => { started(); return spawn })
   const first = client.compress({ text: 'one' })
   const second = client.compress({ text: 'two' })
   await starting
   await client.dispose()
-  supply({ send() { assert.fail('disposed worker must not receive requests') }, onLine() {}, onExit() {}, kill() { killed++ } })
+  supply({ send() { sent++ }, onLine() {}, onExit() {}, kill() { killed++ } })
   assert.deepEqual(await Promise.all([first, second]), [undefined, undefined])
   assert.equal(killed, 1)
   client.reset()
   assert.equal(await client.probe(), undefined)
   assert.equal(client.status().state, 'disabled')
+  assert.equal(sent, 0, 'disposed worker must not receive requests')
 })
