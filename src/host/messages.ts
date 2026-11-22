@@ -41,15 +41,18 @@ const SPILL_NOTICE = ' Full formatted result stored at: '
 
 // Characters that reorder text or draw nothing while the model still reads every one: bidi controls, zero-width spaces, soft hyphen,
 // combining grapheme joiner, Hangul and Khmer fillers, shorthand format controls and Unicode tag characters. Variation selectors and
-// zero-width (non-)joiners count too unless they sit where real text needs them: a selector right after an emoji or an ideograph, a joiner
-// between two emoji, or one inside a word of a script other than Latin, Greek or Cyrillic. Anything else could only carry hidden data.
-const VS = '[\\ufe00-\\ufe0f\\u{e0100}-\\u{e01ef}]'
+// zero-width (non-)joiners count too unless they sit where real text needs them: an emoji or text presentation selector right after an
+// emoji, an ideographic selector right after an ideograph, a joiner between two emoji, or a (non-)joiner inside a word of a script other
+// than Latin, Greek or Cyrillic. Anything else could only carry hidden data.
+const VS = '[\\ufe0e\\ufe0f]'
 const WORD = '(?:(?![\\p{Script=Latin}\\p{Script=Greek}\\p{Script=Cyrillic}])[\\p{L}\\p{M}])'
 const EMOJI = '[\\p{Extended_Pictographic}\\p{Emoji_Modifier}]'
 const HIDDEN = [
   '[\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u200b\\u200e\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\u3164\\ufeff\\uffa0\\u{1bca0}-\\u{1bca3}\\u{e0000}-\\u{e007f}]',
-  `(?<![\\p{Emoji}\\p{Unified_Ideograph}])${VS}`,
-  `(?<!${EMOJI}${VS}?)\\u200d(?=${EMOJI})|(?<!${WORD})[\\u200c\\u200d](?!${EMOJI})|[\\u200c\\u200d](?!${WORD}|${EMOJI})`,
+  `(?<!\\p{Emoji})${VS}`,
+  '(?<!\\p{Unified_Ideograph})[\\ufe00-\\ufe0d\\u{e0100}-\\u{e01ef}]',
+  `(?<!${WORD})\\u200c|\\u200c(?!${WORD})`,
+  `\\u200d(?!(?<=${EMOJI}${VS}?\\u200d)${EMOJI}|(?<=${WORD}\\u200d)${WORD})`,
 ].join('|')
 // the opening bracket of a shown character: escaped itself, so what showHidden writes can never be confused with text that was there
 const SHOWN_OPEN = '\u27e6'
