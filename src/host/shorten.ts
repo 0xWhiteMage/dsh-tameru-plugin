@@ -263,6 +263,12 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     else pass.declined?.add(failedOnce)
   }
   const answeredFor = (key: string): void => void pass.declined?.delete(`${key}#failed`)
+  // a result whose answer missed the step's deadline twice is not tried again either, answered or not: it would spend every step's budget
+  const tooSlow = (key: string): void => {
+    const slowOnce = `${key}#slow`
+    if (pass.declined?.has(slowOnce)) pass.declined.add(key)
+    else pass.declined?.add(slowOnce)
+  }
   let calls = 0
   let late = false
   for (const candidate of candidates) {
@@ -274,6 +280,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         answered++
         return
       }
+      // still with the engine from an earlier step: asking again would only queue behind it
+      if (pass.declined?.has(`${key}#asked`)) return
       calls++
       // the step waits for this pass: a slow engine or an abort ends it at the budget, and a reply that comes later is dropped
       const work = client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
@@ -287,7 +295,14 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         // too late for this step, so it is not used; the engine's own answer or failure, when it comes, is what counts for this
         // result, not the time it waited in the queue
         late = true
-        work.then(answer => (answer ? answeredFor(key) : strike(key)), () => strike(key))
+        tooSlow(key)
+        pass.declined?.add(`${key}#asked`)
+        const settled = (answer: unknown): void => {
+          pass.declined?.delete(`${key}#asked`)
+          if (answer) answeredFor(key)
+          else strike(key)
+        }
+        work.then(settled, () => settled(undefined))
         return
       }
       const result = reply
