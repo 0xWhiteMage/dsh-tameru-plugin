@@ -1,5 +1,5 @@
 import type { EngineClient } from './engine-client.ts'
-import type { AcceptPolicy, CompressRequest, Dropped } from '../shared/protocol.ts'
+import type { AcceptPolicy, CompressRequest, CompressResult, Dropped } from '../shared/protocol.ts'
 import { legacyDecision } from './legacy-decision.ts'
 import { safeLine } from './trail.ts'
 import {
@@ -49,8 +49,11 @@ export interface ShortenOptions {
 
 /** The most time one pass spends asking the engine. */
 export const PASS_BUDGET_MS = 6000
-/** A result longer than this is left alone: the engine's request limit is 16 MB and a text this size is not worth a step's wait. */
-export const MAX_ENGINE_CHARS = 2_000_000
+/** A result the engine cannot analyse itself: past 8M characters it fails open `too_large`, so the host renders a header
+ * with the read-original reference instead. (The engine's streaming path serves 2M-8M in under a second.) */
+export const TOO_LARGE_CHARS = 8_000_000
+/** Largest text ever sent to the engine: the `too_large` boundary. */
+export const MAX_ENGINE_CHARS = TOO_LARGE_CHARS
 
 /** The engine's named option set for this plugin's call (`tameru/presets.json`): extract strategy, no originals stored, 25% minimum saving. */
 export const ENGINE_PRESET = 'dsh-tool-result@1'
@@ -156,7 +159,7 @@ export function findCandidates(session: SessionLike, entries: Entry[], options: 
       text = originalText
       origin = sources![0]!
     }
-    if (text.length < options.minResultChars || text.length > MAX_ENGINE_CHARS) continue
+    if (text.length < options.minResultChars) continue // past TOO_LARGE_CHARS it is a candidate too — for the header, not the engine
     if (alreadyShortened(text) || hasSpillNotice(text)) continue
     const callId = message.toolCallId ?? message.source?.callId
     if (typeof callId !== 'string' || callId === '') continue
@@ -200,6 +203,11 @@ export function droppedSummary(dropped: readonly Dropped[]): string {
 export function shortenedText(original: string, extract: string, ref: number, dropped: readonly Dropped[] = []): string {
   const summary = droppedSummary(dropped)
   return `${SHORTENED_PREFIX}${original.length.toLocaleString('en-US')} to ${extract.length.toLocaleString('en-US')} characters;${summary ? ` dropped: ${summary};` : ''} read the original with ${READ_TOOL} ref=${ref}]\n${extract}`
+}
+
+/** The header alone, for a result the engine cannot analyse (`too_large`): the model can still read the original. */
+export function tooLargeText(original: string, ref: number): string {
+  return `${SHORTENED_PREFIX}${original.length.toLocaleString('en-US')} characters; too large to analyse; read the original with ${READ_TOOL} ref=${ref}]`
 }
 
 /**
@@ -250,7 +258,15 @@ export interface PassContext {
   trigger?: { thresholdChars: number; cutChars: number; /** `hybrid`: the ordinary candidates and options, acting only at the trigger (see `policy: 'hybrid'`). */ hybrid?: boolean }
   /** A listener for what the pass decided and wrote, for measurements. It must not throw and changes nothing. */
   observe?: (event: PassEvent) => void
+  /** A second worker for precomputed extracts: the pass asks it for candidates ahead of the inline calls so the next
+   * step's extracts are already done. Optional; without it nothing is precomputed. */
+  bgClient?: PassClient
+  /** Extract results by item key, filled by `bgClient` and consulted before the inline call. Shared with `planPass`. */
+  extractCache?: Map<string, Promise<CompressResult | undefined>>
 }
+
+/** How many candidates the background worker is asked about per pass (largest first). */
+export const PRECOMPUTE_MAX = 8
 
 /** What kind of moment a pass acted at. `forecast` and `cold` are reserved for the planned event detection and are not emitted yet. */
 export type PassEventType = 'trigger' | 'forecast' | 'every-step' | 'cold' | 'none'
@@ -326,6 +342,22 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   const planned: Planned[] = []
   let answered = 0
   let unsure = 0
+  // background extracts: the earliest this host sees a `tool/result` is the step boundary after it lands (the Harness
+  // exposes no result event), so the candidates are asked of the second worker now; the loop prefers whatever finished
+  if (pass.bgClient && pass.extractCache) {
+    const bg = pass.bgClient
+    let fired = 0
+    for (const candidate of candidates) {
+      if (fired >= PRECOMPUTE_MAX) break
+      const key = itemKey(candidate.seq, candidate.text.length)
+      if (candidate.text.length > TOO_LARGE_CHARS || pass.extractCache.has(key) || pass.declined?.has(key)) continue
+      const request: CompressRequest = v2
+        ? { text: candidate.text, query: buildQuery(lookup, candidate.index, candidate.callId), preset: ENGINE_PRESET, anchorErrors: ANCHOR_ERRORS, redactSecrets: REDACT_SECRETS, queryParts: queryPartsFor(lookup, candidate.index, candidate.callId), policy: policyOf(options) }
+        : { text: candidate.text, query: buildQuery(lookup, candidate.index, candidate.callId), minSavingsRatio: LEGACY_MIN_SAVINGS }
+      pass.extractCache.set(key, bg.compress(request))
+      fired++
+    }
+  }
   // One at a time, within a time budget: a step boundary must not wait long, and what is not reached now is reached at a later step.
   const started = Date.now()
   for (const candidate of candidates) {
@@ -336,13 +368,29 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         answered++
         return
       }
+      // a result the engine cannot analyse at all gets the header with its read-original reference, no engine call
+      if (candidate.text.length > TOO_LARGE_CHARS) {
+        note('too_large')
+        pass.observe?.({ kind: 'decline', key, reason: 'too_large', original: candidate.text, event: eventType })
+        const newText = tooLargeText(candidate.text, candidate.origin)
+        const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
+        const beforeTokens = tokensOf.get(candidate.seq) ?? meter.estimateMessage(candidate.message)
+        const afterTokens = meter.estimateMessage(replacement)
+        if (afterTokens < beforeTokens) planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
+        return
+      }
       const policy = policyOf(options)
       // protocol 2: the worker builds the query from the pieces and decides; protocol 1: this host builds the query (the fallback) and decides
       const fallbackQuery = buildQuery(lookup, candidate.index, candidate.callId)
       const request: CompressRequest = v2
         ? { text: candidate.text, query: fallbackQuery, preset: ENGINE_PRESET, anchorErrors: ANCHOR_ERRORS, redactSecrets: REDACT_SECRETS, queryParts: queryPartsFor(lookup, candidate.index, candidate.callId), policy }
         : { text: candidate.text, query: fallbackQuery, minSavingsRatio: LEGACY_MIN_SAVINGS }
-      const result = await client.compress(request)
+      // the pass budget is enforced inside the call: the remaining milliseconds cap the in-flight deadline, so a step
+      // boundary never waits past the budget; a killed request is retried at a later step like any engine miss
+      const remaining = () => Math.max(0, PASS_BUDGET_MS - (Date.now() - started))
+      const cached = pass.extractCache?.get(key)
+      let result = cached !== undefined ? await Promise.race([cached, new Promise<undefined>(done => setTimeout(done, remaining()))]) : undefined
+      result ??= await client.compress(request, remaining())
       if (!result) {
         // the engine did not answer for this one: a second failure stops it being tried again, so one hard result cannot stall every step
         const failedOnce = `${key}#failed`
@@ -380,7 +428,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
     })()
   }
-  if (answered === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
+  // `engine_unavailable` only when nothing was answered AND nothing was planned: a `too_large` header needs no engine
+  if (answered === 0 && planned.length === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
   if (planned.length === 0) return { kind: 'skipped', reason: unsure > 0 ? 'not_confident' : 'no_candidates' }
   let batch: Planned[]
   if (pass.trigger?.hybrid) {

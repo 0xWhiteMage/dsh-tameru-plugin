@@ -1,4 +1,5 @@
 import type { EngineClient } from './engine-client.ts'
+import type { CompressResult } from '../shared/protocol.ts'
 import { drainPending, type PendingOp } from './commands.ts'
 import type { TrailState } from './trail.ts'
 import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassEvent, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
@@ -42,6 +43,8 @@ export const policyOfSettings = (settings: TameruSettings): Policy => resolveEff
 export interface ChatStats {
   /** Results the engine already declined in this chat (not asked again). */
   declined: Set<string>
+  /** Extracts asked of the background worker, by item key; the next pass's inline call consults them first. */
+  extractCache: Map<string, Promise<CompressResult | undefined>>
   /** Keep, restore and unkeep requests made while the agent was working; applied at the next step boundary. */
   pending: PendingOp[]
   /** Where the Artifact Trail scan has got to in this chat's log, and a trail still owed to the chat. */
@@ -71,6 +74,8 @@ export interface StepAgent {
 
 export interface StepDeps {
   client: EngineClient
+  /** A second worker the passes ask for extracts in the background; optional, nothing is precomputed without it. */
+  bgClient?: EngineClient
   meter: () => MeterLike | undefined
   resolveModelInfo: (provider: string, model: string, signal?: AbortSignal) => Promise<{ context?: { contextWindow: number }; defaultMaxTokens?: number } | undefined>
   backendFor: (agent: StepAgent) => BackendLike | undefined
@@ -85,7 +90,7 @@ export interface StepDeps {
 
 export const chatStatsOf = (store: WeakMap<object, ChatStats>, session: object): ChatStats => {
   let stats = store.get(session)
-  if (!stats) store.set(session, (stats = { declined: new Set(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0, reasons: {} }))
+  if (!stats) store.set(session, (stats = { declined: new Set(), extractCache: new Map(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0, reasons: {} }))
   return stats
 }
 
@@ -181,6 +186,8 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
           meanStepTokens: stats.stepTokensCount ? stats.stepTokensSum! / stats.stepTokensCount : undefined,
           declined: stats.declined,
           reasons: stats.reasons,
+          bgClient: deps.bgClient,
+          extractCache: stats.extractCache,
           ...(deps.observe ? { observe: deps.observe } : {}),
           ...(signal ? { signal } : {}),
         })
@@ -193,6 +200,8 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       options,
       declined: stats.declined,
       reasons: stats.reasons,
+      bgClient: deps.bgClient,
+      extractCache: stats.extractCache,
       ...(effective.policy !== 'every-step' ? { trigger: { ...(deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS }), ...(effective.policy === 'hybrid' ? { hybrid: true } : {}) } } : {}),
       ...(deps.observe ? { observe: deps.observe } : {}),
       ...(signal ? { signal } : {}),

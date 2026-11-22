@@ -109,12 +109,16 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
     const stop = new AbortController()
     // A request waits on the engine inside a step boundary, so it gets a short deadline: a slow engine must never slow the chat.
     client = new EngineClient(harnessWorkerSpawn(ctx.subprocess, python.path, join(dir, 'vendor', 'run_worker.py'), dir, stop.signal), { timeoutMs: 4000 })
+    // a second worker for background extracts: its deadline can be longer — nothing waits on it inside a step
+    const bgClient = new EngineClient(harnessWorkerSpawn(ctx.subprocess, python.path, join(dir, 'vendor', 'run_worker.py'), dir, stop.signal), { timeoutMs: 30_000 })
     const worker = client
+    const bgWorker = bgClient
     ctx.effect(() => () => {
       stop.abort()
       void worker.dispose()
+      void bgWorker.dispose()
     }, 'dsh-tameru: engine worker')
-    deps = { ...baseDeps, client: worker }
+    deps = { ...baseDeps, client: worker, bgClient: bgWorker }
   }
   // Never `prepend`: the Harness's backend and DS Bot run first. Whatever happens here, the step goes on.
   ctx.on?.('agent/pre-step', async ({ agent, signal }, next) => {

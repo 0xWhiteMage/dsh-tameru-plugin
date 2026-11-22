@@ -121,12 +121,15 @@ export class EngineClient {
    * a worker that reported 1 they are left out and the request is a version 1 request. The caller reads `result.decision` to
    * know whether the engine decided.
    */
-  async compress(request: CompressRequest): Promise<CompressResult | undefined> {
+  async compress(request: CompressRequest, maxMs?: number): Promise<CompressResult | undefined> {
     const wantsV2 = request.preset !== undefined || request.anchorErrors !== undefined || request.redactSecrets !== undefined || request.queryParts !== undefined || request.policy !== undefined || request.deriveSelectorQuery !== undefined
     const protocol = request.deriveSelectorQuery !== undefined && (await this.speaksV3()) ? PROTOCOL_VERSION
       : wantsV2 && (await this.speaksV2()) ? 2 : OLDEST_PROTOCOL
-    // a big text takes longer to read: the deadline grows with it, so a healthy worker is not killed for a large result
-    const reply = await this.call(id => toWire(id, request, protocol), Math.ceil(request.text.length / 50))
+    // a big text takes longer to read: the deadline grows with it, so a healthy worker is not killed for a large result —
+    // but a caller may cap the whole call (`maxMs`, the pass's remaining budget); at or under zero nothing is sent at all
+    if (maxMs !== undefined && maxMs <= 0) return undefined
+    const extraMs = maxMs === undefined ? Math.ceil(request.text.length / 50) : Math.max(0, Math.min(Math.ceil(request.text.length / 50), maxMs - this.timeoutMs))
+    const reply = await this.call(id => toWire(id, request, protocol), extraMs, maxMs)
     const result = reply?.ok === true ? (reply.result as Record<string, unknown> | undefined) : undefined
     if (reply && reply.ok !== true) this.note(typeof reply.error === 'string' ? reply.error : 'error_reply', false)
     return result ? fromWireResult(result) : undefined
@@ -186,13 +189,13 @@ export class EngineClient {
    * Requests go to the worker one at a time: it answers one at a time anyway, and this way each request's deadline covers only its own
    * work, so one slow request cannot fail the ones queued behind it.
    */
-  private call(build: (id: number) => Record<string, unknown>, extraMs = 0): Promise<Record<string, unknown> | undefined> {
-    const run = this.tail.then(() => this.callNow(build, extraMs))
+  private call(build: (id: number) => Record<string, unknown>, extraMs = 0, capMs?: number): Promise<Record<string, unknown> | undefined> {
+    const run = this.tail.then(() => this.callNow(build, extraMs, capMs))
     this.tail = run.then(() => undefined, () => undefined)
     return run
   }
 
-  private async callNow(build: (id: number) => Record<string, unknown>, extraMs = 0): Promise<Record<string, unknown> | undefined> {
+  private async callNow(build: (id: number) => Record<string, unknown>, extraMs = 0, capMs?: number): Promise<Record<string, unknown> | undefined> {
     if (this.disposed) return undefined
     // after repeated failures the engine rests, then is tried again: a bad minute must not switch it off until the Harness restarts
     if (this.disabled && this.now() - this.disabledAt >= this.cooldownMs) {
@@ -211,7 +214,7 @@ export class EngineClient {
         this.note('timeout', true)
         this.drop(worker)
         resolve(undefined)
-      }, this.timeoutMs + extraMs + (fresh ? this.startupMs : 0))
+      }, Math.min(this.timeoutMs, capMs ?? this.timeoutMs) + extraMs + (fresh ? this.startupMs : 0))
       this.pending.set(id, { resolve, timer })
       try {
         worker.send(JSON.stringify(build(id)))

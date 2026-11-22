@@ -9,13 +9,15 @@ import type { EngineClient } from './engine-client.ts'
 import {
   ANCHOR_ERRORS,
   ENGINE_PRESET,
-  MAX_ENGINE_CHARS,
   PASS_BUDGET_MS,
+  PRECOMPUTE_MAX,
   REDACT_SECRETS,
+  TOO_LARGE_CHARS,
   compactionOpen,
   itemKey,
   readSurface,
   shortenedText,
+  tooLargeText,
   type Applied,
   type MeterLike,
   type PassEvent,
@@ -37,7 +39,7 @@ import {
   type SessionEvent,
 } from './messages.ts'
 import { RESTORE_REPLIES } from './originals.ts'
-import type { PlanCandidate, PlanItem, PlanReply, PlanRequest } from '../shared/protocol.ts'
+import type { CompressResult, PlanCandidate, PlanItem, PlanReply, PlanRequest } from '../shared/protocol.ts'
 
 /** What a plan pass needs of the engine client: `compress` for candidates, `plan` (protocol 3) for the moment itself. */
 export type PlanClient = Pick<EngineClient, 'compress'> & Partial<Pick<EngineClient, 'speaksV2' | 'speaksV3' | 'plan'>>
@@ -61,6 +63,10 @@ export interface PlanPassContext {
   reasons?: Record<string, number>
   observe?: (event: PassEvent) => void
   signal?: AbortSignal
+  /** A second worker for precomputed extracts (see `PassContext.bgClient`). */
+  bgClient?: PlanClient
+  /** Extract results by item key; consulted before the inline call. Shared with `shortenPass`. */
+  extractCache?: Map<string, Promise<CompressResult | undefined>>
 }
 
 const PLAN_K = 3
@@ -94,7 +100,7 @@ interface PlannedItem {
     factLinesDropped: number
   }
   /** What the ask came to: `answered` the engine gave a result, else why there is no candidate. */
-  ask?: 'answered' | 'sanitized' | 'not_enough_tokens'
+  ask?: 'answered' | 'sanitized' | 'not_enough_tokens' | 'too_large'
 }
 
 /** One pass at the trigger. Never throws: a problem here must never cost the user a turn. */
@@ -122,7 +128,10 @@ export async function planPass(pass: PlanPassContext): Promise<PassOutcome> {
     const item: PlannedItem = { seq: entry.seq, index, event: entry.event, message, origin: entry.seq, text: textOnly(message), chars, stockAction: chars > config.thresholdChars ? 'cut' : 'keep' }
     items.push(item)
     if (item.stockAction !== 'cut') continue
-    const stubContent = pruneContent(message.content as Array<{ type: string; text?: string }>, config)
+    // a result the engine cannot analyse (`too_large`) plans to the header with its read-original reference, not a stub
+    const stubContent = chars > TOO_LARGE_CHARS
+      ? [{ type: 'text', text: tooLargeText(item.text ?? '', entry.seq) }]
+      : pruneContent(message.content as Array<{ type: string; text?: string }>, config)
     if (stubContent === null) continue // chars > threshold makes a stub exist, but a missed one would leave the cut uncovered
     item.stubContent = stubContent
     item.stubTokens = meter.estimateMessage({ ...message, content: stubContent as Message['content'] })
@@ -135,12 +144,40 @@ export async function planPass(pass: PlanPassContext): Promise<PassOutcome> {
   const lookup = entries.map(({ seq, message }) => ({ seq, message }))
   const callId = (item: PlannedItem): string => item.message.toolCallId ?? item.message.source?.callId ?? ''
   const started = Date.now()
+  const remaining = () => Math.max(0, PASS_BUDGET_MS - (Date.now() - started))
+  // background extracts: the same candidates on the second worker (largest first); the fetch loop prefers what finished
+  if (pass.bgClient && pass.extractCache) {
+    const bg = pass.bgClient
+    let fired = 0
+    for (const item of [...cuts].sort((a, b) => b.chars - a.chars)) {
+      if (fired >= PRECOMPUTE_MAX) break
+      const key = itemKey(item.seq, item.chars)
+      const text = item.text
+      if (text === undefined || text.length > TOO_LARGE_CHARS || alreadyShortened(text) || hasSpillNotice(text)) continue
+      if (item.message.isError === true || item.message.source?.name === READ_TOOL) continue
+      if (pass.extractCache.has(key) || pass.declined?.has(key)) continue
+      pass.extractCache.set(key, bg.compress({
+        text,
+        query: buildQuery(lookup, item.index, callId(item)),
+        preset: ENGINE_PRESET,
+        anchorErrors: ANCHOR_ERRORS,
+        redactSecrets: REDACT_SECRETS,
+        queryParts: queryPartsFor(lookup, item.index, callId(item)),
+        deriveSelectorQuery: true,
+      }))
+      fired++
+    }
+  }
   for (const item of [...cuts].sort((a, b) => b.chars - a.chars)) {
     if (Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
     await (async () => {
       const key = itemKey(item.seq, item.chars)
       const text = item.text
-      if (text === undefined || text.length > MAX_ENGINE_CHARS || alreadyShortened(text) || hasSpillNotice(text)) return
+      if (text === undefined || alreadyShortened(text) || hasSpillNotice(text)) return
+      if (text.length > TOO_LARGE_CHARS) {
+        item.ask = 'too_large' // the header above carries it; no engine call is sent
+        return
+      }
       if (item.message.isError === true || item.message.source?.name === READ_TOOL) return
       if (pass.declined?.has(key)) return
       // a restored result stays in full for a few replies, then is an ordinary candidate again, from its original text
@@ -156,7 +193,7 @@ export async function planPass(pass: PlanPassContext): Promise<PassOutcome> {
         sourceText = citedText!
         item.origin = sources![0]!
       }
-      const result = await client.compress({
+      const request = {
         text: sourceText,
         query: buildQuery(lookup, item.index, callId(item)),
         preset: ENGINE_PRESET,
@@ -164,7 +201,11 @@ export async function planPass(pass: PlanPassContext): Promise<PassOutcome> {
         redactSecrets: REDACT_SECRETS,
         queryParts: queryPartsFor(lookup, item.index, callId(item)),
         deriveSelectorQuery: true,
-      })
+      }
+      // the pass budget is enforced inside the call too: the remaining milliseconds cap the in-flight deadline
+      const cached = pass.extractCache?.get(key)
+      let result = cached !== undefined ? await Promise.race([cached, new Promise<undefined>(done => setTimeout(done, remaining()))]) : undefined
+      result ??= await client.compress(request, remaining())
       if (result === undefined) return // an engine miss is not a decline; the stub covers the item
       if (result.sanitized) {
         item.ask = 'sanitized'
