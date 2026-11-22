@@ -52,7 +52,7 @@ export function callLabel(session: SessionLike, ref: number, callId: unknown): s
       } catch {
         return ''
       }
-      const key = LABEL_KEYS.find(name => typeof args[name] === 'string' && (args[name] as string).trim() !== '')
+      const key = LABEL_KEYS.find(name => typeof args[name] === 'string' && /[^ \t\r\n]/.test(args[name] as string))
       return key ? safeLine((args[key] as string).replace(/^[ \t\r\n]+/, '').split('\n')[0] ?? '', LABEL_CHARS) : ''
     }
   }

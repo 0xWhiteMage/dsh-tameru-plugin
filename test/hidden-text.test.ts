@@ -83,4 +83,8 @@ test('a command with hidden characters at its ends is shown with them, and an ol
   parseTrail('[Tameru Artifact Trail: older note.]\nFiles:\n- x\u27e6U+202E\u27e7 (read)', old)
   old.files.set(safeLine(`x${RLO}`), new Set(['read']))
   assert.equal(old.files.size, 2)
+  const marked = emptyTrail()
+  parseTrail(`[Tameru Artifact Trail: older note.]\nFiles:\n- x\u27e6U+202E\u27e7 Hidden characters are shown as \u27e6U+XXXX\u27e7.] (read)`, marked)
+  assert.ok([...marked.files.keys()].every(path => !path.includes('x\u27e6U+202E')), 'the mark in a path does not make an older note read as shown')
+  assert.equal(safeLine('\ufeff'), '\u27e6U+FEFF\u27e7', 'a command of only a hidden character is still recorded')
 })

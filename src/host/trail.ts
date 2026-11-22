@@ -69,7 +69,7 @@ export function noteMessage(trail: Trail, message: Message, calls: Map<string, {
         else ops.add('read')
         trail.files.set(safeLine(pathValue), ops)
       }
-      if (typeof args.command === 'string' && args.command.trim()) {
+      if (typeof args.command === 'string') {
         const command = safeLine(args.command.replace(/^[ \t\r\n]+/, '').split('\n')[0] ?? '')
         if (command && !trail.commands.has(command)) trail.commands.set(command, false)
       }
@@ -105,7 +105,7 @@ function markFailures(trail: Trail, messages: Message[]): void {
 /** Read a trail note back into a trail, so it carries forward through the next compaction. Our own grammar only. */
 export function parseTrail(text: string, into: Trail): void {
   // a note written before hidden characters were shown has its lines shown once now; a newer one is read as written
-  const carried = text.includes(SHOWN_MARK)
+  const carried = text.split('\n', 1)[0]!.trim().endsWith(`${SHOWN_MARK}.]`)
   let section: 'files' | 'commands' | 'failed' | undefined
   for (const raw of text.split('\n')) {
     const line = raw.trim()
