@@ -23,15 +23,21 @@ export function readPrivate(path: string): string | undefined {
   } catch {
     return undefined
   }
+  // Checked by name first: Windows has no O_NOFOLLOW, and a FIFO must not be opened at all. What was opened must be what was checked, and
+  // O_NONBLOCK keeps a FIFO swapped in between from stalling the host.
+  let before: ReturnType<typeof lstatSync>
   let fd: number
   try {
-    fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+    before = lstatSync(path)
+    if (!before.isFile()) return undefined
+    fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0))
   } catch {
     return undefined
   }
   try {
     const stat = fstatSync(fd)
-    if (!stat.isFile() || (posix && stat.uid !== process.getuid?.())) return undefined
+    if (!stat.isFile() || stat.ino !== before.ino || stat.dev !== before.dev) return undefined
+    if (posix && stat.uid !== process.getuid?.()) return undefined
     // a file left readable by an older version is closed before it is read
     if (posix && (stat.mode & 0o077) !== 0) fchmodSync(fd, 0o600)
     return readFileSync(fd, 'utf8')

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -78,6 +79,19 @@ test('a linked state file or folder is never read or written through', { skip: !
     symlinkSync(join(elsewhere, 'pins.json'), join(folder, 'pins.json'))
     assert.deepEqual(filePins(folder).list('chat'), [], 'a linked file reads as empty')
     assert.match(readFileSync(join(elsewhere, 'pins.json'), 'utf8'), /planted/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a FIFO in place of a state file is not opened, so the host never stalls on it', { skip: !posix && 'POSIX only' }, () => {
+  const root = mkdtempSync(join(tmpdir(), 'tameru-state-'))
+  try {
+    const folder = join(root, 'tameru')
+    mkdirSync(folder)
+    execFileSync('mkfifo', [join(folder, 'pins.json'), join(folder, 'settings.json')])
+    assert.deepEqual(filePins(folder).list('chat'), [])
+    assert.deepEqual(readSaved(folder), {})
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
