@@ -142,6 +142,9 @@ test('a chat id like __proto__ is an ordinary chat in the pin file, and a damage
     assert.equal(({} as Record<string, unknown>).pins, undefined, 'Object.prototype untouched')
     writeFileSync(join(folder, 'pins.json'), JSON.stringify({ version: 1, chats: [] }))
     assert.deepEqual(filePins(folder).list('0'), [])
+    writeFileSync(join(folder, 'pins.json'), JSON.stringify({ version: 1, chats: { broken: null, odd: 5, kept: { pins: ['still here'], updated: 1 } } }))
+    assert.deepEqual(filePins(folder).add('next', 'saves despite damaged entries'), { ok: true, pins: ['saves despite damaged entries'] })
+    assert.deepEqual(filePins(folder).list('kept'), ['still here'])
   } finally {
     rmSync(folder, { recursive: true, force: true })
   }

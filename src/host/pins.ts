@@ -90,7 +90,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
     try {
       const parsed = JSON.parse(readFileSync(path, 'utf8')) as FileShape
       // chat ids come from outside: a null-prototype map keeps an id like `__proto__` an ordinary key
-      if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null && !Array.isArray(parsed.chats)) return { version: 1, chats: Object.assign(Object.create(null), parsed.chats) }
+      if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null && !Array.isArray(parsed.chats)) return { version: 1, chats: Object.assign(Object.create(null), Object.fromEntries(Object.entries(parsed.chats).filter(([, chat]) => typeof chat === 'object' && chat !== null && typeof chat.updated === 'number'))) }
     } catch {
       // missing or damaged: start empty
     }

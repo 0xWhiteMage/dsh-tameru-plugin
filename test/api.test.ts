@@ -218,14 +218,14 @@ test('only what the user changed in the panel is saved: the profile\'s values ar
 test('the route turns away requests another site could make: no JSON content type, or marked cross-site', { skip }, async () => {
   const p = await panel()
   try {
-  const post = (headers: Record<string, string>, payload: Json = { endpoint: 'pin', payload: { sessionId: p.sessionId, text: 'forged' } }) =>
-    p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', headers, body: JSON.stringify(payload) }))
-  assert.equal((await post({})).status, 415, 'a bare string body is text/plain')
-  assert.equal((await post({ 'content-type': 'text/plain' })).status, 415)
-  assert.equal((await post({ 'content-type': 'application/x-www-form-urlencoded' })).status, 415)
-  assert.equal((await post({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' })).status, 403)
-  assert.equal((await post({ 'content-type': 'application/json; charset=utf-8', 'sec-fetch-site': 'same-origin' })).status, 200)
-  assert.deepEqual((await p.call('state')).pins, ['forged'], 'only the same-origin JSON request pinned')
+    const post = (headers: Record<string, string>, payload: Json = { endpoint: 'pin', payload: { sessionId: p.sessionId, text: 'forged' } }) =>
+      p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', headers, body: JSON.stringify(payload) }))
+    assert.equal((await post({})).status, 415, 'a bare string body is text/plain')
+    assert.equal((await post({ 'content-type': 'text/plain' })).status, 415)
+    assert.equal((await post({ 'content-type': 'application/x-www-form-urlencoded' })).status, 415)
+    assert.equal((await post({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' })).status, 403)
+    assert.equal((await post({ 'content-type': 'application/json; charset=utf-8', 'sec-fetch-site': 'same-origin' })).status, 200)
+    assert.deepEqual((await p.call('state')).pins, ['forged'], 'only the same-origin JSON request pinned')
   } finally {
     await p.close()
   }
