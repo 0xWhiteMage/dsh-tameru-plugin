@@ -47,28 +47,40 @@ def main() -> int:
         header = json.loads(handle.read(json_size).decode("utf-8"))
         base = 8 + header_size
         manifest = header["files"]["dsh"]["files"]["node_modules"]
-        if out.exists():
-            shutil.rmtree(out)
-        written = 0
+        root = out.resolve()
+        writes: list[tuple[Path, int, int]] = []
 
         def walk(node: dict, rel: str) -> None:
-            nonlocal written
             for name, entry in node.get("files", {}).items():
+                # names come from the archive: a separator, "..", or a drive or root would put the file outside `out`
+                if not isinstance(name, str) or name in ("", ".", "..") or any(c in name for c in "/\\:\0"):
+                    raise ValueError(f"unsafe file name in the archive: {name!r} under {rel or '.'}")
                 path = f"{rel}/{name}" if rel else name
                 if any(path.startswith(skip) for skip in SKIP_PACKAGES):
                     continue
                 if "files" in entry:
                     walk(entry, path)
                     continue
-                if entry.get("unpacked") or path.endswith(SKIP_SUFFIXES) or "/lib/assets/" in path:
+                if "link" in entry or entry.get("unpacked") or path.endswith(SKIP_SUFFIXES) or "/lib/assets/" in path:
                     continue
                 target = out / path
-                target.parent.mkdir(parents=True, exist_ok=True)
-                handle.seek(base + int(entry["offset"]))
-                target.write_bytes(handle.read(entry["size"]))
-                written += 1
+                if not target.resolve().is_relative_to(root):
+                    raise ValueError(f"archive entry {path!r} would be written outside {out}")
+                writes.append((target, int(entry["offset"]), int(entry["size"])))
 
-        walk(manifest, "")
+        # every name is checked before the previous extraction is removed or anything is written
+        try:
+            walk(manifest, "")
+        except ValueError as error:
+            print(error)
+            return 1
+        if out.exists():
+            shutil.rmtree(out)
+        for target, offset, size in writes:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            handle.seek(base + offset)
+            target.write_bytes(handle.read(size))
+        written = len(writes)
     version = json.loads((out / "@deepseek-ai" / "dsh-session" / "package.json").read_text(encoding="utf-8"))["version"]
     print(f"extracted {written} files of Harness {version} into {out}")
     return 0
