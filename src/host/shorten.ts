@@ -209,7 +209,7 @@ export interface Applied {
 }
 
 export type PassOutcome =
-  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'surface_changed' | 'aborted' }
+  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'surface_changed' | 'aborted' | 'over_budget' }
   | { kind: 'applied'; applied: Applied[]; freedTokens: number; candidates: number }
 
 export const LATE: unique symbol = Symbol('late')
@@ -255,11 +255,18 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   let answered = 0
   let unsure = 0
   // One at a time, within a time budget: a step boundary must not wait long, and what is not reached now is reached at a later step.
-  const started = Date.now()
+  const deadline = Date.now() + PASS_BUDGET_MS
+  // two failures to answer stop a result being tried again, so one hard result cannot stall every step; an answer clears them
+  const strike = (key: string): void => {
+    const failedOnce = `${key}#failed`
+    if (pass.declined?.has(failedOnce)) pass.declined.add(key)
+    else pass.declined?.add(failedOnce)
+  }
+  const answeredFor = (key: string): void => void pass.declined?.delete(`${key}#failed`)
   let calls = 0
   let late = false
   for (const candidate of candidates) {
-    if (late || calls >= options.maxPerPass || Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
+    if (late || calls >= options.maxPerPass || Date.now() > deadline || pass.signal?.aborted) break
     await (async () => {
       const query = buildQuery(lookup, candidate.index, candidate.callId)
       const key = declineKey(candidate.seq, candidate.text.length, query)
@@ -269,23 +276,27 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       }
       calls++
       // the step waits for this pass: a slow engine or an abort ends it at the budget, and a reply that comes later is dropped
-      const reply = await within(client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 }), PASS_BUDGET_MS - (Date.now() - started), pass.signal)
+      const work = client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
+      const reply = await within(work, deadline - Date.now(), pass.signal)
       // a turn the user stopped says nothing about this result, whatever the engine said
       if (pass.signal?.aborted) {
         late = true
         return
       }
-      const result = reply === LATE ? undefined : reply
-      if (reply === LATE) late = true
+      if (reply === LATE || Date.now() > deadline) {
+        // too late for this step, so it is not used; the engine's own answer or failure, when it comes, is what counts for this
+        // result, not the time it waited in the queue
+        late = true
+        work.then(answer => (answer ? answeredFor(key) : strike(key)), () => strike(key))
+        return
+      }
+      const result = reply
       if (!result) {
-        // the engine did not answer for this one in time: a second failure stops it being tried again, so one hard result cannot stall every step
-        const failedOnce = `${key}#failed`
-        if (pass.declined?.has(failedOnce)) pass.declined.add(key)
-        else pass.declined?.add(failedOnce)
+        strike(key)
         return
       }
       answered++
-      pass.declined?.delete(`${key}#failed`)
+      answeredFor(key)
       if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) {
         pass.declined?.add(key)
         return
@@ -307,13 +318,14 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     })()
   }
   if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
-  if (answered === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
+  if (answered === 0) return { kind: 'skipped', reason: late ? 'over_budget' : 'engine_unavailable' }
   if (planned.length === 0) return { kind: 'skipped', reason: unsure > 0 ? 'not_confident' : 'no_candidates' }
   const batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)
   if (batch.length === 0) return { kind: 'skipped', reason: 'not_worth_it' }
 
-  // The engine took time. Write only if nothing was replaced or compacted meanwhile.
+  // The engine took time. Write only if nothing was replaced or compacted meanwhile, and only within the step's budget.
   if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
+  if (Date.now() > deadline) return { kind: 'skipped', reason: 'over_budget' }
   if (session.surface.replaceGeneration !== generation || compactionOpen(session)) return { kind: 'skipped', reason: 'surface_changed' }
   const onSurface = new Set(session.surface.nodes)
   const applied: Applied[] = []

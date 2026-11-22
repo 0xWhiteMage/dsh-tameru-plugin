@@ -98,6 +98,8 @@ test('shared strings take their placeholders, and the empty-list reason follows 
   assert.equal(emptyReasonKey('not_confident', false), 'notConfident')
   assert.equal(emptyReasonKey('not_worth_it', false), 'tooSmall')
   assert.equal(emptyReasonKey('engine_unavailable', false), 'engineSilent')
+  assert.equal(emptyReasonKey('over_budget', false), 'engineSilent')
+  assert.equal(emptyReasonKey('aborted', false), 'cancelled')
   assert.equal(emptyReasonKey('off', false), 'off')
   assert.equal(emptyReasonKey(null, true), 'belowStart')
   assert.equal(emptyReasonKey(undefined, false), 'noCandidates')

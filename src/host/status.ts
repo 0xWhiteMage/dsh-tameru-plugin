@@ -28,6 +28,7 @@ const REASONS: Record<string, string> = {
   off: 'shortening is switched off',
   error: 'an error (see the Harness log)',
   aborted: 'the turn was cancelled',
+  over_budget: 'the engine took longer than a step can wait',
 }
 
 /** The text `/tameru` shows. Plain, short, and honest about what is and is not working. */
