@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import struct
 import sys
 import tempfile
@@ -54,13 +55,16 @@ def no_duplicates(pairs: list[tuple[str, object]]) -> dict:
     return dict(pairs)
 
 
-def is_link(path: Path) -> bool:
-    """A symlink, or on Windows any reparse point such as a junction."""
+def check_folder(path: Path) -> None:
+    """Missing is fine; anything else must be a plain folder, not a link, a junction or other reparse point, or a file."""
     try:
         info = os.lstat(path)
-    except OSError:
-        return False
-    return path.is_symlink() or bool(getattr(info, "st_file_attributes", 0) & 0x400)
+    except FileNotFoundError:
+        return
+    except OSError as error:
+        raise ValueError(f"cannot check {path}: {error}") from None
+    if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & 0x400 or not stat.S_ISDIR(info.st_mode):
+        raise ValueError(f"{path} is a link or not a folder; remove it and run again")
 
 
 SKIP_SUFFIXES = (".map", ".d.ts", ".png", ".jpg", ".svg", ".woff", ".woff2", ".ttf", ".gif", ".webp", ".ico", ".node")
@@ -92,6 +96,9 @@ def extract(app: Path, out: Path) -> int:
         header = json.loads(handle.read(json_size).decode("utf-8"), object_pairs_hook=no_duplicates)
         base = 8 + header_size
         manifest = header["files"]["dsh"]["files"]["node_modules"]
+        # the folders leading to `out` are this checkout's own: a link among them would send the files elsewhere
+        for folder in (out.parent.parent, out.parent, out):
+            check_folder(folder)
         root = out.resolve()
         writes: list[tuple[Path, int, int, dict]] = []
 
@@ -118,10 +125,6 @@ def extract(app: Path, out: Path) -> int:
 
         # every name is checked before the previous extraction is touched or anything is written
         walk(manifest, "")
-        # the folders leading to `out` are this checkout's own: a link among them would send the files elsewhere
-        for folder in (out.parent.parent, out.parent, out):
-            if is_link(folder) or (folder.exists() and not folder.is_dir()):
-                raise ValueError(f"{folder} is a link or not a folder; remove it and run again")
         out.parent.mkdir(parents=True, exist_ok=True)
         # written into a new private folder, checked, then swapped in; the old extraction is kept until the swap succeeds
         staging = Path(tempfile.mkdtemp(prefix=".node_modules-", dir=out.parent))
@@ -147,12 +150,12 @@ def extract(app: Path, out: Path) -> int:
                 version = json.loads(package.read_text(encoding="utf-8"))["version"]
             except (OSError, ValueError, KeyError, TypeError) as error:
                 raise ValueError(f"the archive has no readable dsh-session package.json ({error})") from None
-            if out.exists():
-                out.rename(backup)
             try:
+                if out.exists():
+                    out.rename(backup)
                 staging.rename(out)
             except BaseException:
-                if backup.exists():
+                if backup.exists() and not out.exists():
                     backup.rename(out)
                 raise
         except BaseException:
