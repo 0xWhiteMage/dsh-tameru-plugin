@@ -89,11 +89,18 @@ def main() -> int:
 def extract(app: Path, out: Path) -> int:
     size_on_disk = app.stat().st_size
     with app.open("rb") as handle:
-        handle.read(4)
-        header_size = struct.unpack("<I", handle.read(4))[0]
-        handle.read(4)
-        json_size = struct.unpack("<I", handle.read(4))[0]
-        header = json.loads(handle.read(json_size).decode("utf-8"), object_pairs_hook=no_duplicates)
+        # two Pickle frames: [4][header size] then [payload size][JSON size][JSON, padded to 4]; the files start after the header
+        prefix = handle.read(16)
+        if len(prefix) != 16:
+            raise ValueError("not an asar archive: too short")
+        outer, header_size, payload_size, json_size = struct.unpack("<4I", prefix)
+        padded = (json_size + 3) & ~3
+        if outer != 4 or header_size != payload_size + 4 or payload_size != 4 + padded or 8 + header_size > size_on_disk:
+            raise ValueError("not an asar archive: its header sizes do not agree")
+        raw = handle.read(json_size)
+        if len(raw) != json_size:
+            raise ValueError("not an asar archive: its header is cut short")
+        header = json.loads(raw.decode("utf-8"), object_pairs_hook=no_duplicates)
         base = 8 + header_size
         manifest = header["files"]["dsh"]["files"]["node_modules"]
         # the folders leading to `out` are this checkout's own: a link among them would send the files elsewhere
