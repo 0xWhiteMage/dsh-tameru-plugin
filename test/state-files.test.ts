@@ -44,3 +44,41 @@ test('a leftover temporary file, even a link planted elsewhere, is replaced and 
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('an older version\'s readable files are closed on the first read, before any save', { skip: !posix && 'POSIX modes only' }, () => {
+  const root = mkdtempSync(join(tmpdir(), 'tameru-state-'))
+  try {
+    const folder = join(root, 'tameru')
+    mkdirSync(folder, { mode: 0o755 })
+    writeFileSync(join(folder, 'pins.json'), JSON.stringify({ version: 1, chats: { chat: { pins: ['old'], updated: 1 } } }), { mode: 0o644 })
+    writeFileSync(join(folder, 'settings.json'), JSON.stringify({ version: 2, settings: { share: 0.5 } }), { mode: 0o644 })
+    assert.deepEqual(filePins(folder).list('chat'), ['old'])
+    assert.deepEqual(readSaved(folder), { share: 0.5 })
+    assert.equal(mode(folder), 0o700)
+    assert.equal(mode(join(folder, 'pins.json')), 0o600)
+    assert.equal(mode(join(folder, 'settings.json')), 0o600)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('a linked state file or folder is never read or written through', { skip: !posix && 'symlinks need privileges on Windows' }, () => {
+  const root = mkdtempSync(join(tmpdir(), 'tameru-state-'))
+  try {
+    const elsewhere = join(root, 'elsewhere')
+    mkdirSync(elsewhere)
+    writeFileSync(join(elsewhere, 'pins.json'), JSON.stringify({ version: 1, chats: { chat: { pins: ['planted'], updated: 1 } } }))
+    const linkedFolder = join(root, 'linked')
+    symlinkSync(elsewhere, linkedFolder)
+    assert.deepEqual(filePins(linkedFolder).list('chat'), [], 'a linked folder reads as empty')
+    assert.equal(filePins(linkedFolder).add('chat', 'x').ok, false, 'and is not written')
+    assert.match(writeSaved(linkedFolder, { shorten: false }) ?? '', /not a folder/)
+    const folder = join(root, 'tameru')
+    mkdirSync(folder)
+    symlinkSync(join(elsewhere, 'pins.json'), join(folder, 'pins.json'))
+    assert.deepEqual(filePins(folder).list('chat'), [], 'a linked file reads as empty')
+    assert.match(readFileSync(join(elsewhere, 'pins.json'), 'utf8'), /planted/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

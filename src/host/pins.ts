@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { writePrivate } from './state-file.ts'
+import { readPrivate, writePrivate } from './state-file.ts'
 
 /** Lines the user pins stay in the system prompt, which no summary replaces, so they survive every compaction word for word. */
 export const MAX_PINS = 5
@@ -89,7 +88,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
   const path = join(directory, 'pins.json')
   const read = (): FileShape => {
     try {
-      const parsed = JSON.parse(readFileSync(path, 'utf8')) as FileShape
+      const parsed = JSON.parse(readPrivate(path) ?? '') as FileShape
       if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null) return parsed
     } catch {
       // missing or damaged: start empty

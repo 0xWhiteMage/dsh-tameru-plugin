@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizeSettings } from './settings.ts'
-import { writePrivate } from './state-file.ts'
+import { readPrivate, writePrivate } from './state-file.ts'
 import type { TameruSettings } from './step.ts'
 
 /**
@@ -10,7 +9,7 @@ import type { TameruSettings } from './step.ts'
  */
 export function readSaved(directory: string): TameruSettings {
   try {
-    const parsed = JSON.parse(readFileSync(join(directory, 'settings.json'), 'utf8')) as { version?: number; settings?: unknown }
+    const parsed = JSON.parse(readPrivate(join(directory, 'settings.json')) ?? '') as { version?: number; settings?: unknown }
     if (parsed?.version === 2) return normalizeSettings(parsed.settings)
   } catch {
     // missing or damaged: nothing saved
