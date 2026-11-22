@@ -1,8 +1,7 @@
 import type { EngineClient } from './engine-client.ts'
-import type { CompressResult } from '../shared/protocol.ts'
 import { drainPending, type PendingOp } from './commands.ts'
 import type { TrailState } from './trail.ts'
-import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
+import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassOutcome, type ReadyAnswer, type SessionLike, type ShortenOptions } from './shorten.ts'
 import { compactionIsManagedElsewhere, policyFor, stockThreshold, type BackendLike } from './stock.ts'
 
 export interface TameruSettings extends Partial<ShortenOptions> {
@@ -19,7 +18,7 @@ export interface ChatStats {
   /** Results the engine already declined in this chat (not asked again). */
   declined: Set<string>
   /** Engine answers that came after their step's deadline, for the next step. */
-  ready: Map<string, CompressResult>
+  ready: Map<string, ReadyAnswer>
   /** Keep, restore and unkeep requests made while the agent was working; applied at the next step boundary. */
   pending: PendingOp[]
   /** Where the Artifact Trail scan has got to in this chat's log, and a trail still owed to the chat. */

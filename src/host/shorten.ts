@@ -194,8 +194,17 @@ export interface PassContext {
    * output is not sent to the engine again at every later step. Never filled when the engine itself failed to answer.
    */
   declined?: Set<string>
-  /** Answers that came after their step's deadline, used at the next step instead of asking the engine again. Kept small. */
-  ready?: Map<string, CompressResult>
+  /**
+   * Answers that came after their step's deadline, used at a later step instead of asking the engine again: only for the exact text and
+   * question they were asked with, and kept until written or turned down. Kept small.
+   */
+  ready?: Map<string, ReadyAnswer>
+}
+
+export interface ReadyAnswer {
+  text: string
+  query: string
+  result: CompressResult
 }
 
 const READY_LIMIT = 32
@@ -271,6 +280,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   let calls = 0
   let late = false
   let waiting = false
+  const keys = new Map<number, string>()
   for (const candidate of candidates) {
     if (late || calls >= options.maxPerPass || Date.now() > deadline || pass.signal?.aborted) break
     await (async () => {
@@ -285,9 +295,10 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         waiting = true
         return
       }
-      let result = pass.ready?.get(key)
-      if (result) pass.ready!.delete(key)
-      else {
+      const kept = pass.ready?.get(key)
+      let result = kept && kept.text === candidate.text && kept.query === query ? kept.result : undefined
+      if (kept && !result) pass.ready!.delete(key)
+      if (!result) {
         calls++
         // the step waits for this pass: a slow engine or an abort ends it at the budget, and a reply that comes later is dropped
         const work = client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
@@ -308,7 +319,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
             answeredFor(key)
             if (!pass.ready) return
             if (pass.ready.size >= READY_LIMIT) pass.ready.delete(pass.ready.keys().next().value!)
-            pass.ready.set(key, answer)
+            pass.ready.set(key, { text: candidate.text, query, result: answer })
           }
           work.then(settled, () => settled(undefined))
           return
@@ -323,11 +334,13 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       answeredFor(key)
       if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) {
         pass.declined?.add(key)
+        pass.ready?.delete(key)
         return
       }
       if (result.confidence === null || !Number.isFinite(result.confidence) || result.confidence > 1 || result.confidence < options.minConfidence) {
         unsure++
         pass.declined?.add(key)
+        pass.ready?.delete(key)
         return
       }
       const newText = shortenedText(candidate.text, result.text, candidate.origin)
@@ -336,9 +349,11 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       const afterTokens = meter.estimateMessage(replacement)
       if (afterTokens >= beforeTokens) {
         pass.declined?.add(key)
+        pass.ready?.delete(key)
         return
       }
       planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
+      keys.set(candidate.seq, key)
     })()
   }
   if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
@@ -348,6 +363,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (batch.length === 0) return { kind: 'skipped', reason: 'not_worth_it' }
 
   // The engine took time. Write only if nothing was replaced or compacted meanwhile, and only within the step's budget.
+  if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
   if (session.surface.replaceGeneration !== generation || compactionOpen(session)) return { kind: 'skipped', reason: 'surface_changed' }
   const onSurface = new Set(session.surface.nodes)
   const writes = [...batch]
@@ -373,6 +389,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       // The price event must sit immediately before its replacement: the Harness's meter subtracts it from the replaced node.
       session.append('compaction/prune', prune)
       const written = session.append('tool/result', data, meta)
+      pass.ready?.delete(keys.get(seq)!)
       applied.push({ originalSeq: seq, replacementSeq: written.seq, toolName: item.candidate.toolName, beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })
     } catch {
       break // what was written is a complete pair; stop before anything half-written
