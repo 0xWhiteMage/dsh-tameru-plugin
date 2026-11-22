@@ -19,15 +19,23 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 Benjamin Ang"
 SPDX-License-Identifier = "Apache-2.0"
 
-# Third-party text reproduced as test inputs; not relicensed. See THIRD_PARTY_NOTICES.md.
+# The engine's 1.9.0 task cases (MIT at 9f1f1c4) and third-party text reproduced as test inputs; not relicensed.
+# See THIRD_PARTY_NOTICES.md.
 [[annotations]]
 path = ["test/fixtures/engine-cases.json"]
 precedence = "override"
-SPDX-FileCopyrightText = ["2026 Benjamin Ang", "Copyright (c) 2025 Nous Research", "Copyright (c) 1999 - 2021 The PHP Group. All rights reserved."]
-SPDX-License-Identifier = "Apache-2.0 AND MIT AND PHP-3.01 AND LicenseRef-NoLicense-Musubi-Tuner"
+SPDX-FileCopyrightText = ["2026 Benjamin Ang", "Copyright (c) 2025 Nous Research", "Copyright (c) 1999 - 2021 The PHP Group. All rights reserved.", "NOASSERTION"]
+SPDX-License-Identifier = "MIT AND PHP-3.01 AND LicenseRef-Unresolved-Musubi-Tuner"
 
 [[annotations]]
 path = ["docs/images/**"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 Benjamin Ang", "2026 DeepSeek"]
+SPDX-License-Identifier = "Apache-2.0 AND MIT"
+
+# Two DeepSeek Harness compatibility strings are reproduced (MIT). See THIRD_PARTY_NOTICES.md.
+[[annotations]]
+path = ["src/host/messages.ts", "test/originals.test.ts", "test/shorten.test.ts"]
 precedence = "override"
 SPDX-FileCopyrightText = ["2026 Benjamin Ang", "2026 DeepSeek"]
 SPDX-License-Identifier = "Apache-2.0 AND MIT"
