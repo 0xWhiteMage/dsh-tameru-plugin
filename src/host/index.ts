@@ -7,7 +7,7 @@ import type { SessionLike } from './shorten.ts'
 import { dshHome, findPython } from './python.ts'
 import { filePins, pinsSection } from './pins.ts'
 import { scanForTrail, trailMessage } from './trail.ts'
-import { handleApi, type ApiEnv } from './api.ts'
+import { handleApi, refuseRequest, type ApiEnv } from './api.ts'
 import { readSaved, writeSaved } from './saved-settings.ts'
 import { normalizeSettings, type TameruConfig } from './settings.ts'
 import { statusText } from './status.ts'
@@ -170,6 +170,8 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
         methods: ['POST'],
         requestBody: 'buffered',
         fetch: async request => {
+          const refused = refuseRequest(request.headers)
+          if (refused) return new Response(JSON.stringify({ ok: false, error: refused.error }), { status: refused.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
           let body: { endpoint?: unknown; payload?: unknown } = {}
           try {
             body = await request.json()
