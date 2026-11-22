@@ -1,4 +1,14 @@
-Tameru Compaction System
+dsh-tameru (Tameru for DeepSeek Harness)
 Copyright 2026 Benjamin Ang
 
 This product includes software developed by Benjamin Ang (The White Mage).
+
+vendor/tameru/ contains the Tameru engine, copied unchanged from
+https://github.com/0xWhiteMage/tameru-compaction-system at commit
+9f1f1c45e432e63119f6fa0cd232bb27b476e05b (Tameru 1.9.0 source), by the same
+copyright holder. At that commit the engine was published under the MIT
+License; the engine repository has been Apache-2.0 since commit ed8bcff. The
+copy is distributed here under Apache-2.0 as part of this work, and the MIT
+notice it carried is kept in THIRD_PARTY_NOTICES.md.
+
+No DeepSeek Harness (MIT) source code is included. See THIRD_PARTY_NOTICES.md.

@@ -1,0 +1,19 @@
+version = 1
+SPDX-PackageName = "dsh-tameru"
+SPDX-PackageSupplier = "Benjamin Ang <hello@benjaminang.tv>"
+SPDX-PackageDownloadLocation = "https://github.com/0xWhiteMage/dsh-tameru-plugin"
+
+# Everything is the project's own work unless an annotation below says otherwise. See THIRD_PARTY_NOTICES.md.
+[[annotations]]
+path = ["**"]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Benjamin Ang"
+SPDX-License-Identifier = "Apache-2.0"
+
+# The vendored engine must stay byte for byte identical to the engine repository, so it gets no headers. Same copyright holder;
+# published under MIT at the vendored commit and distributed here under Apache-2.0 (see NOTICE).
+[[annotations]]
+path = ["vendor/tameru/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Benjamin Ang"
+SPDX-License-Identifier = "Apache-2.0"
