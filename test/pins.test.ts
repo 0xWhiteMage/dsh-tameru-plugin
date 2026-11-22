@@ -129,3 +129,20 @@ test('through the real prompt assembler a pin reaches the system prompt verbatim
     rmSync(folder, { recursive: true, force: true })
   }
 })
+
+test('a chat id like __proto__ is an ordinary chat in the pin file, and a damaged chats field reads as empty', () => {
+  const folder = dir()
+  try {
+    const pins = filePins(folder)
+    assert.deepEqual(pins.add('__proto__', 'keep the schema'), { ok: true, pins: ['keep the schema'] })
+    assert.deepEqual(pins.add('constructor', 'second chat'), { ok: true, pins: ['second chat'] })
+    assert.deepEqual(filePins(folder).list('__proto__'), ['keep the schema'])
+    assert.deepEqual(filePins(folder).list('constructor'), ['second chat'])
+    assert.deepEqual(filePins(folder).list('toString'), [])
+    assert.equal(({} as Record<string, unknown>).pins, undefined, 'Object.prototype untouched')
+    writeFileSync(join(folder, 'pins.json'), JSON.stringify({ version: 1, chats: [] }))
+    assert.deepEqual(filePins(folder).list('0'), [])
+  } finally {
+    rmSync(folder, { recursive: true, force: true })
+  }
+})

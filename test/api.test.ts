@@ -3,11 +3,14 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { refuseRequest } from '../src/host/api.ts'
 import { apply, inject, name } from '../src/host/index.ts'
 import { findPython } from '../src/host/python.ts'
 import { bigOutput, load, skip, world } from './helpers/harness.ts'
 
 type Json = Record<string, any>
+
+const JSON_TYPE = { 'content-type': 'application/json' }
 
 // resolved once, before any test points DSH_HOME at a temporary folder (the bundled Python lives under the real one)
 const PYTHON = findPython()?.path ?? 'python'
@@ -33,7 +36,7 @@ async function panel(options: { settings?: Json; steps?: number } = {}) {
   const sessionId = (w.session as unknown as { id: string }).id
   const route = w.routes.get('/api/tameru')!
   const call = async (endpoint: string, payload: Json = {}): Promise<Json> => {
-    const response = await route.fetch(new Request('http://127.0.0.1/api/tameru', { method: 'POST', body: JSON.stringify({ endpoint, payload: { sessionId, ...payload } }) }))
+    const response = await route.fetch(new Request('http://127.0.0.1/api/tameru', { method: 'POST', headers: JSON_TYPE, body: JSON.stringify({ endpoint, payload: { sessionId, ...payload } }) }))
     return (await response.json()) as Json
   }
   const agent = { id: 'a1', session: w.session }
@@ -52,15 +55,15 @@ test('the route is a POST route of its own, and refuses what is not a request', 
   const p = await panel()
   try {
     assert.deepEqual(p.route.methods, ['POST'])
-    assert.equal((await p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', body: '{not json' }))).status, 400)
+    assert.equal((await p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', headers: JSON_TYPE, body: '{not json' }))).status, 400)
     const odd = [undefined, null, 5, 'x', [], {}]
     for (const payload of odd) {
-      const response = await p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', body: JSON.stringify({ endpoint: 'state', payload }) }))
+      const response = await p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', headers: JSON_TYPE, body: JSON.stringify({ endpoint: 'state', payload }) }))
       assert.equal((await response.json()).ok, false)
     }
     assert.equal((await p.call('frobnicate')).ok, false)
     assert.equal((await p.call('state', { sessionId: 'x'.repeat(500) })).ok, false)
-    assert.equal((await p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', body: JSON.stringify({ endpoint: 7 }) }))).status, 200)
+    assert.equal((await p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', headers: JSON_TYPE, body: JSON.stringify({ endpoint: 7 }) }))).status, 200)
   } finally {
     await p.close()
   }
@@ -184,7 +187,7 @@ test('saved settings are read when the plugin starts, over the profile\'s values
     w.ctx.plugin({ name, inject, apply }, { pythonPath: PYTHON, activation: 0.9, minConfidence: 0.8 })
     await new Promise(resolve => setTimeout(resolve, 150))
     const route = w.routes.get('/api/tameru')!
-    const read = async (): Promise<Json> => (await (await route.fetch(new Request('http://x', { method: 'POST', body: JSON.stringify({ endpoint: 'settings', payload: {} }) }))).json()) as Json
+    const read = async (): Promise<Json> => (await (await route.fetch(new Request('http://x', { method: 'POST', headers: JSON_TYPE, body: JSON.stringify({ endpoint: 'settings', payload: {} }) }))).json()) as Json
     const values = (await read()).settings.values
     assert.equal(values.activation, 0.5, 'saved wins over the profile')
     assert.equal(values.minConfidence, 0.8, 'the profile still supplies what was not saved')
@@ -210,4 +213,30 @@ test('only what the user changed in the panel is saved: the profile\'s values ar
   } finally {
     await p.close()
   }
+})
+
+test('the route turns away requests another site could make: no JSON content type, or marked cross-site', { skip }, async () => {
+  const p = await panel()
+  try {
+  const post = (headers: Record<string, string>, payload: Json = { endpoint: 'pin', payload: { sessionId: p.sessionId, text: 'forged' } }) =>
+    p.route.fetch(new Request('http://x/api/tameru', { method: 'POST', headers, body: JSON.stringify(payload) }))
+  assert.equal((await post({})).status, 415, 'a bare string body is text/plain')
+  assert.equal((await post({ 'content-type': 'text/plain' })).status, 415)
+  assert.equal((await post({ 'content-type': 'application/x-www-form-urlencoded' })).status, 415)
+  assert.equal((await post({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' })).status, 403)
+  assert.equal((await post({ 'content-type': 'application/json; charset=utf-8', 'sec-fetch-site': 'same-origin' })).status, 200)
+  assert.deepEqual((await p.call('state')).pins, ['forged'], 'only the same-origin JSON request pinned')
+  } finally {
+    await p.close()
+  }
+})
+
+test('refuseRequest accepts only JSON and never a cross-site request', () => {
+  const headers = (entries: Record<string, string>) => new Headers(entries)
+  assert.equal(refuseRequest(headers({ 'content-type': 'application/json' })), undefined)
+  assert.equal(refuseRequest(headers({ 'content-type': 'Application/JSON ; charset=UTF-8' })), undefined)
+  assert.equal(refuseRequest(headers({}))?.status, 415)
+  assert.equal(refuseRequest(headers({ 'content-type': 'text/plain;charset=UTF-8' }))?.status, 415)
+  assert.equal(refuseRequest(headers({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }))?.status, 403)
+  assert.equal(refuseRequest(headers({ 'content-type': 'application/json', 'sec-fetch-site': 'same-site' })), undefined)
 })

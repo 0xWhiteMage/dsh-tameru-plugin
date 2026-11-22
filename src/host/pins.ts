@@ -89,11 +89,12 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
   const read = (): FileShape => {
     try {
       const parsed = JSON.parse(readFileSync(path, 'utf8')) as FileShape
-      if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null) return parsed
+      // chat ids come from outside: a null-prototype map keeps an id like `__proto__` an ordinary key
+      if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null && !Array.isArray(parsed.chats)) return { version: 1, chats: Object.assign(Object.create(null), parsed.chats) }
     } catch {
       // missing or damaged: start empty
     }
-    return { version: 1, chats: {} }
+    return { version: 1, chats: Object.create(null) }
   }
   const write = (data: FileShape): string | undefined => {
     try {
@@ -121,7 +122,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
     list: chat => valid(read().chats[chat]?.pins),
     add: (chat, text) => change(chat, pins => addTo(pins, text)),
     remove: (chat, position) => change(chat, pins => removeFrom(pins, position)),
-    purge: () => void write({ version: 1, chats: {} }),
+    purge: () => void write({ version: 1, chats: Object.create(null) }),
   }
 }
 

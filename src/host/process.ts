@@ -1,19 +1,46 @@
 import { spawn as nodeSpawn } from 'node:child_process'
 import type { Spawn, WorkerProcess } from './engine-client.ts'
 
-/** Turns a byte stream into lines. A line is complete at `\n`; a trailing `\r` is dropped. */
+/** The longest reply line the host holds: well above the worker's largest answer (its 16 MiB request limit, ASCII-escaped). */
+export const MAX_REPLY_CHARS = 128 * 1024 * 1024
+
+/** What the splitter hands on in place of a line that was too long: the worker's own error shape, so the request in flight fails at once. */
+export const TOO_LARGE_LINE = JSON.stringify({ id: null, ok: false, error: 'reply_too_large' })
+
+/**
+ * Turns a byte stream into lines. A line is complete at `\n`; a trailing `\r` is dropped. A line longer than `maxChars` is never held
+ * in memory: it is discarded up to its newline and reported once as `TOO_LARGE_LINE`.
+ */
 export class LineSplitter {
   private readonly decoder = new TextDecoder('utf-8')
   private rest = ''
+  private discarding = false
+  private readonly maxChars: number
+
+  constructor(maxChars: number = MAX_REPLY_CHARS) {
+    this.maxChars = maxChars
+  }
 
   push(chunk: Uint8Array | string, onLine: (line: string) => void): void {
-    this.rest += typeof chunk === 'string' ? chunk : this.decoder.decode(chunk, { stream: true })
+    let text = typeof chunk === 'string' ? chunk : this.decoder.decode(chunk, { stream: true })
+    if (this.discarding) {
+      const end = text.indexOf('\n')
+      if (end < 0) return
+      this.discarding = false
+      text = text.slice(end + 1)
+    }
+    this.rest += text
     let at = this.rest.indexOf('\n')
     while (at >= 0) {
-      const line = this.rest.slice(0, at).replace(/\r$/, '')
+      const line = at > this.maxChars ? TOO_LARGE_LINE : this.rest.slice(0, at).replace(/\r$/, '')
       this.rest = this.rest.slice(at + 1)
       if (line) onLine(line)
       at = this.rest.indexOf('\n')
+    }
+    if (this.rest.length > this.maxChars) {
+      this.rest = ''
+      this.discarding = true
+      onLine(TOO_LARGE_LINE)
     }
   }
 }
