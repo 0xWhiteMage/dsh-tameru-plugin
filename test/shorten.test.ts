@@ -265,3 +265,21 @@ test('a kept late answer is used only for the exact text and question it was ask
   assert.ok(asked.length >= 1, 'the engine was asked again')
   assert.ok(!JSON.stringify(w.session.deriveMessages()).includes('STALE EXTRACT'), 'the kept answer was not used')
 })
+
+test('each price event and its replacement are appended as one commit', { skip }, async () => {
+  const { w } = await longSession()
+  const client = { compress: async (request: any) => ({ text: request.text.slice(0, 500), failOpen: false, originalTokens: 1, keptTokens: 1, tokensSavedPct: 90, risk: 'low', confidence: 0.9, contentType: 'text', reasons: [], sanitized: false }) } as unknown as EngineClient
+  const appends: unknown[][] = []
+  const session = new Proxy(w.session, {
+    get(target, name) {
+      const value = Reflect.get(target, name, target)
+      if (name !== 'append') return typeof value === 'function' ? value.bind(target) : value
+      return (...args: unknown[]) => (appends.push(args), value.apply(target, args))
+    },
+  })
+  const outcome = await shortenPass({ session, meter: w.meter, client, header: undefined, activationTokens: 0, options })
+  assert.equal(outcome.kind, 'applied')
+  if (outcome.kind !== 'applied') return
+  assert.equal(appends.length, outcome.applied.length, 'one append per shortened result')
+  for (const [inputs] of appends) assert.deepEqual((inputs as any[]).map(([type]) => type), ['compaction/prune', 'tool/result'])
+})

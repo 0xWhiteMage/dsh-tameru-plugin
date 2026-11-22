@@ -1,5 +1,5 @@
 import { KEPT_PREFIX, RESTORED_PREFIX, SHORTENED_PREFIX, STOCK_PRUNE_MARKER, textOnly, touchedByTameru } from './messages.ts'
-import type { MeterLike, SessionLike } from './shorten.ts'
+import { appendPricedReplacement, type MeterLike, type SessionLike } from './shorten.ts'
 import { safeLine } from './trail.ts'
 
 /**
@@ -171,8 +171,12 @@ function replaceNode(session: SessionLike, meter: MeterLike, item: Item, text: s
   if (!current?.data.message) return { ok: false, reason: 'the result is no longer in the chat' }
   const message = { ...current.data.message, content: [{ type: 'text', text }] }
   try {
-    session.append('compaction/prune', { shadowedRange: { start: item.currentSeq, end: item.currentSeq }, shadowedSeqs: [item.currentSeq], shadowedTokenCount: meter.estimateMessage(current.data.message) })
-    const written = session.append('tool/result', { ...current.data, message }, { surfaceOp: { op: 'replace', startSeq: item.currentSeq, endSeq: item.currentSeq }, sourceEventSeqs: [item.ref, item.currentSeq] })
+    const written = appendPricedReplacement(
+      session,
+      { shadowedRange: { start: item.currentSeq, end: item.currentSeq }, shadowedSeqs: [item.currentSeq], shadowedTokenCount: meter.estimateMessage(current.data.message) },
+      { ...current.data, message },
+      { surfaceOp: { op: 'replace', startSeq: item.currentSeq, endSeq: item.currentSeq }, sourceEventSeqs: [item.ref, item.currentSeq] },
+    )
     return { ok: true, replacementSeq: written.seq }
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) }
