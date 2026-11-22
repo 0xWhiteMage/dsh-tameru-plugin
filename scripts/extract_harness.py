@@ -14,6 +14,7 @@ import os
 import shutil
 import struct
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,6 +28,16 @@ SKIP_PACKAGES = (
     "@deepseek-ai/dsh-experimental-client-ui-forge",
     "@deepseek-ai/dsh-office-to-pdf",
 )
+# names Windows maps to devices, or to another name, whatever folder they are in
+WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(1, 10)), *(f"LPT{n}" for n in range(1, 10))}
+
+
+def unsafe_name(name: object) -> bool:
+    if not isinstance(name, str) or name in ("", ".", "..") or any(c in name for c in "/\\:\0"):
+        return True
+    return name[-1] in ". " or name.split(".", 1)[0].rstrip(" ").upper() in WINDOWS_RESERVED
+
+
 SKIP_SUFFIXES = (".map", ".d.ts", ".png", ".jpg", ".svg", ".woff", ".woff2", ".ttf", ".gif", ".webp", ".ico", ".node")
 
 
@@ -53,7 +64,7 @@ def main() -> int:
         def walk(node: dict, rel: str) -> None:
             for name, entry in node.get("files", {}).items():
                 # names come from the archive: a separator, "..", or a drive or root would put the file outside `out`
-                if not isinstance(name, str) or name in ("", ".", "..") or any(c in name for c in "/\\:\0"):
+                if unsafe_name(name):
                     raise ValueError(f"unsafe file name in the archive: {name!r} under {rel or '.'}")
                 path = f"{rel}/{name}" if rel else name
                 if any(path.startswith(skip) for skip in SKIP_PACKAGES):
@@ -66,7 +77,10 @@ def main() -> int:
                 target = out / path
                 if not target.resolve().is_relative_to(root):
                     raise ValueError(f"archive entry {path!r} would be written outside {out}")
-                writes.append((target, int(entry["offset"]), int(entry["size"])))
+                offset, size = int(entry["offset"]), int(entry["size"])
+                if offset < 0 or size < 0:
+                    raise ValueError(f"archive entry {path!r} has a negative offset or size")
+                writes.append((target, offset, size))
 
         # every name is checked before the previous extraction is removed or anything is written
         try:
@@ -74,12 +88,29 @@ def main() -> int:
         except ValueError as error:
             print(error)
             return 1
-        if out.exists():
-            shutil.rmtree(out)
-        for target, offset, size in writes:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            handle.seek(base + offset)
-            target.write_bytes(handle.read(size))
+        # the folders leading to `out` are this checkout's own: a link among them would send the files elsewhere
+        for folder in (out.parent, out.parent.parent):
+            if folder.is_symlink() or (folder.exists() and not folder.is_dir()):
+                print(f"{folder} is a link or not a folder; remove it and run again")
+                return 1
+        out.parent.mkdir(parents=True, exist_ok=True)
+        # written into a new private folder first, then swapped in, so nothing else can be writing where the files go
+        staging = Path(tempfile.mkdtemp(prefix=".node_modules-", dir=out.parent))
+        try:
+            for target, offset, size in writes:
+                path = staging / target.relative_to(out)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                handle.seek(base + offset)
+                with open(path, "xb") as file:
+                    file.write(handle.read(size))
+            if out.is_symlink():
+                out.unlink()
+            elif out.exists():
+                shutil.rmtree(out)
+            staging.rename(out)
+        except BaseException:
+            shutil.rmtree(staging, ignore_errors=True)
+            raise
         written = len(writes)
     version = json.loads((out / "@deepseek-ai" / "dsh-session" / "package.json").read_text(encoding="utf-8"))["version"]
     print(f"extracted {written} files of Harness {version} into {out}")
