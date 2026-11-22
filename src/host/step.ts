@@ -1,4 +1,5 @@
 import type { EngineClient } from './engine-client.ts'
+import type { CompressResult } from '../shared/protocol.ts'
 import { drainPending, type PendingOp } from './commands.ts'
 import type { TrailState } from './trail.ts'
 import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
@@ -17,6 +18,8 @@ export const DEFAULT_ACTIVATION = 0.75
 export interface ChatStats {
   /** Results the engine already declined in this chat (not asked again). */
   declined: Set<string>
+  /** Engine answers that came after their step's deadline, for the next step. */
+  ready: Map<string, CompressResult>
   /** Keep, restore and unkeep requests made while the agent was working; applied at the next step boundary. */
   pending: PendingOp[]
   /** Where the Artifact Trail scan has got to in this chat's log, and a trail still owed to the chat. */
@@ -48,7 +51,7 @@ export interface StepDeps {
 
 export const chatStatsOf = (store: WeakMap<object, ChatStats>, session: object): ChatStats => {
   let stats = store.get(session)
-  if (!stats) store.set(session, (stats = { declined: new Set(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0 }))
+  if (!stats) store.set(session, (stats = { declined: new Set(), ready: new Map(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0 }))
   return stats
 }
 
@@ -128,6 +131,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       activationTokens: pressure.startsAt,
       options,
       declined: stats.declined,
+      ready: stats.ready,
       ...(signal ? { signal } : {}),
     })
     stats.passes++
