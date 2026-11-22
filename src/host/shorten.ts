@@ -212,6 +212,27 @@ export type PassOutcome =
   | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'surface_changed' | 'aborted' }
   | { kind: 'applied'; applied: Applied[]; freedTokens: number; candidates: number }
 
+export const LATE: unique symbol = Symbol('late')
+
+/** `work`'s value, or `LATE` once `ms` have passed or `signal` aborts, whichever is first. A rejection counts as no answer. */
+export function within<T>(work: Promise<T>, ms: number, signal?: AbortSignal): Promise<T | undefined | typeof LATE> {
+  if (signal?.aborted || ms <= 0) {
+    work.catch(() => {})
+    return Promise.resolve(LATE)
+  }
+  return new Promise(resolve => {
+    const finish = (value: T | undefined | typeof LATE): void => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+      resolve(value)
+    }
+    const onAbort = (): void => finish(LATE)
+    const timer = setTimeout(onAbort, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+    work.then(finish, () => finish(undefined))
+  })
+}
+
 /**
  * One pass at a step boundary. It reads, asks the engine, decides, and only then writes. The writes are synchronous and are
  * re-checked first, so a session that changed while the engine worked is left alone.
@@ -223,9 +244,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (measurement.totalTokens < pass.activationTokens) return { kind: 'skipped', reason: 'below_activation' }
   if (compactionOpen(session)) return { kind: 'skipped', reason: 'compaction_open' }
   const entries = readSurface(session)
-  const candidates = findCandidates(session, entries, options)
-    .sort((a, b) => b.text.length - a.text.length)
-    .slice(0, options.maxPerPass)
+  // every candidate, largest first: maxPerPass counts the calls made, so results the engine already declined do not take the slots
+  const candidates = findCandidates(session, entries, options).sort((a, b) => b.text.length - a.text.length)
   if (candidates.length === 0) return { kind: 'skipped', reason: 'no_candidates' }
   const generation = session.surface.replaceGeneration
   const lookup = entries.map(({ seq, message }) => ({ seq, message }))
@@ -236,8 +256,10 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   let unsure = 0
   // One at a time, within a time budget: a step boundary must not wait long, and what is not reached now is reached at a later step.
   const started = Date.now()
+  let calls = 0
+  let late = false
   for (const candidate of candidates) {
-    if (Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
+    if (late || calls >= options.maxPerPass || Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
     await (async () => {
       const query = buildQuery(lookup, candidate.index, candidate.callId)
       const key = declineKey(candidate.seq, candidate.text.length, query)
@@ -245,7 +267,14 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         answered++
         return
       }
-      const result = await client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
+      calls++
+      // the step waits for this pass: a slow engine or an abort ends it at the budget, and a reply that comes later is dropped
+      const reply = await within(client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 }), PASS_BUDGET_MS - (Date.now() - started), pass.signal)
+      if (reply === LATE) {
+        late = true
+        return
+      }
+      const result = reply
       if (!result) {
         // the engine did not answer for this one: a second failure stops it being tried again, so one hard result cannot stall every step
         const failedOnce = `${key}#failed`
@@ -258,7 +287,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         pass.declined?.add(key)
         return
       }
-      if (result.confidence === null || result.confidence < options.minConfidence) {
+      if (result.confidence === null || !Number.isFinite(result.confidence) || result.confidence > 1 || result.confidence < options.minConfidence) {
         unsure++
         pass.declined?.add(key)
         return
@@ -302,5 +331,5 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     }
   }
   if (applied.length === 0) return { kind: 'skipped', reason: 'surface_changed' }
-  return { kind: 'applied', applied, freedTokens: applied.reduce((sum, a) => sum + (a.beforeTokens - a.afterTokens), 0), candidates: candidates.length }
+  return { kind: 'applied', applied, freedTokens: applied.reduce((sum, a) => sum + (a.beforeTokens - a.afterTokens), 0), candidates: calls }
 }
