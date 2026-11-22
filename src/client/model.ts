@@ -92,13 +92,15 @@ export function fill(template: string, values: Record<string, string | number>):
 }
 
 /** The vocabulary key for the host's own reason that a pass did nothing. */
-export function emptyReasonKey(skip: string | null | undefined, belowStart: boolean): 'belowStart' | 'noCandidates' | 'notConfident' | 'tooSmall' | 'engineSilent' | 'off' {
+export function emptyReasonKey(skip: string | null | undefined, belowStart: boolean): 'belowStart' | 'noCandidates' | 'notConfident' | 'tooSmall' | 'engineSilent' | 'cancelled' | 'off' {
   switch (skip) {
     case 'below_activation': return 'belowStart'
     case 'no_candidates': return 'noCandidates'
     case 'not_confident': return 'notConfident'
     case 'not_worth_it': return 'tooSmall'
-    case 'engine_unavailable': return 'engineSilent'
+    case 'engine_unavailable':
+    case 'over_budget': return 'engineSilent'
+    case 'aborted': return 'cancelled'
     case 'off': return 'off'
     default: return belowStart ? 'belowStart' : 'noCandidates'
   }

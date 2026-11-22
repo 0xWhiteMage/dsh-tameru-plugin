@@ -1,4 +1,5 @@
 import type { EngineClient } from './engine-client.ts'
+import type { CompressResult } from '../shared/protocol.ts'
 import {
   KEPT_PREFIX,
   READ_TOOL,
@@ -193,7 +194,20 @@ export interface PassContext {
    * output is not sent to the engine again at every later step. Never filled when the engine itself failed to answer.
    */
   declined?: Set<string>
+  /**
+   * Answers that came after their step's deadline, used at a later step instead of asking the engine again: only for the exact text and
+   * question they were asked with, and kept until written or turned down. Kept small.
+   */
+  ready?: Map<string, ReadyAnswer>
 }
+
+export interface ReadyAnswer {
+  text: string
+  query: string
+  result: CompressResult
+}
+
+const READY_LIMIT = 32
 
 /** Identifies one result and the question it was asked against. A changed question (after a compaction) is a new key. */
 export function declineKey(seq: number, textLength: number, query: string): string {
@@ -209,8 +223,29 @@ export interface Applied {
 }
 
 export type PassOutcome =
-  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'surface_changed' | 'aborted' }
+  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'surface_changed' | 'aborted' | 'over_budget' }
   | { kind: 'applied'; applied: Applied[]; freedTokens: number; candidates: number }
+
+export const LATE: unique symbol = Symbol('late')
+
+/** `work`'s value, or `LATE` once `ms` have passed or `signal` aborts, whichever is first. A rejection counts as no answer. */
+export function within<T>(work: Promise<T>, ms: number, signal?: AbortSignal): Promise<T | undefined | typeof LATE> {
+  if (signal?.aborted || ms <= 0) {
+    work.catch(() => {})
+    return Promise.resolve(LATE)
+  }
+  return new Promise(resolve => {
+    const finish = (value: T | undefined | typeof LATE): void => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+      resolve(value)
+    }
+    const onAbort = (): void => finish(LATE)
+    const timer = setTimeout(onAbort, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+    work.then(finish, () => finish(undefined))
+  })
+}
 
 /**
  * One pass at a step boundary. It reads, asks the engine, decides, and only then writes. The writes are synchronous and are
@@ -223,9 +258,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (measurement.totalTokens < pass.activationTokens) return { kind: 'skipped', reason: 'below_activation' }
   if (compactionOpen(session)) return { kind: 'skipped', reason: 'compaction_open' }
   const entries = readSurface(session)
-  const candidates = findCandidates(session, entries, options)
-    .sort((a, b) => b.text.length - a.text.length)
-    .slice(0, options.maxPerPass)
+  // every candidate, largest first: maxPerPass counts the calls made, so results the engine already declined do not take the slots
+  const candidates = findCandidates(session, entries, options).sort((a, b) => b.text.length - a.text.length)
   if (candidates.length === 0) return { kind: 'skipped', reason: 'no_candidates' }
   const generation = session.surface.replaceGeneration
   const lookup = entries.map(({ seq, message }) => ({ seq, message }))
@@ -235,9 +269,20 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   let answered = 0
   let unsure = 0
   // One at a time, within a time budget: a step boundary must not wait long, and what is not reached now is reached at a later step.
-  const started = Date.now()
+  const deadline = Date.now() + PASS_BUDGET_MS
+  // two failures to answer stop a result being tried again, so one hard result cannot stall every step; an answer clears them
+  const strike = (key: string): void => {
+    const failedOnce = `${key}#failed`
+    if (pass.declined?.has(failedOnce)) pass.declined.add(key)
+    else pass.declined?.add(failedOnce)
+  }
+  const answeredFor = (key: string): void => void pass.declined?.delete(`${key}#failed`)
+  let calls = 0
+  let late = false
+  let waiting = false
+  const keys = new Map<number, string>()
   for (const candidate of candidates) {
-    if (Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
+    if (late || calls >= options.maxPerPass || Date.now() > deadline || pass.signal?.aborted) break
     await (async () => {
       const query = buildQuery(lookup, candidate.index, candidate.callId)
       const key = declineKey(candidate.seq, candidate.text.length, query)
@@ -245,22 +290,57 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         answered++
         return
       }
-      const result = await client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
+      // still with the engine from an earlier step: asking again would only queue behind it
+      if (pass.declined?.has(`${key}#asked`)) {
+        waiting = true
+        return
+      }
+      const kept = pass.ready?.get(key)
+      let result = kept && kept.text === candidate.text && kept.query === query ? kept.result : undefined
+      if (kept && !result) pass.ready!.delete(key)
       if (!result) {
-        // the engine did not answer for this one: a second failure stops it being tried again, so one hard result cannot stall every step
-        const failedOnce = `${key}#failed`
-        if (pass.declined?.has(failedOnce)) pass.declined.add(key)
-        else pass.declined?.add(failedOnce)
+        calls++
+        // the step waits for this pass: a slow engine or an abort ends it at the budget, and a reply that comes later is dropped
+        const work = client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 })
+        const reply = await within(work, deadline - Date.now(), pass.signal)
+        // a turn the user stopped says nothing about this result, whatever the engine said
+        if (pass.signal?.aborted) {
+          late = true
+          return
+        }
+        if (reply === LATE || Date.now() > deadline) {
+          // too late for this step; the engine's own answer or failure, when it comes, is what counts for this result, not the time it
+          // waited in the queue, and an answer is kept for the next step so a slow result does not cost every step its budget
+          late = true
+          pass.declined?.add(`${key}#asked`)
+          const settled = (answer: CompressResult | undefined): void => {
+            pass.declined?.delete(`${key}#asked`)
+            if (!answer) return strike(key)
+            answeredFor(key)
+            if (!pass.ready) return
+            if (pass.ready.size >= READY_LIMIT) pass.ready.delete(pass.ready.keys().next().value!)
+            pass.ready.set(key, { text: candidate.text, query, result: answer })
+          }
+          work.then(settled, () => settled(undefined))
+          return
+        }
+        result = reply
+      }
+      if (!result) {
+        strike(key)
         return
       }
       answered++
+      answeredFor(key)
       if (result.failOpen || result.sanitized || result.text.length >= candidate.text.length) {
         pass.declined?.add(key)
+        pass.ready?.delete(key)
         return
       }
-      if (result.confidence === null || result.confidence < options.minConfidence) {
+      if (result.confidence === null || !Number.isFinite(result.confidence) || result.confidence > 1 || result.confidence < options.minConfidence) {
         unsure++
         pass.declined?.add(key)
+        pass.ready?.delete(key)
         return
       }
       const newText = shortenedText(candidate.text, result.text, candidate.origin)
@@ -269,38 +349,52 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       const afterTokens = meter.estimateMessage(replacement)
       if (afterTokens >= beforeTokens) {
         pass.declined?.add(key)
+        pass.ready?.delete(key)
         return
       }
       planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
+      keys.set(candidate.seq, key)
     })()
   }
-  if (answered === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
+  if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
+  if (answered === 0) return { kind: 'skipped', reason: late || waiting ? 'over_budget' : 'engine_unavailable' }
   if (planned.length === 0) return { kind: 'skipped', reason: unsure > 0 ? 'not_confident' : 'no_candidates' }
   const batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)
   if (batch.length === 0) return { kind: 'skipped', reason: 'not_worth_it' }
 
-  // The engine took time. Write only if nothing was replaced or compacted meanwhile.
+  // The engine took time. Write only if nothing was replaced or compacted meanwhile, and only within the step's budget.
   if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
   if (session.surface.replaceGeneration !== generation || compactionOpen(session)) return { kind: 'skipped', reason: 'surface_changed' }
   const onSurface = new Set(session.surface.nodes)
+  const writes = [...batch]
+    .sort((a, b) => a.candidate.seq - b.candidate.seq)
+    .filter(item => onSurface.has(item.candidate.seq))
+    .map(item => {
+      const { seq, event, origin } = item.candidate
+      return {
+        item,
+        prune: { shadowedRange: { start: seq, end: seq }, shadowedSeqs: [seq], shadowedTokenCount: meter.estimateMessage(item.candidate.message) },
+        data: { ...event.data, message: item.replacement },
+        meta: { surfaceOp: { op: 'replace' as const, startSeq: seq, endSeq: seq }, sourceEventSeqs: origin === seq ? [seq] : [origin, seq] },
+      }
+    })
   const applied: Applied[] = []
-  for (const item of [...batch].sort((a, b) => a.candidate.seq - b.candidate.seq)) {
-    const { seq, event } = item.candidate
-    if (!onSurface.has(seq)) continue
+  let stopped: 'aborted' | 'over_budget' | undefined
+  for (const { item, prune, data, meta } of writes) {
+    // checked right before each pair, after everything slow is done
+    stopped = pass.signal?.aborted ? 'aborted' : Date.now() > deadline ? 'over_budget' : undefined
+    if (stopped) break
+    const seq = item.candidate.seq
     try {
       // The price event must sit immediately before its replacement: the Harness's meter subtracts it from the replaced node.
-      session.append('compaction/prune', {
-        shadowedRange: { start: seq, end: seq },
-        shadowedSeqs: [seq],
-        shadowedTokenCount: meter.estimateMessage(item.candidate.message),
-      })
-      const { origin } = item.candidate
-      const written = session.append('tool/result', { ...event.data, message: item.replacement }, { surfaceOp: { op: 'replace', startSeq: seq, endSeq: seq }, sourceEventSeqs: origin === seq ? [seq] : [origin, seq] })
+      session.append('compaction/prune', prune)
+      const written = session.append('tool/result', data, meta)
+      pass.ready?.delete(keys.get(seq)!)
       applied.push({ originalSeq: seq, replacementSeq: written.seq, toolName: item.candidate.toolName, beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })
     } catch {
       break // what was written is a complete pair; stop before anything half-written
     }
   }
-  if (applied.length === 0) return { kind: 'skipped', reason: 'surface_changed' }
-  return { kind: 'applied', applied, freedTokens: applied.reduce((sum, a) => sum + (a.beforeTokens - a.afterTokens), 0), candidates: candidates.length }
+  if (applied.length === 0) return { kind: 'skipped', reason: stopped ?? 'surface_changed' }
+  return { kind: 'applied', applied, freedTokens: applied.reduce((sum, a) => sum + (a.beforeTokens - a.afterTokens), 0), candidates: calls }
 }

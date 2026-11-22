@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { EngineClient } from '../src/host/engine-client.ts'
 import { nodeWorkerSpawn } from '../src/host/process.ts'
-import { DEFAULT_SHORTEN, chooseBatch, findCandidates, shortenPass, type Entry, type Planned, type ShortenOptions } from '../src/host/shorten.ts'
+import { DEFAULT_SHORTEN, chooseBatch, findCandidates, shortenPass, type Entry, type Planned, type ReadyAnswer, type ShortenOptions } from '../src/host/shorten.ts'
 import { alreadyShortened, buildQuery, hasSpillNotice, textOnly } from '../src/host/messages.ts'
 import { bigOutput, root, skip, world } from './helpers/harness.ts'
 
@@ -247,4 +247,21 @@ test('a result the engine declined is not sent to it again at the next step', { 
   assert.ok(first >= 1)
   await run()
   assert.equal(calls, first, 'the second pass asked the engine nothing')
+})
+
+test('a kept late answer is used only for the exact text and question it was asked with', { skip }, async () => {
+  const { w } = await longSession()
+  const answer = (text: string): any => ({ text, failOpen: false, originalTokens: 1, keptTokens: 1, tokensSavedPct: 90, risk: 'low', confidence: 0.9, contentType: 'text', reasons: [], sanitized: false })
+  const asked: string[] = []
+  const client = { compress: async (request: any) => (asked.push(request.query), answer(request.text.slice(0, 500))) } as unknown as EngineClient
+  // every key holds an answer kept for a different question about the same text
+  const ready = new (class extends Map<string, ReadyAnswer> {
+    override get(): ReadyAnswer {
+      return { text: '', query: 'a different question', result: answer('STALE EXTRACT') }
+    }
+  })()
+  const outcome = await shortenPass({ session: w.session, meter: w.meter, client, header: undefined, activationTokens: 0, options, ready })
+  assert.equal(outcome.kind, 'applied')
+  assert.ok(asked.length >= 1, 'the engine was asked again')
+  assert.ok(!JSON.stringify(w.session.deriveMessages()).includes('STALE EXTRACT'), 'the kept answer was not used')
 })
