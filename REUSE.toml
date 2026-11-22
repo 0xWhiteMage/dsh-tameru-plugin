@@ -25,7 +25,7 @@ SPDX-License-Identifier = "Apache-2.0"
 path = ["test/fixtures/engine-cases.json"]
 precedence = "override"
 SPDX-FileCopyrightText = ["2026 Benjamin Ang", "Copyright (c) 2025 Nous Research", "Copyright (c) 1999 - 2021 The PHP Group. All rights reserved.", "NOASSERTION"]
-SPDX-License-Identifier = "MIT AND PHP-3.01 AND LicenseRef-Unresolved-Musubi-Tuner"
+SPDX-License-Identifier = "Apache-2.0 AND MIT AND PHP-3.01 AND LicenseRef-Unresolved-Musubi-Tuner"
 
 [[annotations]]
 path = ["docs/images/**"]

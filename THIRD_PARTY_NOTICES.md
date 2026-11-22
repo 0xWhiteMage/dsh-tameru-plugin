@@ -90,6 +90,35 @@ The other cases have no identified third-party source and are the engine's own t
 (`MIT.txt`, `PHP-3.01.txt`, `LicenseRef-Unresolved-Musubi-Tuner.txt`). As PHP-3.01 asks: this product includes PHP software, freely
 available from <http://www.php.net/software/>.
 
+The `jp_musubi` excerpt is kept as the engine keeps it, pending the owner's decision on that fixture; this file grants no
+rights in it.
+
+Notice for the `git_log` text (from hermes-agent's `LICENSE` at the pinned commit):
+
+```text
+MIT License
+
+Copyright (c) 2025 Nous Research
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## DeepSeek Harness
 
 This plugin is written against the public plugin interfaces of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
@@ -147,7 +176,7 @@ SOFTWARE.
 
 [esbuild](https://github.com/evanw/esbuild) (MIT) is a development dependency. Every bundled input is under `src/`, so
 `legalComments: 'none'` drops no third-party licence comments, but `lib/client.js` (shipped) contains module helpers that esbuild
-generates (`__copyProps`, `__toCommonJS`, `__toESM`), so its notice is carried here:
+generates (such as `__copyProps`, `__toCommonJS` and `__toESM`), so its notice is carried here:
 
 ```text
 MIT License
