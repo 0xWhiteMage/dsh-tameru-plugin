@@ -3,7 +3,7 @@
 // move. The rules are docs/PLUGIN-UI.md in the engine repository, shared with the Hermes plugin. Every class is `tameru-*`.
 import { createPortal } from 'react-dom'
 import { Component, useCallback, useEffect, useRef, useState } from 'react'
-import { STRENGTHS, gaugeOf, groupsOf, emptyReasonKey, readTab, sizeCells, statusOf, strengthOf, strengthPatch, writeTab, type Json, type StrengthId, type TabId } from './model.ts'
+import { gaugeOf, groupsOf, emptyReasonKey, readTab, sizeCells, statusOf, strengthOf, strengthPatch, writeTab, type Json, type StrengthId, type TabId } from './model.ts'
 import { copy, type Copy } from './text.ts'
 import { Drawn, Fragment, Icon, Ring, Tip, focusables, h, useAnchor, useDismiss } from './ui.ts'
 
