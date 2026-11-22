@@ -9,6 +9,7 @@ codecs, the inspector, the document previewer, source maps and type declarations
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -36,18 +37,28 @@ WINDOWS_RESERVED = {
 
 
 def unsafe_name(name: object) -> bool:
-    if not isinstance(name, str) or name in ("", ".", "..") or any(c in name for c in "/\\:\0"):
+    if not isinstance(name, str) or name in ("", ".", "..") or any(c in name for c in "/\\\0"):
         return True
-    if name[-1] in ". " or name.split(".", 1)[0].rstrip(" ").upper() in WINDOWS_RESERVED:
+    if os.name != "nt":
+        return False
+    # on Windows ':' starts a drive or stream, and device names and trailing dots or spaces name something else
+    if ":" in name or name[-1] in ". " or name.split(".", 1)[0].rstrip(" ").upper() in WINDOWS_RESERVED:
         return True
     return bool(getattr(os.path, "isreserved", None) and os.path.isreserved(name))
+
+
+def no_duplicates(pairs: list[tuple[str, object]]) -> dict:
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError("the archive's file list names a file twice")
+    return dict(pairs)
 
 
 def is_link(path: Path) -> bool:
     """A symlink, or on Windows any reparse point such as a junction."""
     try:
         info = os.lstat(path)
-    except FileNotFoundError:
+    except OSError:
         return False
     return path.is_symlink() or bool(getattr(info, "st_file_attributes", 0) & 0x400)
 
@@ -64,16 +75,25 @@ def main() -> int:
         print(f"no app.asar at {app}")
         return 1
     out = ROOT / "dev" / "harness" / "node_modules"
+    try:
+        return extract(app, out)
+    except ValueError as error:
+        print(error)
+        return 1
+
+
+def extract(app: Path, out: Path) -> int:
+    size_on_disk = app.stat().st_size
     with app.open("rb") as handle:
         handle.read(4)
         header_size = struct.unpack("<I", handle.read(4))[0]
         handle.read(4)
         json_size = struct.unpack("<I", handle.read(4))[0]
-        header = json.loads(handle.read(json_size).decode("utf-8"))
+        header = json.loads(handle.read(json_size).decode("utf-8"), object_pairs_hook=no_duplicates)
         base = 8 + header_size
         manifest = header["files"]["dsh"]["files"]["node_modules"]
         root = out.resolve()
-        writes: list[tuple[Path, int, int]] = []
+        writes: list[tuple[Path, int, int, dict]] = []
 
         def walk(node: dict, rel: str) -> None:
             for name, entry in node.get("files", {}).items():
@@ -92,40 +112,54 @@ def main() -> int:
                 if not target.resolve().is_relative_to(root):
                     raise ValueError(f"archive entry {path!r} would be written outside {out}")
                 offset, size = int(entry["offset"]), int(entry["size"])
-                if offset < 0 or size < 0:
-                    raise ValueError(f"archive entry {path!r} has a negative offset or size")
-                writes.append((target, offset, size))
+                if offset < 0 or size < 0 or base + offset + size > size_on_disk:
+                    raise ValueError(f"archive entry {path!r} points outside the archive")
+                writes.append((target, offset, size, entry))
 
-        # every name is checked before the previous extraction is removed or anything is written
-        try:
-            walk(manifest, "")
-        except ValueError as error:
-            print(error)
-            return 1
+        # every name is checked before the previous extraction is touched or anything is written
+        walk(manifest, "")
         # the folders leading to `out` are this checkout's own: a link among them would send the files elsewhere
-        for folder in (out, out.parent, out.parent.parent):
+        for folder in (out.parent.parent, out.parent, out):
             if is_link(folder) or (folder.exists() and not folder.is_dir()):
-                print(f"{folder} is a link or not a folder; remove it and run again")
-                return 1
+                raise ValueError(f"{folder} is a link or not a folder; remove it and run again")
         out.parent.mkdir(parents=True, exist_ok=True)
-        # written into a new private folder first, then swapped in, so nothing else can be writing where the files go
+        # written into a new private folder, checked, then swapped in; the old extraction is kept until the swap succeeds
         staging = Path(tempfile.mkdtemp(prefix=".node_modules-", dir=out.parent))
+        backup = out.parent / f"{staging.name}.old"
         try:
-            for target, offset, size in writes:
+            for target, offset, size, entry in writes:
                 path = staging / target.relative_to(out)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 handle.seek(base + offset)
+                data = handle.read(size)
+                if len(data) != size:
+                    raise ValueError(f"archive entry {target.relative_to(out)} is cut short")
+                integrity = entry.get("integrity")
+                if isinstance(integrity, dict) and str(integrity.get("algorithm", "")).upper() == "SHA256":
+                    if hashlib.sha256(data).hexdigest() != integrity.get("hash"):
+                        raise ValueError(f"archive entry {target.relative_to(out)} does not match its hash")
                 with open(path, "xb") as file:
-                    file.write(handle.read(size))
+                    file.write(data)
+                if entry.get("executable"):
+                    path.chmod(0o755)
+            package = staging / "@deepseek-ai" / "dsh-session" / "package.json"
+            try:
+                version = json.loads(package.read_text(encoding="utf-8"))["version"]
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                raise ValueError(f"the archive has no readable dsh-session package.json ({error})") from None
             if out.exists():
-                shutil.rmtree(out)
-            staging.rename(out)
+                out.rename(backup)
+            try:
+                staging.rename(out)
+            except BaseException:
+                if backup.exists():
+                    backup.rename(out)
+                raise
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
             raise
-        written = len(writes)
-    version = json.loads((out / "@deepseek-ai" / "dsh-session" / "package.json").read_text(encoding="utf-8"))["version"]
-    print(f"extracted {written} files of Harness {version} into {out}")
+        shutil.rmtree(backup, ignore_errors=True)
+    print(f"extracted {len(writes)} files of Harness {version} into {out}")
     return 0
 
 
