@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizeSettings } from './settings.ts'
+import { readPrivate, writePrivate } from './state-file.ts'
 import type { TameruSettings } from './step.ts'
 
 /**
@@ -8,8 +8,19 @@ import type { TameruSettings } from './step.ts'
  * the values in the profile's patch file and survive a restart. A damaged file reads as empty; nothing here ever throws.
  */
 export function readSaved(directory: string): TameruSettings {
+  return loadSaved(directory) ?? {}
+}
+
+/** The saved settings, or `undefined` when the file is there but could not be read. */
+export function loadSaved(directory: string): TameruSettings | undefined {
+  let text: string | undefined
   try {
-    const parsed = JSON.parse(readFileSync(join(directory, 'settings.json'), 'utf8')) as { version?: number; settings?: unknown }
+    text = readPrivate(join(directory, 'settings.json'))
+  } catch {
+    return undefined
+  }
+  try {
+    const parsed = JSON.parse(text ?? '') as { version?: number; settings?: unknown }
     if (parsed?.version === 2) return normalizeSettings(parsed.settings)
   } catch {
     // missing or damaged: nothing saved
@@ -20,11 +31,7 @@ export function readSaved(directory: string): TameruSettings {
 /** Write the saved settings atomically. Returns an error message, or `undefined` on success. */
 export function writeSaved(directory: string, settings: TameruSettings): string | undefined {
   try {
-    mkdirSync(directory, { recursive: true })
-    const path = join(directory, 'settings.json')
-    const temporary = `${path}.${process.pid}.tmp`
-    writeFileSync(temporary, JSON.stringify({ version: 2, settings }), 'utf8')
-    renameSync(temporary, path)
+    writePrivate(join(directory, 'settings.json'), JSON.stringify({ version: 2, settings }))
     return undefined
   } catch (error) {
     return error instanceof Error ? error.message : String(error)

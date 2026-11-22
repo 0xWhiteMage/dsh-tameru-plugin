@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { hasHidden, withoutHidden } from './messages.ts'
+import { readPrivate, writePrivate } from './state-file.ts'
 
 /** Lines the user pins stay in the system prompt, which no summary replaces, so they survive every compaction word for word. */
 export const MAX_PINS = 5
@@ -14,8 +14,8 @@ export interface PinStore {
   list(chat: string): string[]
   add(chat: string, text: string): PinResult
   remove(chat: string, position: number): PinResult
-  /** Forget every chat's pins (the `purge` command). */
-  purge(): void
+  /** Forget every chat's pins (the `purge` command). Returns an error message, or `undefined` on success. */
+  purge(): string | undefined
 }
 
 const SECRET_SHAPES: RegExp[] = [
@@ -76,7 +76,10 @@ export function memoryPins(): PinStore {
       if (result.ok) chats.set(chat, result.pins)
       return result
     },
-    purge: () => chats.clear(),
+    purge: () => {
+      chats.clear()
+      return undefined
+    },
   }
 }
 
@@ -86,14 +89,22 @@ interface FileShape {
 }
 
 /**
- * Pins in one small JSON file of our own (`<DSH_HOME>/tameru/pins.json`), written atomically. A damaged or unreadable file is treated as
- * empty and never throws, and the newest 400 chats are kept. Removing the plugin leaves this folder; `/tameru purge` empties it.
+ * Pins in one small JSON file of our own (`<DSH_HOME>/tameru/pins.json`), written atomically. A damaged or unreadable file reads as
+ * empty and never throws; one that could not be read is never saved over. The newest 400 chats are kept. Removing the plugin leaves
+ * this folder; `/tameru purge` empties it.
  */
 export function filePins(directory: string, now: () => number = Date.now): PinStore {
   const path = join(directory, 'pins.json')
-  const read = (): FileShape => {
+  // `undefined` when the file is there but could not be read: a change then stops rather than start from nothing
+  const load = (): FileShape | undefined => {
+    let text: string | undefined
     try {
-      const parsed = JSON.parse(readFileSync(path, 'utf8')) as FileShape
+      text = readPrivate(path)
+    } catch {
+      return undefined
+    }
+    try {
+      const parsed = JSON.parse(text ?? '') as FileShape
       // chat ids come from outside: a null-prototype map keeps an id like `__proto__` an ordinary key
       if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null && !Array.isArray(parsed.chats)) return { version: 1, chats: Object.assign(Object.create(null), Object.fromEntries(Object.entries(parsed.chats).filter(([, chat]) => typeof chat === 'object' && chat !== null && typeof chat.updated === 'number'))) }
     } catch {
@@ -101,13 +112,11 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
     }
     return { version: 1, chats: Object.create(null) }
   }
+  const read = (): FileShape => load() ?? { version: 1, chats: {} }
   const write = (data: FileShape): string | undefined => {
     try {
       const entries = Object.entries(data.chats).sort((a, b) => b[1].updated - a[1].updated).slice(0, MAX_CHATS)
-      mkdirSync(dirname(path), { recursive: true })
-      const temporary = `${path}.${process.pid}.tmp`
-      writeFileSync(temporary, JSON.stringify({ version: 1, chats: Object.fromEntries(entries) }), 'utf8')
-      renameSync(temporary, path)
+      writePrivate(path, JSON.stringify({ version: 1, chats: Object.fromEntries(entries) }))
       return undefined
     } catch (error) {
       return error instanceof Error ? error.message : String(error)
@@ -115,7 +124,8 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
   }
   const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').map(pin => clean(withoutHidden(pin))).filter(pin => refusal(pin) === undefined).slice(0, MAX_PINS) : [])
   const change = (chat: string, apply: (pins: string[]) => PinResult): PinResult => {
-    const data = read()
+    const data = load()
+    if (!data) return { ok: false, reason: 'Could not save the pins: the saved ones could not be read, so they were left as they are.' }
     const result = apply(valid(data.chats[chat]?.pins))
     if (!result.ok) return result
     if (result.pins.length === 0) delete data.chats[chat]
@@ -127,7 +137,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
     list: chat => valid(read().chats[chat]?.pins),
     add: (chat, text) => change(chat, pins => addTo(pins, text)),
     remove: (chat, position) => change(chat, pins => removeFrom(pins, position)),
-    purge: () => void write({ version: 1, chats: Object.create(null) }),
+    purge: () => write({ version: 1, chats: Object.create(null) }),
   }
 }
 

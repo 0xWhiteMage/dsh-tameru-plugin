@@ -8,7 +8,7 @@ import { dshHome, findPython } from './python.ts'
 import { filePins, pinsSection } from './pins.ts'
 import { scanForTrail, trailMessage } from './trail.ts'
 import { handleApi, refuseRequest, type ApiEnv } from './api.ts'
-import { readSaved, writeSaved } from './saved-settings.ts'
+import { loadSaved, writeSaved } from './saved-settings.ts'
 import { normalizeSettings, type TameruConfig } from './settings.ts'
 import { statusText } from './status.ts'
 import { chatStatsOf, onPreStep, pressureOf, type ChatStats, type StepAgent, type StepDeps, type TameruSettings } from './step.ts'
@@ -83,7 +83,9 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
   const stateDir = join(dshHome(), 'tameru')
   // what the profile says, then what the user changed in the Tameru panel; one live object the panel edits in place
   const profile: TameruSettings = normalizeSettings(config)
-  const saved: TameruSettings = readSaved(stateDir)
+  // settings that could not be read are not saved over: a panel change would otherwise replace them with only the change
+  const loaded = loadSaved(stateDir)
+  const saved: TameruSettings = loaded ?? {}
   const settings: TameruSettings = { ...profile, ...saved }
   const python = findPython(config.pythonPath ? { configured: config.pythonPath } : {})
   const stats = new WeakMap<object, ChatStats>()
@@ -158,7 +160,7 @@ export function apply(ctx: HostContext, config: TameruConfig = {}): void {
     settings,
     profile,
     saved,
-    saveSettings: next => writeSaved(stateDir, next),
+    saveSettings: next => (loaded ? writeSaved(stateDir, next) : 'the saved settings could not be read when the plugin started; restart DSH to change them'),
     engine: () => client?.status(),
     pythonPath: () => python?.path,
     pressure: session => pressureOf({ ...baseDeps, client: undefined as never }, { session } as unknown as StepAgent),
