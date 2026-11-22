@@ -1,6 +1,7 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizeSettings } from './settings.ts'
+import { writePrivate } from './state-file.ts'
 import type { TameruSettings } from './step.ts'
 
 /**
@@ -20,11 +21,7 @@ export function readSaved(directory: string): TameruSettings {
 /** Write the saved settings atomically. Returns an error message, or `undefined` on success. */
 export function writeSaved(directory: string, settings: TameruSettings): string | undefined {
   try {
-    mkdirSync(directory, { recursive: true })
-    const path = join(directory, 'settings.json')
-    const temporary = `${path}.${process.pid}.tmp`
-    writeFileSync(temporary, JSON.stringify({ version: 2, settings }), 'utf8')
-    renameSync(temporary, path)
+    writePrivate(join(directory, 'settings.json'), JSON.stringify({ version: 2, settings }))
     return undefined
   } catch (error) {
     return error instanceof Error ? error.message : String(error)

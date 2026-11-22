@@ -1,5 +1,6 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { writePrivate } from './state-file.ts'
 
 /** Lines the user pins stay in the system prompt, which no summary replaces, so they survive every compaction word for word. */
 export const MAX_PINS = 5
@@ -98,10 +99,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
   const write = (data: FileShape): string | undefined => {
     try {
       const entries = Object.entries(data.chats).sort((a, b) => b[1].updated - a[1].updated).slice(0, MAX_CHATS)
-      mkdirSync(dirname(path), { recursive: true })
-      const temporary = `${path}.${process.pid}.tmp`
-      writeFileSync(temporary, JSON.stringify({ version: 1, chats: Object.fromEntries(entries) }), 'utf8')
-      renameSync(temporary, path)
+      writePrivate(path, JSON.stringify({ version: 1, chats: Object.fromEntries(entries) }))
       return undefined
     } catch (error) {
       return error instanceof Error ? error.message : String(error)
