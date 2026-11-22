@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { withoutHidden } from './messages.ts'
 
 /** Lines the user pins stay in the system prompt, which no summary replaces, so they survive every compaction word for word. */
 export const MAX_PINS = 5
@@ -37,9 +38,9 @@ export function refusal(text: string): string | undefined {
   return undefined
 }
 
-/** One line, no control characters: what is stored and shown. */
+/** One line, no control or hidden characters: what is stored and shown is what the model reads. */
 export function clean(text: string): string {
-  return text.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`, 'g'), ' ').replace(/\s+/g, ' ').trim()
+  return withoutHidden(text).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`, 'g'), ' ').replace(/\s+/g, ' ').trim()
 }
 
 function addTo(pins: string[], raw: string): PinResult {

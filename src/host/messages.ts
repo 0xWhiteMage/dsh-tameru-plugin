@@ -39,6 +39,15 @@ export const STOCK_PRUNE_MARKER = '[... tool result middle pruned ...]'
 
 const SPILL_NOTICE = ' Full formatted result stored at: '
 
+// Bidi controls, zero-width spaces and joiners, and Unicode tag characters: they reorder or hide text from the person reading it while the
+// model still reads every one of them. Zero-width (non-)joiners are left alone: scripts and emoji need them.
+const HIDDEN_CHARS = /[\u061c\u200b\u200e\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\u{e0000}-\u{e007f}]+/gu
+
+/** Text without the characters that make what a person sees differ from what the model reads. */
+export function withoutHidden(text: string): string {
+  return text.replace(HIDDEN_CHARS, '')
+}
+
 /** All text of a message, or `undefined` when it holds anything other than text blocks (an image or file is never rewritten). */
 export function textOnly(message: Message): string | undefined {
   if (!Array.isArray(message.content) || message.content.length === 0) return undefined

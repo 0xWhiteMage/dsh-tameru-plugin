@@ -134,7 +134,7 @@ export function listItems(session: SessionLike): Item[] {
       ref,
       currentSeq: seq,
       state,
-      toolName: message.source?.name ?? '',
+      toolName: safeLine(message.source?.name ?? '', 60),
       label: callLabel(session, ref, original?.data.message?.toolCallId ?? original?.data.message?.source?.callId),
       originalChars: originalText.length,
       shownChars: text.length,
