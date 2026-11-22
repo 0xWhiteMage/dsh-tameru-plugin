@@ -49,6 +49,7 @@ test('empty output has a complete result contract and query-only surrogates are 
     { id: 1, op: 'compress', text: '', budget_ratio: 0.01, min_savings_ratio: 0, pin_recent: 0, derive_query: false, citations: false },
     { id: 2, op: 'compress', text: '', budget_ratio: 1, min_savings_ratio: 0.99, pin_recent: 50, query: '\ud800' },
   ].map(value => JSON.stringify(value)).join('\n'))
+  assert.equal(replies.length, 2)
   for (const [index, reply] of replies.entries()) {
     assert.equal(reply.ok, true)
     assert.deepEqual(Object.keys(reply.result).sort(), ['text', 'fail_open', 'original_tokens', 'kept_tokens', 'tokens_saved_pct', 'risk', 'confidence', 'content_type', 'reasons', 'sanitized'].sort())
