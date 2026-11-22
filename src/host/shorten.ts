@@ -23,6 +23,17 @@ export interface SessionLike {
   eventAt(seq: number): SessionEvent | undefined
   deriveEventMessage(event: SessionEvent): Message | null
   append(type: string, data: unknown, options?: unknown): { seq: number }
+  /** Several events committed together: observers see none of them until all are in the log. */
+  append(inputs: ReadonlyArray<readonly [type: string, data: unknown, options?: unknown]>): ReadonlyArray<{ seq: number }>
+}
+
+/** A price event and the replacement it pays for, appended as one commit: no observer, abort or failure can land between the two. */
+export function appendPricedReplacement(session: SessionLike, prune: unknown, data: unknown, options: unknown): { seq: number } {
+  const [, written] = session.append([
+    ['compaction/prune', prune],
+    ['tool/result', data, options],
+  ])
+  return written!
 }
 
 export interface MeterLike {
@@ -387,12 +398,11 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     const seq = item.candidate.seq
     try {
       // The price event must sit immediately before its replacement: the Harness's meter subtracts it from the replaced node.
-      session.append('compaction/prune', prune)
-      const written = session.append('tool/result', data, meta)
+      const written = appendPricedReplacement(session, prune, data, meta)
       pass.ready?.delete(keys.get(seq)!)
       applied.push({ originalSeq: seq, replacementSeq: written.seq, toolName: item.candidate.toolName, beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })
     } catch {
-      break // what was written is a complete pair; stop before anything half-written
+      break // a pair is committed whole or not at all; stop at the first one the session refused
     }
   }
   if (applied.length === 0) return { kind: 'skipped', reason: stopped ?? 'surface_changed' }
