@@ -109,7 +109,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
       return error instanceof Error ? error.message : String(error)
     }
   }
-  const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').map(pin => clean(withoutHidden(pin))).filter(pin => pin !== '').slice(0, MAX_PINS) : [])
+  const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').map(pin => clean(withoutHidden(pin))).filter(pin => refusal(pin) === undefined).slice(0, MAX_PINS) : [])
   const change = (chat: string, apply: (pins: string[]) => PinResult): PinResult => {
     const data = read()
     const result = apply(valid(data.chats[chat]?.pins))

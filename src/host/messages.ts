@@ -40,10 +40,19 @@ export const STOCK_PRUNE_MARKER = '[... tool result middle pruned ...]'
 const SPILL_NOTICE = ' Full formatted result stored at: '
 
 // Characters that reorder text or draw nothing while the model still reads every one: bidi controls, zero-width spaces, soft hyphen,
-// combining grapheme joiner, Hangul and Khmer fillers, shorthand format controls, Unicode tag characters, and a variation selector that
-// follows another (a real sequence has one, so a run of them can only carry hidden data). Zero-width (non-)joiners and single variation
-// selectors are left alone: scripts and emoji need them.
-const HIDDEN = '[\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u200b\\u200e\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\u3164\\ufeff\\uffa0\\u{1bca0}-\\u{1bca3}\\u{e0000}-\\u{e007f}]|(?<=[\\ufe00-\\ufe0f\\u{e0100}-\\u{e01ef}])[\\ufe00-\\ufe0f\\u{e0100}-\\u{e01ef}]'
+// combining grapheme joiner, Hangul and Khmer fillers, shorthand format controls and Unicode tag characters. Variation selectors and
+// zero-width (non-)joiners count too unless they sit where real text needs them: a selector right after an emoji or an ideograph, a joiner
+// between two emoji, or one inside a word of a script other than Latin, Greek or Cyrillic. Anything else could only carry hidden data.
+const VS = '[\\ufe00-\\ufe0f\\u{e0100}-\\u{e01ef}]'
+const WORD = '(?:(?![\\p{Script=Latin}\\p{Script=Greek}\\p{Script=Cyrillic}])[\\p{L}\\p{M}])'
+const EMOJI = '[\\p{Extended_Pictographic}\\p{Emoji_Modifier}]'
+const HIDDEN = [
+  '[\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u200b\\u200e\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\u3164\\ufeff\\uffa0\\u{1bca0}-\\u{1bca3}\\u{e0000}-\\u{e007f}]',
+  `(?<![\\p{Emoji}\\p{Unified_Ideograph}])${VS}`,
+  `(?<!${EMOJI}${VS}?)\\u200d(?=${EMOJI})|(?<!${WORD})[\\u200c\\u200d](?!${EMOJI})|[\\u200c\\u200d](?!${WORD}|${EMOJI})`,
+].join('|')
+// the opening bracket of a shown character: escaped itself, so what showHidden writes can never be confused with text that was there
+const SHOWN_OPEN = '\u27e6'
 
 /** True when what a person sees of `text` would differ from what the model reads. */
 export function hasHidden(text: string): boolean {
@@ -55,9 +64,9 @@ export function withoutHidden(text: string): string {
   return text.replace(new RegExp(HIDDEN, 'gu'), '')
 }
 
-/** Text with each of those characters shown as `[U+XXXX]`, so it can be seen and two different texts never look alike. */
+/** Text with each of those characters shown as `⟦U+XXXX⟧`, so it can be seen and two different texts never look alike. */
 export function showHidden(text: string): string {
-  return text.replace(new RegExp(HIDDEN, 'gu'), char => `[U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}]`)
+  return text.replace(new RegExp(`${HIDDEN}|${SHOWN_OPEN}`, 'gu'), char => `${SHOWN_OPEN}U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}\u27e7`)
 }
 
 /** All text of a message, or `undefined` when it holds anything other than text blocks (an image or file is never rewritten). */

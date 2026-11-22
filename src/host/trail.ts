@@ -24,7 +24,7 @@ export interface Trail {
 
 export const emptyTrail = (): Trail => ({ files: new Map(), commands: new Map(), failed: new Map() })
 
-/** One short plain line: no control characters, hidden ones shown as `[U+XXXX]`, no markup that could pass as structure, no tags, bounded length. */
+/** One short plain line: no control characters, hidden ones shown as `⟦U+XXXX⟧`, no markup that could pass as structure, no tags, bounded length. */
 export function safeLine(text: string, max = LINE_CHARS): string {
   const line = showHidden(text)
     .replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`, 'g'), ' ')
