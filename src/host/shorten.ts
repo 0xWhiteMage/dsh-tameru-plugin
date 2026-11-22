@@ -48,7 +48,11 @@ export interface ShortenOptions {
 }
 
 /** The most time one pass spends asking the engine. */
-export const PASS_BUDGET_MS = 6000
+export let PASS_BUDGET_MS = 6000
+/** Replay harness only: pin the pass budget high so evaluation rows never depend on machine load. */
+export function setPassBudgetMs(ms: number): void {
+  PASS_BUDGET_MS = ms
+}
 /** A result the engine cannot analyse itself: past 8M characters it fails open `too_large`, so the host renders a header
  * with the read-original reference instead. (The engine's streaming path serves 2M-8M in under a second.) */
 export const TOO_LARGE_CHARS = 8_000_000

@@ -22,10 +22,11 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EngineClient } from '../src/host/engine-client.ts'
 import { nodeWorkerSpawn } from '../src/host/process.ts'
+import * as shorten from '../src/host/shorten.ts'
 import { refuseUnledgered } from './replay/ledger.ts'
 import { fullReport } from './replay/report.ts'
 import { repriceReport } from './replay/reprice.ts'
-import { ARMS, WINDOWS, runArm, type ArmSpec } from './replay/run.ts'
+import { ARMS, WINDOWS, runArm, type ArmSpec, type EvalMode } from './replay/run.ts'
 import { scenariosFor, sha256, splitOf, type Scenario } from './replay/scenarios.ts'
 import { CORPUS_WINDOWS, loadScenarioWindows, readIndex, stratifiedSubsample, type CorpusSplit, type IndexEntry } from './replay/corpus.ts'
 import { fromJsonl, selfCheck, toJsonl, type Row } from './replay/stats.ts'
@@ -39,6 +40,13 @@ const option = (name: string): string | undefined => {
   return i >= 0 ? argv[i + 1] : undefined
 }
 const files = (after = '--report'): string[] => argv.slice(argv.indexOf(after) + 1).filter(a => !a.startsWith('--') && a.endsWith('.jsonl'))
+
+// Evaluation rows must not depend on machine load: without --timing the engine timeout and the per-pass budget are
+// pinned high enough never to fire; --timing keeps the production bounds for timing measurements.
+const EVAL_MODE: EvalMode = flag('timing')
+  ? { timing: true, timeoutMs: 60_000, passBudgetMs: 6000 }
+  : { timing: false, timeoutMs: 3_600_000, passBudgetMs: 3_600_000 }
+shorten.setPassBudgetMs(EVAL_MODE.passBudgetMs)
 
 const FROZEN_FILE = join(root, 'docs', 'FROZEN-1.10.0-SETTINGS.md')
 
@@ -74,7 +82,7 @@ function engineClients(baselineVendor: string | undefined): { clientFor: (engine
     if (!c) {
       const dir = engine === '1.9.0' ? baselineVendor : join(root, 'vendor')
       if (!dir) throw new Error('--baseline-vendor DIR is needed for the 1.9.0 arm (git archive 922d171 vendor)')
-      c = new EngineClient(nodeWorkerSpawn(python, join(dir, 'run_worker.py'), root), { timeoutMs: 60_000 })
+      c = new EngineClient(nodeWorkerSpawn(python, join(dir, 'run_worker.py'), root), { timeoutMs: EVAL_MODE.timeoutMs })
       clients.set(engine, c)
     }
     return c
@@ -116,7 +124,7 @@ async function runCorpus(dir: string, out: string): Promise<void> {
       for (const sc of sliced) {
         for (const arm of arms) {
           const started = performance.now()
-          const row = await runArm(arm, sc, sc.corpus!.window, clientFor(arm.engine), e.split, arm.engine === 'none' ? 'none' : arm.engine)
+          const row = await runArm(arm, sc, sc.corpus!.window, clientFor(arm.engine), e.split, arm.engine === 'none' ? 'none' : arm.engine, EVAL_MODE)
           row.run_ms = Math.round(performance.now() - started)
           if (!keepRecords) delete row.records
           lines.push(JSON.stringify(row))
@@ -175,7 +183,7 @@ async function run(): Promise<void> {
     if (!c) {
       const dir = engine === '1.9.0' ? baselineVendor : join(root, 'vendor')
       if (!dir) throw new Error('--baseline-vendor DIR is needed for the 1.9.0 arm (git archive 922d171 vendor)')
-      c = new EngineClient(nodeWorkerSpawn(python, join(dir, 'run_worker.py'), root), { timeoutMs: 60_000 })
+      c = new EngineClient(nodeWorkerSpawn(python, join(dir, 'run_worker.py'), root), { timeoutMs: EVAL_MODE.timeoutMs })
       clients.set(engine, c)
     }
     return c
@@ -185,7 +193,7 @@ async function run(): Promise<void> {
     for (const sc of scenarios) {
       for (const window of WINDOWS) {
         for (const arm of arms) {
-          rows.push(await runArm(arm, sc, window, clientFor(arm.engine), isHoldout ? 'holdout' : burned.has(sc.id) ? 'burned-r1' : splitOf(sc.id), arm.engine === 'none' ? 'none' : arm.engine))
+          rows.push(await runArm(arm, sc, window, clientFor(arm.engine), isHoldout ? 'holdout' : burned.has(sc.id) ? 'burned-r1' : splitOf(sc.id), arm.engine === 'none' ? 'none' : arm.engine, EVAL_MODE))
           process.stderr.write('.')
         }
       }

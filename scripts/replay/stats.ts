@@ -45,6 +45,13 @@ export interface Row {
   cuts_replaced: number
   /** Mean milliseconds the pass took per step (not reproducible, and ignored by every comparison). */
   pass_ms: number
+  /** Slowest single pass in the session (telemetry only). */
+  pass_ms_max?: number
+  /** Which budgets the run used: 'deterministic' pins them so the row never depends on machine load; 'timing' keeps production bounds. */
+  eval_mode?: 'deterministic' | 'timing'
+  /** The engine client timeout and the per-pass budget the run used. */
+  timeout_ms?: number
+  pass_budget_ms?: number
   /** Optional (rows written before P0 lack them; no comparison reads them): how often each pass ended with each reason. */
   pass_reasons?: Record<string, number>
   /** Optional: one record per act and per decline (consecutive repeats of the same outcome for the same result are folded). */

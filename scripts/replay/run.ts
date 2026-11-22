@@ -9,7 +9,7 @@
 // sign-change comparison. The model's own tool-call output is identical in every arm and is not priced. REPLAY ONLY: no model ran.
 import { createHash } from 'node:crypto'
 import type { EngineClient } from '../../src/host/engine-client.ts'
-import { readSurface, type PassEvent } from '../../src/host/shorten.ts'
+import { PASS_BUDGET_MS, readSurface, type PassEvent } from '../../src/host/shorten.ts'
 import { onPreStep, type ChatStats, type StepAgent, type StepDeps, type TameruSettings } from '../../src/host/step.ts'
 import { stockThreshold } from '../../src/host/stock.ts'
 import { world } from '../../test/helpers/harness.ts'
@@ -97,7 +97,15 @@ export const SETTINGS_TRIED = new Set(ARMS.filter(a => !a.reference).map(a => a.
 
 const textLength = (m: any): number => (m.content ?? []).reduce((s: number, b: any) => s + (b.type === 'text' ? Array.from(b.text as string).length : 0), 0)
 
-export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client: EngineClient | undefined, split: Row['split'], engineLabel: string): Promise<Row> {
+/** Which budgets a run used: production bounds for `--timing`, pinned high otherwise so rows never depend on machine load. */
+export interface EvalMode {
+  timing: boolean
+  timeoutMs: number
+  passBudgetMs: number
+}
+export const PRODUCTION_MODE: EvalMode = { timing: true, timeoutMs: 60_000, passBudgetMs: PASS_BUDGET_MS }
+
+export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client: EngineClient | undefined, split: Row['split'], engineLabel: string, mode: EvalMode = PRODUCTION_MODE): Promise<Row> {
   const w = await world(sc.task)
   w.header(OUTPUT_CAP)
   const threshold = stockThreshold({ contextWindow: window, reservedCompletionTokens: OUTPUT_CAP })!
@@ -300,6 +308,10 @@ export async function runArm(arm: ArmSpec, sc: Scenario, window: number, client:
     cuts_eligible: cutsEligible,
     cuts_replaced: cutsReplaced,
     pass_ms: passMs.length ? passMs.reduce((a, b) => a + b, 0) / passMs.length : 0,
+    pass_ms_max: passMs.length ? Math.max(...passMs) : 0,
+    eval_mode: mode.timing ? 'timing' : 'deterministic',
+    timeout_ms: mode.timeoutMs,
+    pass_budget_ms: mode.passBudgetMs,
     pass_reasons: passReasons,
     records,
     requests,
