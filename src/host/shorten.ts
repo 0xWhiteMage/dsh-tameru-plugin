@@ -272,6 +272,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       const reply = await within(client.compress({ text: candidate.text, query, minSavingsRatio: 0.25 }), PASS_BUDGET_MS - (Date.now() - started), pass.signal)
       const result = reply === LATE ? undefined : reply
       if (reply === LATE) late = true
+      // a turn the user stopped says nothing about this result
+      if (reply === LATE && pass.signal?.aborted) return
       if (!result) {
         // the engine did not answer for this one in time: a second failure stops it being tried again, so one hard result cannot stall every step
         const failedOnce = `${key}#failed`
