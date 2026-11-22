@@ -112,7 +112,8 @@ function runPinCommand(verb: 'pin' | 'pins' | 'unpin' | 'purge', rest: string, e
   const chat = env.session.id
   if (!pins || !chat) return { kind: 'error', text: 'Pins are not available in this chat.' }
   if (verb === 'purge') {
-    pins.purge()
+    const failure = pins.purge()
+    if (failure) return { kind: 'error', text: `Could not forget the pins: ${failure}` }
     return { kind: 'success', text: 'Tameru forgot the pins of every chat.' }
   }
   const list = (items: string[]): string => (items.length === 0 ? 'No pins in this chat. /tameru pin TEXT adds one.' : items.map((pin, index) => `${index + 1}. ${pin}`).join('\n'))

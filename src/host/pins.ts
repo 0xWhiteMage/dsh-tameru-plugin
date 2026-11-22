@@ -13,8 +13,8 @@ export interface PinStore {
   list(chat: string): string[]
   add(chat: string, text: string): PinResult
   remove(chat: string, position: number): PinResult
-  /** Forget every chat's pins (the `purge` command). */
-  purge(): void
+  /** Forget every chat's pins (the `purge` command). Returns an error message, or `undefined` on success. */
+  purge(): string | undefined
 }
 
 const SECRET_SHAPES: RegExp[] = [
@@ -71,7 +71,10 @@ export function memoryPins(): PinStore {
       if (result.ok) chats.set(chat, result.pins)
       return result
     },
-    purge: () => chats.clear(),
+    purge: () => {
+      chats.clear()
+      return undefined
+    },
   }
 }
 
@@ -81,8 +84,9 @@ interface FileShape {
 }
 
 /**
- * Pins in one small JSON file of our own (`<DSH_HOME>/tameru/pins.json`), written atomically. A damaged or unreadable file is treated as
- * empty and never throws, and the newest 400 chats are kept. Removing the plugin leaves this folder; `/tameru purge` empties it.
+ * Pins in one small JSON file of our own (`<DSH_HOME>/tameru/pins.json`), written atomically. A damaged or unreadable file reads as
+ * empty and never throws; one that could not be read is never saved over. The newest 400 chats are kept. Removing the plugin leaves
+ * this folder; `/tameru purge` empties it.
  */
 export function filePins(directory: string, now: () => number = Date.now): PinStore {
   const path = join(directory, 'pins.json')
@@ -118,7 +122,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
     list: chat => valid(read().chats[chat]?.pins),
     add: (chat, text) => change(chat, pins => addTo(pins, text)),
     remove: (chat, position) => change(chat, pins => removeFrom(pins, position)),
-    purge: () => void write({ version: 1, chats: {} }),
+    purge: () => write({ version: 1, chats: {} }),
   }
 }
 
