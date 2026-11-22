@@ -2,7 +2,7 @@
 # Format: Canonical Name <canonical@email> Commit Name <commit@email>. See https://git-scm.com/docs/gitmailmap.
 # This changes how git shows names; it does not rewrite history, and GitHub does not read it. Commits count on a GitHub profile only
 # when their author email is a verified address on that account.
-# The canonical address is the GitHub noreply address, matching tameru-compaction-system's .mailmap.
+# The canonical address is the GitHub noreply address, the same one tameru-compaction-system's .mailmap uses.
 
 Benjamin Ang <98248594+0xWhiteMage@users.noreply.github.com> <hello@benjaminang.tv>
 Benjamin Ang <98248594+0xWhiteMage@users.noreply.github.com> <zapnorok@gmail.com>

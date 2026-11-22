@@ -40,16 +40,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-When `VENDORED_FROM` moves to an Apache-2.0 engine commit (1.10.0 or later), this section and `NOTICE` should say so and the MIT
-text can go.
+When `VENDORED_FROM` moves to an Apache-2.0 engine commit (1.10.0 or later): say so here, in `NOTICE` and in the `vendor/tameru/**`
+comment in `REUSE.toml`; drop the MIT text; and copy the attribution notices of the engine's own `NOTICE` at that commit into this
+plugin's `NOTICE`, as Apache-2.0 §4(d) requires (the engine had no `NOTICE` at `9f1f1c4`).
 
 `vendor/tameru/__init__.py` and `vendor/run_worker.py` are written for this plugin and are not copied.
 
-## Tameru engine (repository only, not shipped)
+## Test inputs (repository only, not shipped)
 
 `test/fixtures/engine-cases.json` holds the engine's shared task cases, taken from `benchmarks/compare.py` `current_cases()` at
 `9f1f1c4` (MIT at that commit, same copyright holder). It is used by the tests and `scripts/compare_stock.ts` and is not in the npm
-package.
+package. Three of its cases reproduce third-party text that the engine keeps as fixtures, matching
+[tameru-compaction-system's notices](https://github.com/0xWhiteMage/tameru-compaction-system/pull/7). They are test inputs only and
+are not relicensed under Apache-2.0:
+
+| Case | Same text as engine fixture | Source | Holder | Licence |
+|---|---|---|---|---|
+| `git_log` | `fixtures/shape-git-log.txt` | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent/commit/8f97ae9aec) commit subjects | Copyright (c) 2025 Nous Research | [MIT](https://github.com/NousResearch/hermes-agent/blob/8f97ae9aec/LICENSE) |
+| `jp_musubi` | `fixtures/shape-jp-musubi.txt` | [Musubi Tuner, docs/ideogram4.md](https://github.com/kohya-ss/musubi-tuner/blob/f8a1b03794a49239a3539015075f5123d6c07d66/docs/ideogram4.md), excerpt | Not verified | No licence found upstream; none is granted (`LicenseRef-NoLicense-Musubi-Tuner`) |
+| `travis_yaml` | `fixtures/shape-yaml-travis.txt` | [php/php-src .travis.yml](https://github.com/php/php-src/blob/004cb827501d1ddaf98daacb185a53e0816f78a7/.travis.yml) (PHP-7.4 branch) | Copyright (c) 1999 - 2021 The PHP Group. All rights reserved. | [PHP-3.01](https://github.com/php/php-src/blob/004cb827501d1ddaf98daacb185a53e0816f78a7/LICENSE) |
+
+The other cases have no identified third-party source and are the engine's own test data. The licence texts are in `LICENSES/`
+(`MIT.txt`, `PHP-3.01.txt`, `LicenseRef-NoLicense-Musubi-Tuner.txt`). As PHP-3.01 asks: this product includes PHP software, freely
+available from <http://www.php.net/software/>.
 
 ## DeepSeek Harness
 
@@ -63,7 +76,8 @@ This plugin is written against the public plugin interfaces of [DeepSeek Harness
 - `src/host/stock.ts` restates the stock compaction trigger from its documented formula and defaults; it is not copied code.
 - The contract and integration tests load Harness packages that `scripts/extract_harness.py` (or `npm install`) puts in `dev/`,
   which is git-ignored and never committed or shipped.
-- The screenshots in `docs/images/` show this plugin running inside the Harness.
+- The screenshots in `docs/images/` show this plugin running inside the Harness, so they also show Harness interface elements
+  (MIT, Copyright (c) 2026 DeepSeek). They are not shipped.
 
 If test fixtures derived from Harness code are ever added, they will be listed here with the MIT notice the licence requires.
 

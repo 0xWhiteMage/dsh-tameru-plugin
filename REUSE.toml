@@ -1,6 +1,6 @@
 version = 1
 SPDX-PackageName = "dsh-tameru"
-SPDX-PackageSupplier = "Benjamin Ang <hello@benjaminang.tv>"
+SPDX-PackageSupplier = "Benjamin Ang <98248594+0xWhiteMage@users.noreply.github.com>"
 SPDX-PackageDownloadLocation = "https://github.com/0xWhiteMage/dsh-tameru-plugin"
 
 # Everything is the project's own work unless an annotation below says otherwise. See THIRD_PARTY_NOTICES.md.
@@ -10,10 +10,24 @@ precedence = "closest"
 SPDX-FileCopyrightText = "2026 Benjamin Ang"
 SPDX-License-Identifier = "Apache-2.0"
 
-# The vendored engine must stay byte for byte identical to the engine repository, so it gets no headers. Same copyright holder;
-# published under MIT at the vendored commit and distributed here under Apache-2.0 (see NOTICE).
+# The vendored engine must stay byte for byte identical to the engine repository, so it gets no headers. Same copyright holder.
+# While VENDORED_FROM is 9f1f1c4 (MIT at that commit) it is distributed here under Apache-2.0; see NOTICE. Update this comment
+# when VENDORED_FROM changes.
 [[annotations]]
 path = ["vendor/tameru/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Benjamin Ang"
 SPDX-License-Identifier = "Apache-2.0"
+
+# Third-party text reproduced as test inputs; not relicensed. See THIRD_PARTY_NOTICES.md.
+[[annotations]]
+path = ["test/fixtures/engine-cases.json"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 Benjamin Ang", "Copyright (c) 2025 Nous Research", "Copyright (c) 1999 - 2021 The PHP Group. All rights reserved."]
+SPDX-License-Identifier = "Apache-2.0 AND MIT AND PHP-3.01 AND LicenseRef-NoLicense-Musubi-Tuner"
+
+[[annotations]]
+path = ["docs/images/**"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 Benjamin Ang", "2026 DeepSeek"]
+SPDX-License-Identifier = "Apache-2.0 AND MIT"
