@@ -41,14 +41,14 @@ SOFTWARE.
 ```
 
 When `VENDORED_FROM` moves to an Apache-2.0 engine commit (1.10.0 or later): say so here, in `NOTICE` and in the `vendor/tameru/**`
-comment in `REUSE.toml`; drop the MIT text above (the test inputs below keep their own copy); and copy the attribution notices of the engine's own `NOTICE` at that commit into this
-plugin's `NOTICE`, as Apache-2.0 §4(d) requires (the engine had no `NOTICE` at `9f1f1c4`).
+comment in `REUSE.toml`; drop the MIT text above (the test inputs below keep their own copy); and copy the attribution
+notices of the engine's own `NOTICE` at that commit into this plugin's `NOTICE`, as Apache-2.0 §4(d) requires (the engine had no `NOTICE` at `9f1f1c4`).
 
 `vendor/tameru/__init__.py` and `vendor/run_worker.py` are written for this plugin and are not copied.
 
 ## Test inputs (repository only, not shipped)
 
-`test/fixtures/engine-cases.json` holds the engine's shared task cases, taken from `benchmarks/compare.py` `current_cases()` at
+`test/fixtures/engine-cases.json` is a benchmark fixture holding the engine's shared task cases, taken from `benchmarks/compare.py` `current_cases()` at
 `9f1f1c4` (MIT at that commit, same copyright holder). It is used by the tests and `scripts/compare_stock.ts` and is not in the npm
 package. The 1.9.0 engine's MIT notice applies to it until it is regenerated from an Apache-2.0 engine commit:
 
@@ -122,7 +122,7 @@ SOFTWARE.
 ## DeepSeek Harness
 
 This plugin is written against the public plugin interfaces of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-(MIT, Copyright (c) 2026 DeepSeek). No Harness package is bundled or committed. The only Harness text reproduced is two
+(MIT, Copyright (c) 2026 DeepSeek). No Harness package is bundled or committed. The only Harness text reproduced in source and tests is two
 compatibility strings that the plugin must match exactly:
 
 - `src/host/messages.ts` (bundled into `lib/host.js`) holds the stock pruner's marker `[... tool result middle pruned ...]`, from
