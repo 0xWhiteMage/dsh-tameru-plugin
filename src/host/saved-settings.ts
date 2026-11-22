@@ -8,8 +8,19 @@ import type { TameruSettings } from './step.ts'
  * the values in the profile's patch file and survive a restart. A damaged file reads as empty; nothing here ever throws.
  */
 export function readSaved(directory: string): TameruSettings {
+  return loadSaved(directory) ?? {}
+}
+
+/** The saved settings, or `undefined` when the file is there but could not be read. */
+export function loadSaved(directory: string): TameruSettings | undefined {
+  let text: string | undefined
   try {
-    const parsed = JSON.parse(readPrivate(join(directory, 'settings.json')) ?? '') as { version?: number; settings?: unknown }
+    text = readPrivate(join(directory, 'settings.json'))
+  } catch {
+    return undefined
+  }
+  try {
+    const parsed = JSON.parse(text ?? '') as { version?: number; settings?: unknown }
     if (parsed?.version === 2) return normalizeSettings(parsed.settings)
   } catch {
     // missing or damaged: nothing saved

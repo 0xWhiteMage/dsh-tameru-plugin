@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { filePins } from '../src/host/pins.ts'
-import { readSaved, writeSaved } from '../src/host/saved-settings.ts'
+import { loadSaved, readSaved, writeSaved } from '../src/host/saved-settings.ts'
 
 const posix = process.platform !== 'win32'
 const mode = (path: string): number => statSync(path).mode & 0o777
@@ -106,12 +106,15 @@ test('state that could not be read is never saved over, and a read-only folder s
     writeFileSync(join(folder, 'pins.json'), saved, { mode: 0o200 })
     writeFileSync(join(folder, 'settings.json'), JSON.stringify({ version: 2, settings: { share: 0.5 } }), { mode: 0o200 })
     assert.deepEqual(filePins(folder).list('chat'), [], 'reads as empty')
-    assert.equal(filePins(folder).add('chat', 'new').ok, false, 'but is not saved over')
+    assert.match(filePins(folder).add('chat', 'new').ok ? '' : filePins(folder).add('chat', 'new').reason, /could not be read/i, 'but is not saved over')
     assert.ok(writeSaved(folder, { shorten: false }))
     chmodSync(join(folder, 'pins.json'), 0o600)
     chmodSync(join(folder, 'settings.json'), 0o600)
     assert.equal(readFileSync(join(folder, 'pins.json'), 'utf8'), saved)
     assert.deepEqual(readSaved(folder), { share: 0.5 })
+    chmodSync(join(folder, 'settings.json'), 0o200)
+    assert.equal(loadSaved(folder), undefined, 'unreadable, not empty')
+    chmodSync(join(folder, 'settings.json'), 0o600)
 
     chmodSync(folder, 0o555)
     assert.deepEqual(filePins(folder).list('other'), ['keep me'])

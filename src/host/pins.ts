@@ -90,15 +90,23 @@ interface FileShape {
  */
 export function filePins(directory: string, now: () => number = Date.now): PinStore {
   const path = join(directory, 'pins.json')
-  const read = (): FileShape => {
+  // `undefined` when the file is there but could not be read: a change then stops rather than start from nothing
+  const load = (): FileShape | undefined => {
+    let text: string | undefined
     try {
-      const parsed = JSON.parse(readPrivate(path) ?? '') as FileShape
+      text = readPrivate(path)
+    } catch {
+      return undefined
+    }
+    try {
+      const parsed = JSON.parse(text ?? '') as FileShape
       if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null) return parsed
     } catch {
       // missing or damaged: start empty
     }
     return { version: 1, chats: {} }
   }
+  const read = (): FileShape => load() ?? { version: 1, chats: {} }
   const write = (data: FileShape): string | undefined => {
     try {
       const entries = Object.entries(data.chats).sort((a, b) => b[1].updated - a[1].updated).slice(0, MAX_CHATS)
@@ -110,7 +118,8 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
   }
   const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').slice(0, MAX_PINS) : [])
   const change = (chat: string, apply: (pins: string[]) => PinResult): PinResult => {
-    const data = read()
+    const data = load()
+    if (!data) return { ok: false, reason: 'Could not save the pins: the saved ones could not be read, so they were left as they are.' }
     const result = apply(valid(data.chats[chat]?.pins))
     if (!result.ok) return result
     if (result.pins.length === 0) delete data.chats[chat]
