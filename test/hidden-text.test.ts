@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { hasHidden, showHidden, withoutHidden } from '../src/host/messages.ts'
 import { filePins, memoryPins, pinsSection } from '../src/host/pins.ts'
+import { runCommand, type CommandEnv } from '../src/host/commands.ts'
 import { emptyTrail, parseTrail, renderTrail, safeLine } from '../src/host/trail.ts'
 
 const RLO = '\u202e'
@@ -66,4 +67,20 @@ test('a trail line carried across compactions keeps its shown form and still mer
     assert.deepEqual([...carried.files.keys()], ['notes\u27e6U+202E\u27e7.txt'])
     assert.deepEqual([...carried.commands.keys()], ['echo \u27e6U+202E\u27e7hi'])
   }
+})
+
+test('the slash command refuses a pin with a hidden character at either end, before trimming can drop it', () => {
+  const pins = memoryPins()
+  const env = { session: { id: 'chat' }, meter: undefined, stats: {}, pins, status: () => '' } as unknown as CommandEnv
+  for (const input of ['pin hello\ufeff', 'pin \ufeffhello', 'pin hello\u200b']) assert.equal(runCommand(input, env).kind, 'error', JSON.stringify(input))
+  assert.deepEqual(pins.list('chat'), [])
+  assert.equal(runCommand('pin hello', env).kind, 'success')
+})
+
+test('a command with hidden characters at its ends is shown with them, and an older note is shown once, never merged with a new path', () => {
+  assert.equal(safeLine('\ufeffecho hi\ufeff'), '\u27e6U+FEFF\u27e7echo hi\u27e6U+FEFF\u27e7')
+  const old = emptyTrail()
+  parseTrail('[Tameru Artifact Trail: older note.]\nFiles:\n- x\u27e6U+202E\u27e7 (read)', old)
+  old.files.set(safeLine(`x${RLO}`), new Set(['read']))
+  assert.equal(old.files.size, 2)
 })

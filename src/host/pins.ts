@@ -30,7 +30,7 @@ const SECRET_SHAPES: RegExp[] = [
   /\b(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*\S{8,}/i,
 ]
 
-const HIDDEN_REFUSAL = 'That line holds invisible characters (such as bidi controls or Unicode tags) that the model would read but you would not see, so it was not pinned.'
+export const HIDDEN_REFUSAL = 'That line holds invisible characters (such as bidi controls or Unicode tags) that the model would read but you would not see, so it was not pinned.'
 
 /** Why a line may not be pinned, or `undefined` when it may. Heuristic: it catches common credential shapes, not every secret. */
 export function refusal(text: string): string | undefined {
