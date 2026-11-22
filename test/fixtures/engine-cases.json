@@ -1,5 +1,5 @@
 {
-"source": "tameru-compaction-system benchmarks/compare.py current_cases() at 9f1f1c4 (the engine's shared task cases; Apache-2.0)",
+"source": "tameru-compaction-system benchmarks/compare.py current_cases() at 9f1f1c4 (the engine's shared task cases; MIT at that commit, Apache-2.0 from ed8bcff; same copyright holder; cases git_log, jp_musubi and travis_yaml are third-party text, see THIRD_PARTY_NOTICES.md)",
 "cases": [
 {
 "name": "lexical_distractor",
