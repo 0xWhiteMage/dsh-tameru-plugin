@@ -52,8 +52,8 @@ export function callLabel(session: SessionLike, ref: number, callId: unknown): s
       } catch {
         return ''
       }
-      const key = LABEL_KEYS.find(name => typeof args[name] === 'string' && (args[name] as string).trim() !== '')
-      return key ? safeLine((args[key] as string).trim().split('\n')[0] ?? '', LABEL_CHARS) : ''
+      const key = LABEL_KEYS.find(name => typeof args[name] === 'string' && /[^ \t\r\n]/.test(args[name] as string))
+      return key ? safeLine((args[key] as string).replace(/^[ \t\r\n]+/, '').split('\n')[0] ?? '', LABEL_CHARS) : ''
     }
   }
   return ''
@@ -134,7 +134,7 @@ export function listItems(session: SessionLike): Item[] {
       ref,
       currentSeq: seq,
       state,
-      toolName: message.source?.name ?? '',
+      toolName: safeLine(typeof message.source?.name === 'string' ? message.source.name : '', 60),
       label: callLabel(session, ref, original?.data.message?.toolCallId ?? original?.data.message?.source?.callId),
       originalChars: originalText.length,
       shownChars: text.length,

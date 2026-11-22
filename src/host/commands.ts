@@ -2,7 +2,8 @@ import { hold, listItems, readOriginal, turnOpen, unkeep, type Item, type WriteR
 import { compactionOpen, type MeterLike, type SessionLike } from './shorten.ts'
 import type { ChatStats } from './step.ts'
 import type { PinStore } from './pins.ts'
-import { MAX_PINS } from './pins.ts'
+import { HIDDEN_REFUSAL, MAX_PINS } from './pins.ts'
+import { hasHidden } from './messages.ts'
 
 export type PendingOp = { op: 'keep' | 'restore' | 'unkeep'; ref: number }
 
@@ -52,8 +53,12 @@ export function drainPending(session: SessionLike, meter: MeterLike, stats: Chat
   const failed: Array<{ op: PendingOp; reason: string }> = []
   if (stats.pending.length === 0 || compactionOpen(session)) return failed
   for (const op of stats.pending.splice(0)) {
-    const result = applyOp(session, meter, op)
-    if (!result.ok) failed.push({ op, reason: result.reason })
+    try {
+      const result = applyOp(session, meter, op)
+      if (!result.ok) failed.push({ op, reason: result.reason })
+    } catch (error) {
+      failed.push({ op, reason: error instanceof Error ? error.message : String(error) })
+    }
   }
   return failed
 }
@@ -92,6 +97,8 @@ export function runCommand(rawInput: string | undefined, env: CommandEnv): Comma
     const shown = items.slice(-25)
     return { kind: 'success', text: [`Results Tameru shortened (${items.length}${items.length > shown.length ? `, newest ${shown.length} shown` : ''}); reference, tool, size:`, ...shown.map(describe)].join('\n') }
   }
+  // trimming below would drop a hidden character at either end before the pin check could see it
+  if (verb === 'pin' && hasHidden(rawInput ?? '')) return { kind: 'error', text: HIDDEN_REFUSAL }
   if (verb === 'pin' || verb === 'pins' || verb === 'unpin' || verb === 'purge') return runPinCommand(verb, (rawInput ?? '').trim().slice(verb.length).trim(), env)
   const ref = parseRef(words[1])
   if (verb === 'view') {
