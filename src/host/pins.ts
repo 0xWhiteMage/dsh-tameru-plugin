@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { withoutHidden } from './messages.ts'
+import { hasHidden, withoutHidden } from './messages.ts'
 
 /** Lines the user pins stay in the system prompt, which no summary replaces, so they survive every compaction word for word. */
 export const MAX_PINS = 5
@@ -33,14 +33,15 @@ const SECRET_SHAPES: RegExp[] = [
 /** Why a line may not be pinned, or `undefined` when it may. Heuristic: it catches common credential shapes, not every secret. */
 export function refusal(text: string): string | undefined {
   if (text.trim().length === 0) return 'There is nothing to pin.'
+  if (hasHidden(text)) return 'That line holds invisible characters (such as bidi controls or Unicode tags) that the model would read but you would not see, so it was not pinned.'
   if (text.length > MAX_PIN_CHARS) return `A pin can be at most ${MAX_PIN_CHARS} characters (this one is ${text.length}).`
   if (SECRET_SHAPES.some(shape => shape.test(text))) return 'That looks like a credential, and pins are sent to the model on every request, so it was not pinned.'
   return undefined
 }
 
-/** One line, no control or hidden characters: what is stored and shown is what the model reads. */
+/** One line, no control characters: what is stored and shown. */
 export function clean(text: string): string {
-  return withoutHidden(text).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`, 'g'), ' ').replace(/\s+/g, ' ').trim()
+  return text.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`, 'g'), ' ').replace(/\s+/g, ' ').trim()
 }
 
 function addTo(pins: string[], raw: string): PinResult {
@@ -108,7 +109,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
       return error instanceof Error ? error.message : String(error)
     }
   }
-  const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').slice(0, MAX_PINS) : [])
+  const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').map(pin => clean(withoutHidden(pin))).filter(pin => pin !== '').slice(0, MAX_PINS) : [])
   const change = (chat: string, apply: (pins: string[]) => PinResult): PinResult => {
     const data = read()
     const result = apply(valid(data.chats[chat]?.pins))

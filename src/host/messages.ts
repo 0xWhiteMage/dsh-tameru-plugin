@@ -39,13 +39,25 @@ export const STOCK_PRUNE_MARKER = '[... tool result middle pruned ...]'
 
 const SPILL_NOTICE = ' Full formatted result stored at: '
 
-// Bidi controls, zero-width spaces and joiners, and Unicode tag characters: they reorder or hide text from the person reading it while the
-// model still reads every one of them. Zero-width (non-)joiners are left alone: scripts and emoji need them.
-const HIDDEN_CHARS = /[\u061c\u200b\u200e\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\u{e0000}-\u{e007f}]+/gu
+// Characters that reorder text or draw nothing while the model still reads every one: bidi controls, zero-width spaces, soft hyphen,
+// combining grapheme joiner, Hangul and Khmer fillers, shorthand format controls, Unicode tag characters, and a variation selector that
+// follows another (a real sequence has one, so a run of them can only carry hidden data). Zero-width (non-)joiners and single variation
+// selectors are left alone: scripts and emoji need them.
+const HIDDEN = '[\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u200b\\u200e\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\u3164\\ufeff\\uffa0\\u{1bca0}-\\u{1bca3}\\u{e0000}-\\u{e007f}]|(?<=[\\ufe00-\\ufe0f\\u{e0100}-\\u{e01ef}])[\\ufe00-\\ufe0f\\u{e0100}-\\u{e01ef}]'
 
-/** Text without the characters that make what a person sees differ from what the model reads. */
+/** True when what a person sees of `text` would differ from what the model reads. */
+export function hasHidden(text: string): boolean {
+  return new RegExp(HIDDEN, 'u').test(text)
+}
+
+/** Text without those characters. */
 export function withoutHidden(text: string): string {
-  return text.replace(HIDDEN_CHARS, '')
+  return text.replace(new RegExp(HIDDEN, 'gu'), '')
+}
+
+/** Text with each of those characters shown as `[U+XXXX]`, so it can be seen and two different texts never look alike. */
+export function showHidden(text: string): string {
+  return text.replace(new RegExp(HIDDEN, 'gu'), char => `[U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}]`)
 }
 
 /** All text of a message, or `undefined` when it holds anything other than text blocks (an image or file is never rewritten). */
