@@ -1,5 +1,4 @@
-import { DEFAULT_ACTIVATION, type TameruSettings } from './step.ts'
-import { DEFAULT_SHORTEN } from './shorten.ts'
+import type { TameruSettings } from './step.ts'
 
 export interface TameruConfig extends TameruSettings {
   enabled?: boolean
@@ -29,5 +28,3 @@ export function normalizeSettings(raw: unknown): TameruSettings {
   if (maxPerPass !== undefined) out.maxPerPass = Math.floor(maxPerPass)
   return out
 }
-
-export const SETTING_DEFAULTS = { shorten: true, activation: DEFAULT_ACTIVATION, ...DEFAULT_SHORTEN } as const
