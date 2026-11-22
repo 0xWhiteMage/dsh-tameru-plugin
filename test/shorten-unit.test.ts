@@ -15,7 +15,8 @@ function log() {
     get seq() { return events.length },
     eventAt: seq => events[seq],
     deriveEventMessage: event => event.data.message ?? null,
-    append(type, data, options) {
+    append(type: any, data?: unknown, options?: unknown): any {
+      if (Array.isArray(type)) return type.map(([t, d, o]) => session.append(t, d, o))
       const { sourceEventSeqs, surfaceOp } = (options ?? {}) as AppendOptions
       const event = { seq: events.length, type, data: data as SessionEvent['data'], ...(sourceEventSeqs ? { sourceEventSeqs } : {}) }
       if (surfaceOp) {
