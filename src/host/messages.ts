@@ -39,19 +39,17 @@ export const STOCK_PRUNE_MARKER = '[... tool result middle pruned ...]'
 
 const SPILL_NOTICE = ' Full formatted result stored at: '
 
-// Characters that reorder text or draw nothing while the model still reads every one: bidi controls, zero-width spaces, soft hyphen,
-// combining grapheme joiner, Hangul and Khmer fillers, shorthand format controls and Unicode tag characters. Variation selectors and
-// zero-width (non-)joiners count too unless they sit where real text needs them: one emoji or text presentation selector right after an
-// emoji, a joiner between two emoji, or a (non-)joiner between two letters or marks of a script other than Latin, Greek or Cyrillic (a
-// combining mark of no script of its own does not count). Every other selector counts, ideographic ones included: 240 of them after any
-// ideograph would carry a byte apiece, so a rare glyph variant is lost instead.
+// Characters that reorder text or draw nothing while the model still reads every one: every default-ignorable code point (bidi controls,
+// zero-width spaces, soft hyphen, fillers, tag characters, variation selectors, ...). Three kinds are let through where real text needs
+// them: one emoji or text presentation selector right after an emoji (after a digit, # or * only as part of a keycap), a joiner between
+// two emoji, and a (non-)joiner between two letters or marks of a script other than Latin, Greek or Cyrillic. Every other selector counts,
+// ideographic ones included: 240 of them after any ideograph would carry a byte apiece, so a rare glyph variant is lost instead.
 const VS = '[\\ufe0e\\ufe0f]'
 const WORD = '(?:(?![\\p{Script=Latin}\\p{Script=Greek}\\p{Script=Cyrillic}\\p{Script=Inherited}\\p{Script=Common}])[\\p{L}\\p{M}])'
 const EMOJI = '[\\p{Extended_Pictographic}\\p{Emoji_Modifier}]'
 const HIDDEN = [
-  '[\\u00ad\\u034f\\u061c\\u115f\\u1160\\u17b4\\u17b5\\u200b\\u200e\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\u3164\\ufeff\\uffa0\\u{1bca0}-\\u{1bca3}\\u{e0000}-\\u{e007f}]',
-  `(?<!\\p{Emoji})${VS}`,
-  '[\\ufe00-\\ufe0d\\u{e0100}-\\u{e01ef}]',
+  '(?![\\u200c\\u200d\\ufe0e\\ufe0f])\\p{Default_Ignorable_Code_Point}',
+  `(?<!\\p{Emoji})${VS}|(?<=[#*0-9])${VS}(?!\\u20e3)`,
   `(?<!${WORD})\\u200c|\\u200c(?!${WORD})`,
   `\\u200d(?!(?<=${EMOJI}${VS}?\\u200d)${EMOJI}|(?<=${WORD}\\u200d)${WORD})`,
 ].join('|')
@@ -68,9 +66,12 @@ export function withoutHidden(text: string): string {
   return text.replace(new RegExp(HIDDEN, 'gu'), '')
 }
 
-/** Text with each of those characters shown as `⟦U+XXXX⟧`, so it can be seen and two different texts never look alike. */
-export function showHidden(text: string): string {
-  return text.replace(new RegExp(`${HIDDEN}|${SHOWN_OPEN}`, 'gu'), char => `${SHOWN_OPEN}U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}\u27e7`)
+/**
+ * Text with each of those characters shown as `⟦U+XXXX⟧`, so it can be seen and two different texts never look alike. A literal `⟦` is
+ * shown the same way, except in text this function already wrote (`shown`), so showing it again changes nothing.
+ */
+export function showHidden(text: string, shown = false): string {
+  return text.replace(new RegExp(shown ? HIDDEN : `${HIDDEN}|${SHOWN_OPEN}`, 'gu'), char => `${SHOWN_OPEN}U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}\u27e7`)
 }
 
 /** All text of a message, or `undefined` when it holds anything other than text blocks (an image or file is never rewritten). */

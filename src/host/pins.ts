@@ -30,10 +30,12 @@ const SECRET_SHAPES: RegExp[] = [
   /\b(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*\S{8,}/i,
 ]
 
+const HIDDEN_REFUSAL = 'That line holds invisible characters (such as bidi controls or Unicode tags) that the model would read but you would not see, so it was not pinned.'
+
 /** Why a line may not be pinned, or `undefined` when it may. Heuristic: it catches common credential shapes, not every secret. */
 export function refusal(text: string): string | undefined {
   if (text.trim().length === 0) return 'There is nothing to pin.'
-  if (hasHidden(text)) return 'That line holds invisible characters (such as bidi controls or Unicode tags) that the model would read but you would not see, so it was not pinned.'
+  if (hasHidden(text)) return HIDDEN_REFUSAL
   if (text.length > MAX_PIN_CHARS) return `A pin can be at most ${MAX_PIN_CHARS} characters (this one is ${text.length}).`
   if (SECRET_SHAPES.some(shape => shape.test(text))) return 'That looks like a credential, and pins are sent to the model on every request, so it was not pinned.'
   return undefined
@@ -45,8 +47,9 @@ export function clean(text: string): string {
 }
 
 function addTo(pins: string[], raw: string): PinResult {
+  // checked before cleaning: trimming and whitespace folding would otherwise turn some hidden characters into spaces or drop them
   const text = clean(raw)
-  const refused = refusal(text)
+  const refused = hasHidden(raw) ? HIDDEN_REFUSAL : refusal(text)
   if (refused) return { ok: false, reason: refused }
   if (pins.length >= MAX_PINS) return { ok: false, reason: `You already have ${MAX_PINS} pins; /tameru unpin N removes one.` }
   if (pins.includes(text)) return { ok: false, reason: 'That line is already pinned.' }

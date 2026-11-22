@@ -25,8 +25,8 @@ export interface Trail {
 export const emptyTrail = (): Trail => ({ files: new Map(), commands: new Map(), failed: new Map() })
 
 /** One short plain line: no control characters, hidden ones shown as `⟦U+XXXX⟧`, no markup that could pass as structure, no tags, bounded length. */
-export function safeLine(text: string, max = LINE_CHARS): string {
-  const line = showHidden(text)
+export function safeLine(text: string, max = LINE_CHARS, carried = false): string {
+  const line = showHidden(text, carried)
     .replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(new RegExp(`[${String.fromCharCode(0x2028, 0x2029)}]`, 'g'), ' ')
     .replace(/[`<>]/g, "'")
     .replace(/\s+/g, ' ')
@@ -113,14 +113,14 @@ export function parseTrail(text: string, into: Trail): void {
       const body = line.slice(2)
       if (section === 'files') {
         const match = /^(.*?)(?: \(([a-z, ]+)\))?$/.exec(body)
-        const path = safeLine(match?.[1] ?? '')
+        const path = safeLine(match?.[1] ?? '', LINE_CHARS, true)
         if (!path) continue
         const ops = into.files.get(path) ?? new Set<'read' | 'edited'>()
         for (const op of (match?.[2] ?? 'read').split(',').map(part => part.trim())) if (op === 'read' || op === 'edited') ops.add(op)
         into.files.set(path, ops)
       } else if (section === 'commands') {
         const failed = body.endsWith(' (failed)')
-        const command = safeLine(failed ? body.slice(0, -' (failed)'.length) : body)
+        const command = safeLine(failed ? body.slice(0, -' (failed)'.length) : body, LINE_CHARS, true)
         if (command) into.commands.set(command, (into.commands.get(command) ?? false) || failed)
       } else {
         const match = /^([A-Za-z0-9_.:-]{1,60}) \((\d{1,5}) failed\)$/.exec(body)

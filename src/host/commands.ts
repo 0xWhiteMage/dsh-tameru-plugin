@@ -52,8 +52,12 @@ export function drainPending(session: SessionLike, meter: MeterLike, stats: Chat
   const failed: Array<{ op: PendingOp; reason: string }> = []
   if (stats.pending.length === 0 || compactionOpen(session)) return failed
   for (const op of stats.pending.splice(0)) {
-    const result = applyOp(session, meter, op)
-    if (!result.ok) failed.push({ op, reason: result.reason })
+    try {
+      const result = applyOp(session, meter, op)
+      if (!result.ok) failed.push({ op, reason: result.reason })
+    } catch (error) {
+      failed.push({ op, reason: error instanceof Error ? error.message : String(error) })
+    }
   }
   return failed
 }
