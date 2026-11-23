@@ -573,8 +573,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     setAside(batch, 'surface_changed')
     return { kind: 'skipped', reason: 'surface_changed' }
   }
-  setAside([...batch].filter(item => !onSurface.has(item.candidate.seq)), 'surface_changed')
   const onSurface = new Set(session.surface.nodes)
+  setAside([...batch].filter(item => !onSurface.has(item.candidate.seq)), 'surface_changed')
   const writes = [...batch]
     .sort((a, b) => a.candidate.seq - b.candidate.seq)
     .filter(item => onSurface.has(item.candidate.seq))

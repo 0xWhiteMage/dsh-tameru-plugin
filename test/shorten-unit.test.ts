@@ -192,7 +192,7 @@ test('an acceptable extract at the activation boundary writes a price event befo
   assert.deepEqual(message?.source, tool(output).source)
   const text = message?.content[0]?.text
   assert.ok(text)
-  assert.match(text, new RegExp(`reference ${result.seq}\\]\\nERROR: build failed$`))
+  assert.match(text, new RegExp(`ref=${result.seq}\\]\\nERROR: build failed$`))
   assert.deepEqual(nodes, [0, 1, replacement?.seq, 3])
   const afterTokens = Math.ceil(text.length / 4)
   assert.deepEqual(outcome, {

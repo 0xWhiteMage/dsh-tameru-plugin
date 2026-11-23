@@ -139,8 +139,6 @@ export async function pressureOf(deps: StepDeps, agent: StepAgent, signal?: Abor
 
 /** The outcome of the pass, or the reason it did not run. Never throws: a problem here must never cost the user a turn. */
 export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: AbortSignal): Promise<PassOutcome | { kind: 'skipped'; reason: string }> {
-  deps.client?.noteStep?.()  // optional: the stock replay arm has no client, and test doubles may not count steps
-  deps.bgClient?.noteStep?.()
   const stats = chatStatsOf(deps.stats, agent.session)
   const skip = (reason: string) => {
     stats.lastSkip = reason
@@ -173,6 +171,10 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       maxPerPass: deps.settings.maxPerPass ?? DEFAULT_SHORTEN.maxPerPass,
       minConfidence: effective.minConfidence,
     }
+    // the engine can be reached from here on, so a step counts against its rest window (optional: the stock replay arm has
+    // no client, and test doubles may not count steps)
+    deps.client?.noteStep?.()
+    deps.bgClient?.noteStep?.()
     const outcome = effective.policy === 'plan'
       ? await planPass({
           session: agent.session,

@@ -15,11 +15,11 @@ test('wire requests contain only the permitted fields with false and zero preser
 test('wire result readers reject missing required fields and default optional metadata', () => {
   for (const value of [{}, { text: '' }, { text: 1, fail_open: true }, { text: '', fail_open: 1 }]) assert.equal(fromWireResult(value), undefined)
   assert.deepEqual(fromWireResult({ text: '', fail_open: true, original_tokens: NaN, kept_tokens: Infinity, tokens_saved_pct: '3', reasons: ['kept', null, 4], sanitized: 1 }), {
-    text: '', failOpen: true, originalTokens: 0, keptTokens: 0, tokensSavedPct: 0, risk: null, confidence: null, contentType: 'text', reasons: ['kept'], sanitized: false,
+    text: '', failOpen: true, originalTokens: 0, keptTokens: 0, tokensSavedPct: 0, risk: null, confidence: null, contentType: 'text', reasons: ['kept'], sanitized: false, dropped: [],
   })
   assert.equal(fromWireVersion({ engine_version: '1.9.0' }), undefined)
   assert.equal(fromWireVersion({ engine_version: 1, protocol: 1 }), undefined)
-  assert.deepEqual(fromWireVersion({ engine_version: '1.9.0', protocol: 1 }), { engineVersion: '1.9.0', protocol: 1, python: '', vendoredFrom: null })
+  assert.deepEqual(fromWireVersion({ engine_version: '1.9.0', protocol: 1 }), { engineVersion: '1.9.0', protocol: 1, python: '', vendoredFrom: null, presets: [] })
 })
 
 test('line splitting preserves UTF-8 across every byte boundary and ignores empty CRLF lines', () => {

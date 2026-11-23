@@ -52,7 +52,7 @@ test('empty output has a complete result contract and query-only surrogates are 
   assert.equal(replies.length, 2)
   for (const [index, reply] of replies.entries()) {
     assert.equal(reply.ok, true)
-    assert.deepEqual(Object.keys(reply.result).sort(), ['text', 'fail_open', 'original_tokens', 'kept_tokens', 'tokens_saved_pct', 'risk', 'confidence', 'content_type', 'reasons', 'sanitized'].sort())
+    assert.deepEqual(Object.keys(reply.result).sort(), ['text', 'fail_open', 'original_tokens', 'kept_tokens', 'tokens_saved_pct', 'risk', 'confidence', 'content_type', 'reasons', 'sanitized', 'confidence_basis', 'dropped', 'fact_lines_dropped', 'preset', 'query_specific', 'result_schema', 'stable_key'].sort())
     assert.equal(reply.result.text, '')
     assert.equal(reply.result.fail_open, false)
     assert.equal(reply.result.original_tokens, 0)
