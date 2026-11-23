@@ -11,8 +11,10 @@
 Requires DeepSeek Harness **0.2.2-rc.5** (the version it is tested on; the Harness refuses other versions) and Python 3.10+ (bundled with the Harness).
 
 ```bash
-npm install -g dsh-tameru     # then enable it in the Harness's plugin settings
+npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.2.0"     # then enable it in the Harness's plugin settings
 ```
+
+(A registry `npm install -g dsh-tameru` works once the package is published to npm; the git tag is the source of truth for now.)
 
 Removing it leaves `<Harness home>/tameru/` (pins and settings) — `/tameru purge` empties it. The Harness sends the names of active plugins with requests to the official DeepSeek API.
 
