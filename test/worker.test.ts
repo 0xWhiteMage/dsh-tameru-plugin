@@ -50,7 +50,7 @@ test('the worker shortens a log, keeps the error, and says what the engine is', 
     assert.equal(replies[0].result.engine_version, '1.10.0')
     assert.match(replies[0].result.vendored_from, /^[0-9a-f]{40}$/)
     assert.equal(replies[0].result.protocol, 3)
-    assert.equal(replies[0].result.result_schema, 3)
+    assert.equal(replies[0].result.result_schema, 4)
     assert.ok(replies[0].result.presets.includes('dsh-tool-result@1'))
     const result = replies[1].result
     assert.equal(result.fail_open, false)

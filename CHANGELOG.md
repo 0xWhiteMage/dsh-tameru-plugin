@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0: Tameru engine 1.10.0 (not released)
+## 0.2.0: Tameru engine 1.10.0 (2026-11-23)
 
 Replay-only. Every engine number below comes from the engine's own replay of recorded and generated tool outputs (`docs/RESULTS-1.10.0.md` in the engine repository: one sealed look on commit `99db5bd`, paired against engine 1.9.0). **This plugin's own measurements ([MEASURED-VS-STOCK.md](docs/MEASURED-VS-STOCK.md), [REPLAY-VS-STOCK.md](docs/REPLAY-VS-STOCK.md)) were NOT redone for 0.2.0**: they describe engine 1.9.0 on Harness 0.2.2-rc.1. No real model has run, so there is no claim about answer quality, the provider's cache behaviour or the bill, and none about cost.
 
