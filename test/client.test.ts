@@ -135,10 +135,16 @@ test('the plugin\'s copies of the shared vocabulary and drawings equal the engin
 })
 
 // A render test with a tiny stand-in for React: it calls the bar's own function, so a typo, a missing import or a primitive that is not there
-// shows up here instead of in the user's Harness. `overrides` replaces the Nth `useState` of the render (the bar's state is the fourth).
-function renderBar(options: { primitives: Record<string, unknown>; state?: Record<string, unknown>; props?: Record<string, unknown>; throwing?: boolean }): any {
-  ;(globalThis as any).document = { documentElement: { lang: 'en' }, createElement: () => ({ setAttribute() {}, remove() {} }), head: { appendChild() {} } }
-  let call = 0
+// shows up here instead of in the user's Harness. Effects are not run; open surfaces get a fixed anchor.
+function renderBar(options: {
+  primitives: Record<string, unknown>; state?: Record<string, unknown>; props?: Record<string, unknown>
+  lang?: string; openTab?: 'results' | 'pins'; menuOpen?: boolean; fetch?: typeof fetch
+}): any {
+  const document = { documentElement: { lang: options.lang ?? 'en' }, body: {}, createElement: () => ({ setAttribute() {}, remove() {} }), head: { appendChild() {} } }
+  const anchor = { left: 12, bottom: 100, width: 264, maxHeight: 360 }
+  const barState = [!!options.openTab, options.openTab, undefined, options.state, undefined, undefined, undefined, undefined, options.openTab ? anchor : undefined]
+  const menuState = [!!options.menuOpen, options.menuOpen ? anchor : undefined]
+  let frame = { component: '', stateIndex: 0 }
   const react = {
     // components are called at once, as React would when it renders them, so the whole tree is there to look at
     createElement: (type: any, props: any, ...children: unknown[]): any => {
@@ -152,7 +158,9 @@ function renderBar(options: { primitives: Record<string, unknown>; state?: Recor
         return instance.render()
       }
       if (typeof type === 'function') {
-        try { return type(all) } catch (error) { return { type: '__error', error, props: {}, children: [] } }
+        const previous = frame
+        frame = { component: type.name, stateIndex: 0 }
+        try { return type(all) } catch (error) { return { type: '__error', error, props: {}, children: [] } } finally { frame = previous }
       }
       return { type, props: props ?? {}, children: children.flat() }
     },
@@ -160,15 +168,17 @@ function renderBar(options: { primitives: Record<string, unknown>; state?: Recor
     Fragment: 'fragment',
     Component: class { props: any; state: any; constructor(props: any) { this.props = props } },
     useState: (initial: unknown) => {
-      const index = call++
-      const value = index === 3 && options.state ? options.state : typeof initial === 'function' ? (initial as () => unknown)() : initial
+      const index = frame.stateIndex++
+      const overrides = frame.component === 'Bar' ? barState : frame.component === 'StrengthMenu' ? menuState : []
+      const value = overrides[index] ?? (typeof initial === 'function' ? (initial as () => unknown)() : initial)
       return [value, () => {}]
     },
     useEffect: () => {}, useLayoutEffect: () => {}, useRef: (v: unknown) => ({ current: v }), useCallback: (f: unknown) => f,
   }
-  ;(globalThis as any).window = { __ModuleLoader__: { load: (d: unknown) => ((globalThis as any).__def = d) } }
-  new Function('window', source)((globalThis as any).window)
-  const exports = (globalThis as any).__def.factory((name: string) => (name === 'react' ? react : name === 'react-dom' ? { createPortal: (child: unknown) => child } : name.includes('primitives') ? options.primitives : {}))
+  let definition: any
+  const window = { __ModuleLoader__: { load: (d: unknown) => (definition = d) } }
+  new Function('window', 'document', 'fetch', source)(window, document, options.fetch)
+  const exports = definition.factory((name: string) => (name === 'react' ? react : name === 'react-dom' ? { createPortal: (child: unknown) => child } : name.includes('primitives') ? options.primitives : {}))
   let body: any
   exports.apply({ effect: (setup: () => unknown) => setup(), slots: { inject: (_: string, factory: () => unknown) => factory(), register: (_: unknown, component: unknown) => (body = component) } })
   return body({ sessionId: 'chat-1', ...(options.props ?? {}) })
@@ -263,4 +273,81 @@ test('a problem is a short phrase, tints the star, and the raw error is never on
   const failed = renderBar({ primitives: {}, state: { ...liveState, failure: 'ENOENT: secret/path/leaked.txt' } })
   assert.match(textOf(failed), /Problem/)
   assert.ok(!/ENOENT|secret/.test(textOf(failed)), 'raw error text stays in the details')
+})
+
+test('the context ring fills from the Harness projection but uses the plugin activation notch', () => {
+  const state = { ...liveState, gauge: { tokens: 64_000, contextWindow: 128_000, stockTrigger: 96_000, startsAt: 32_000 } }
+  const bar = renderBar({ primitives: {}, state, props: { useProjection: () => ({ projectedTokens: 96_000, contextWindow: 128_000 }) } })
+  const [gauge] = find(bar, n => n.props?.className === 'tameru-gauge')
+  assert.equal(gauge.props.title, '75% of the context is in use. Tameru starts at 25%. The Harness compacts at 75%.')
+  const [fill] = find(gauge, n => n.type === 'circle' && n.props.strokeDasharray)
+  const [filled, circumference] = fill.props.strokeDasharray.split(' ').map(Number)
+  assert.equal(filled / circumference, 0.75)
+  assert.equal(fill.props.transform, 'rotate(-90 8 8)')
+  const [notch] = find(gauge, n => n.type === 'line')
+  assert.deepEqual([notch.props.x1, notch.props.y1, notch.props.x2, notch.props.y2], [12.5, 8, 15.5, 8])
+  const withoutThresholds = renderBar({ primitives: {}, state: { ...state, gauge: null }, props: { useProjection: pressure } })
+  const [ring] = find(withoutThresholds, n => n.props?.className === 'tameru-ring')
+  assert.equal(find(ring, n => n.type === 'line').length, 0)
+})
+
+test('the strength menu checks the current preset, and Off patches only shortening', () => {
+  const requests: unknown[] = []
+  const fetch: typeof globalThis.fetch = async (url, init) => {
+    requests.push([url, init?.method, JSON.parse(String(init?.body))])
+    return Response.json({ ok: true, live: true })
+  }
+  const bar = renderBar({ primitives: {}, state: liveState, menuOpen: true, fetch })
+  const [trigger] = find(bar, n => n.props?.id === 'tameru-strength')
+  assert.equal(trigger.props['aria-expanded'], true)
+  const [menu] = find(bar, n => n.props?.role === 'menu')
+  const options = find(menu, n => n.props?.role === 'menuitemradio')
+  const label = (option: any) => textOf(find(option, n => n.props?.className === 'name')[0])
+  assert.deepEqual(options.map(label), ['Off', 'Less', 'Normal', 'More'])
+  assert.deepEqual(options.filter(n => n.props['aria-checked']).map(label), ['Normal'])
+  options[2].props.onClick()
+  assert.deepEqual(requests, [], 'picking the active preset does not rewrite settings')
+  options[0].props.onClick()
+  assert.deepEqual(requests, [['api/tameru', 'POST', { endpoint: 'settings', payload: { patch: { shorten: false } } }]])
+})
+
+test('the strength menu shows a custom value as checked but disabled', { todo: 'Custom is in the filter but not the list of options' }, () => {
+  const state = { ...liveState, settings: { values: { shorten: true, minConfidence: 0.42 } } }
+  const bar = renderBar({ primitives: {}, state, menuOpen: true })
+  const [current] = find(bar, n => n.props?.role === 'menuitemradio' && n.props['aria-checked'])
+  assert.ok(current, 'the Custom setting on the trigger has no checked item in the menu')
+  assert.match(textOf(current), /Custom/)
+  assert.equal(current.props.disabled, true)
+})
+
+test('queued rows cannot send another hold, while kept rows offer unkeep on the same reference', () => {
+  const requests: unknown[] = []
+  const fetch: typeof globalThis.fetch = async (_url, init) => {
+    requests.push(JSON.parse(String(init?.body)))
+    return Response.json({ ok: true })
+  }
+  const state = { ...liveState, items: [{ ...liveState.items[0], queued: true }, liveState.items[1]] }
+  const bar = renderBar({ primitives: {}, state, openTab: 'results', fetch })
+  const [queued, kept] = find(bar, n => n.props?.className === 'tameru-row')
+  assert.match(textOf(queued), /npm test -- checkout/)
+  assert.equal(find(queued, n => n.props?.title === 'Waiting for the next step.').length, 1)
+  assert.equal(find(queued, n => n.type === 'button').length, 1)
+  assert.match(textOf(kept), /src\/checkout.ts/)
+  const [release] = find(kept, n => n.type === 'button' && n.props['aria-label']?.includes('Click to let Tameru shorten it again.'))
+  release.props.onClick()
+  assert.deepEqual(requests, [{ endpoint: 'hold', payload: { sessionId: 'chat-1', op: 'unkeep', ref: 18 } }])
+})
+
+test('the dock uses the document locale and keeps the pins warning visible even when the list is full', () => {
+  const state = { ...liveState, pins: ['保留测试输出'], limits: { pins: 1, pinChars: 300 } }
+  const bar = renderBar({ primitives: {}, state, lang: 'zh-CN', openTab: 'pins' })
+  const [card] = find(bar, n => n.props?.role === 'dialog')
+  assert.equal(card.props['aria-label'], 'Tameru 详情')
+  assert.match(textOf(card), /已用 1 \/ 1。移除一条后才能再添加。/)
+  assert.match(textOf(card), /请勿放入密码。/)
+  assert.equal(find(card, n => n.type === 'input').length, 0)
+  const withRoom = renderBar({ primitives: {}, state: { ...state, pins: [] }, lang: 'zh-CN', openTab: 'pins' })
+  const [input] = find(withRoom, n => n.type === 'input')
+  assert.equal(input.props.maxLength, 300)
+  assert.equal(input.props['aria-label'], '一条 AI 必须始终看到的规则…')
 })

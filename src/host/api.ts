@@ -53,6 +53,18 @@ function describe(item: Item, queued: Set<number>): Record<string, unknown> {
   return { ref: item.ref, tool: item.toolName, label: item.label, state: item.state, originalChars: item.originalChars, shownChars: item.shownChars, onSurface: item.onSurface, cutByHarness: item.cutByHarness, queued: queued.has(item.ref) }
 }
 
+/**
+ * Why a request to the panel's route is refused before it is read, if it is. The panel always sends JSON from its own page, and a pin
+ * lands in the system prompt, so a request another site could make without a preflight (a form or a `text/plain` fetch, which still
+ * carries the browser's credentials) or one the browser marks as cross-site is turned away.
+ */
+export function refuseRequest(headers: { get(name: string): string | null }): { status: number; error: string } | undefined {
+  if (headers.get('sec-fetch-site') === 'cross-site') return { status: 403, error: 'cross-site request' }
+  const type = (headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
+  if (type !== 'application/json') return { status: 415, error: 'JSON is needed' }
+  return undefined
+}
+
 /** One panel request. `endpoint` and `payload` come from the browser: nothing in them is trusted beyond its validated shape. */
 export async function handleApi(endpoint: string, payload: unknown, env: ApiEnv): Promise<ApiResult> {
   const body = isObject(payload) ? payload : {}

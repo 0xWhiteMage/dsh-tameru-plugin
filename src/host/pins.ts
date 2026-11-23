@@ -1,5 +1,6 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
+import { hasHidden, withoutHidden } from './messages.ts'
+import { readPrivate, writePrivate } from './state-file.ts'
 
 /** Lines the user pins stay in the system prompt, which no summary replaces, so they survive every compaction word for word. */
 export const MAX_PINS = 5
@@ -13,8 +14,8 @@ export interface PinStore {
   list(chat: string): string[]
   add(chat: string, text: string): PinResult
   remove(chat: string, position: number): PinResult
-  /** Forget every chat's pins (the `purge` command). */
-  purge(): void
+  /** Forget every chat's pins (the `purge` command). Returns an error message, or `undefined` on success. */
+  purge(): string | undefined
 }
 
 const SECRET_SHAPES: RegExp[] = [
@@ -29,9 +30,12 @@ const SECRET_SHAPES: RegExp[] = [
   /\b(?:password|passwd|secret|api[_-]?key|token)\s*[:=]\s*\S{8,}/i,
 ]
 
+export const HIDDEN_REFUSAL = 'That line holds invisible characters (such as bidi controls or Unicode tags) that the model would read but you would not see, so it was not pinned.'
+
 /** Why a line may not be pinned, or `undefined` when it may. Heuristic: it catches common credential shapes, not every secret. */
 export function refusal(text: string): string | undefined {
   if (text.trim().length === 0) return 'There is nothing to pin.'
+  if (hasHidden(text)) return HIDDEN_REFUSAL
   if (text.length > MAX_PIN_CHARS) return `A pin can be at most ${MAX_PIN_CHARS} characters (this one is ${text.length}).`
   if (SECRET_SHAPES.some(shape => shape.test(text))) return 'That looks like a credential, and pins are sent to the model on every request, so it was not pinned.'
   return undefined
@@ -43,8 +47,9 @@ export function clean(text: string): string {
 }
 
 function addTo(pins: string[], raw: string): PinResult {
+  // checked before cleaning: trimming and whitespace folding would otherwise turn some hidden characters into spaces or drop them
   const text = clean(raw)
-  const refused = refusal(text)
+  const refused = hasHidden(raw) ? HIDDEN_REFUSAL : refusal(text)
   if (refused) return { ok: false, reason: refused }
   if (pins.length >= MAX_PINS) return { ok: false, reason: `You already have ${MAX_PINS} pins; /tameru unpin N removes one.` }
   if (pins.includes(text)) return { ok: false, reason: 'That line is already pinned.' }
@@ -71,7 +76,10 @@ export function memoryPins(): PinStore {
       if (result.ok) chats.set(chat, result.pins)
       return result
     },
-    purge: () => chats.clear(),
+    purge: () => {
+      chats.clear()
+      return undefined
+    },
   }
 }
 
@@ -81,35 +89,43 @@ interface FileShape {
 }
 
 /**
- * Pins in one small JSON file of our own (`<DSH_HOME>/tameru/pins.json`), written atomically. A damaged or unreadable file is treated as
- * empty and never throws, and the newest 400 chats are kept. Removing the plugin leaves this folder; `/tameru purge` empties it.
+ * Pins in one small JSON file of our own (`<DSH_HOME>/tameru/pins.json`), written atomically. A damaged or unreadable file reads as
+ * empty and never throws; one that could not be read is never saved over. The newest 400 chats are kept. Removing the plugin leaves
+ * this folder; `/tameru purge` empties it.
  */
 export function filePins(directory: string, now: () => number = Date.now): PinStore {
   const path = join(directory, 'pins.json')
-  const read = (): FileShape => {
+  // `undefined` when the file is there but could not be read: a change then stops rather than start from nothing
+  const load = (): FileShape | undefined => {
+    let text: string | undefined
     try {
-      const parsed = JSON.parse(readFileSync(path, 'utf8')) as FileShape
-      if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null) return parsed
+      text = readPrivate(path)
+    } catch {
+      return undefined
+    }
+    try {
+      const parsed = JSON.parse(text ?? '') as FileShape
+      // chat ids come from outside: a null-prototype map keeps an id like `__proto__` an ordinary key
+      if (parsed?.version === 1 && typeof parsed.chats === 'object' && parsed.chats !== null && !Array.isArray(parsed.chats)) return { version: 1, chats: Object.assign(Object.create(null), Object.fromEntries(Object.entries(parsed.chats).filter(([, chat]) => typeof chat === 'object' && chat !== null && typeof chat.updated === 'number'))) }
     } catch {
       // missing or damaged: start empty
     }
-    return { version: 1, chats: {} }
+    return { version: 1, chats: Object.create(null) }
   }
+  const read = (): FileShape => load() ?? { version: 1, chats: {} }
   const write = (data: FileShape): string | undefined => {
     try {
       const entries = Object.entries(data.chats).sort((a, b) => b[1].updated - a[1].updated).slice(0, MAX_CHATS)
-      mkdirSync(dirname(path), { recursive: true })
-      const temporary = `${path}.${process.pid}.tmp`
-      writeFileSync(temporary, JSON.stringify({ version: 1, chats: Object.fromEntries(entries) }), 'utf8')
-      renameSync(temporary, path)
+      writePrivate(path, JSON.stringify({ version: 1, chats: Object.fromEntries(entries) }))
       return undefined
     } catch (error) {
       return error instanceof Error ? error.message : String(error)
     }
   }
-  const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').slice(0, MAX_PINS) : [])
+  const valid = (pins: unknown): string[] => (Array.isArray(pins) ? pins.filter((pin): pin is string => typeof pin === 'string').map(pin => clean(withoutHidden(pin))).filter(pin => refusal(pin) === undefined).slice(0, MAX_PINS) : [])
   const change = (chat: string, apply: (pins: string[]) => PinResult): PinResult => {
-    const data = read()
+    const data = load()
+    if (!data) return { ok: false, reason: 'Could not save the pins: the saved ones could not be read, so they were left as they are.' }
     const result = apply(valid(data.chats[chat]?.pins))
     if (!result.ok) return result
     if (result.pins.length === 0) delete data.chats[chat]
@@ -121,7 +137,7 @@ export function filePins(directory: string, now: () => number = Date.now): PinSt
     list: chat => valid(read().chats[chat]?.pins),
     add: (chat, text) => change(chat, pins => addTo(pins, text)),
     remove: (chat, position) => change(chat, pins => removeFrom(pins, position)),
-    purge: () => void write({ version: 1, chats: {} }),
+    purge: () => write({ version: 1, chats: Object.create(null) }),
   }
 }
 

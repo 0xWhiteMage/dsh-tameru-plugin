@@ -165,6 +165,7 @@ export function build(language: Language) {
       notConfident: say(v.emptyReasons.notConfident),
       tooSmall: say(v.emptyReasons.tooSmall),
       engineSilent: say(v.emptyReasons.engineSilent),
+      cancelled: say(v.emptyReasons.cancelled),
       off: say(v.emptyReasons.off),
     },
   }

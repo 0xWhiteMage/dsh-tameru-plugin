@@ -13,6 +13,7 @@ import {
   type WorkerStatus,
   type WorkerVersion,
 } from '../shared/protocol.ts'
+import { TOO_LARGE_LINE_ERROR } from './process.ts'
 
 /** A running worker, however it was started: lines in, lines out. */
 export interface WorkerProcess {
@@ -278,6 +279,12 @@ export class EngineClient {
     }
     if (typeof reply !== 'object' || reply === null) return
     const record = reply as Record<string, unknown>
+    // the host's own line splitter reports a reply it would not hold: the worker is misbehaving, so it counts and is replaced
+    if (record.id === null && record.error === TOO_LARGE_LINE_ERROR) {
+      this.note(TOO_LARGE_LINE_ERROR, true)
+      if (this.worker) this.drop(this.worker)
+      return
+    }
     // The worker answers a line it could not read (bad JSON, too large) with no id. Requests are serial, so that reply belongs to the
     // one request in flight: it fails alone and at once, instead of waiting out its deadline and taking the worker with it.
     const id = typeof record.id === 'number' ? record.id : record.id === null && record.ok === false && this.pending.size === 1 ? [...this.pending.keys()][0] : undefined

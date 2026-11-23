@@ -20,6 +20,7 @@
     "url": "git+https://github.com/0xWhiteMage/dsh-tameru-plugin.git"
   },
   "license": "Apache-2.0",
+  "author": "Benjamin Ang (https://github.com/0xWhiteMage)",
   "type": "module",
   "main": "lib/host.js",
   "exports": {

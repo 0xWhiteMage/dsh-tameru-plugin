@@ -1,5 +1,5 @@
 import { KEPT_PREFIX, RESTORED_PREFIX, SHORTENED_PREFIX, STOCK_PRUNE_MARKER, textOnly, touchedByTameru } from './messages.ts'
-import type { MeterLike, SessionLike } from './shorten.ts'
+import { appendPricedReplacement, type MeterLike, type SessionLike } from './shorten.ts'
 import { safeLine } from './trail.ts'
 
 /**
@@ -52,8 +52,8 @@ export function callLabel(session: SessionLike, ref: number, callId: unknown): s
       } catch {
         return ''
       }
-      const key = LABEL_KEYS.find(name => typeof args[name] === 'string' && (args[name] as string).trim() !== '')
-      return key ? safeLine((args[key] as string).trim().split('\n')[0] ?? '', LABEL_CHARS) : ''
+      const key = LABEL_KEYS.find(name => typeof args[name] === 'string' && /[^ \t\r\n]/.test(args[name] as string))
+      return key ? safeLine((args[key] as string).replace(/^[ \t\r\n]+/, '').split('\n')[0] ?? '', LABEL_CHARS) : ''
     }
   }
   return ''
@@ -134,7 +134,7 @@ export function listItems(session: SessionLike): Item[] {
       ref,
       currentSeq: seq,
       state,
-      toolName: message.source?.name ?? '',
+      toolName: safeLine(typeof message.source?.name === 'string' ? message.source.name : '', 60),
       label: callLabel(session, ref, original?.data.message?.toolCallId ?? original?.data.message?.source?.callId),
       originalChars: originalText.length,
       shownChars: text.length,
@@ -171,8 +171,12 @@ function replaceNode(session: SessionLike, meter: MeterLike, item: Item, text: s
   if (!current?.data.message) return { ok: false, reason: 'the result is no longer in the chat' }
   const message = { ...current.data.message, content: [{ type: 'text', text }] }
   try {
-    session.append('compaction/prune', { shadowedRange: { start: item.currentSeq, end: item.currentSeq }, shadowedSeqs: [item.currentSeq], shadowedTokenCount: meter.estimateMessage(current.data.message) })
-    const written = session.append('tool/result', { ...current.data, message }, { surfaceOp: { op: 'replace', startSeq: item.currentSeq, endSeq: item.currentSeq }, sourceEventSeqs: [item.ref, item.currentSeq] })
+    const written = appendPricedReplacement(
+      session,
+      { shadowedRange: { start: item.currentSeq, end: item.currentSeq }, shadowedSeqs: [item.currentSeq], shadowedTokenCount: meter.estimateMessage(current.data.message) },
+      { ...current.data, message },
+      { surfaceOp: { op: 'replace', startSeq: item.currentSeq, endSeq: item.currentSeq }, sourceEventSeqs: [item.ref, item.currentSeq] },
+    )
     return { ok: true, replacementSeq: written.seq }
   } catch (error) {
     return { ok: false, reason: error instanceof Error ? error.message : String(error) }

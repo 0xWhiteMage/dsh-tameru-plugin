@@ -1,20 +1,56 @@
 import { spawn as nodeSpawn } from 'node:child_process'
 import type { Spawn, WorkerProcess } from './engine-client.ts'
 
-/** Turns a byte stream into lines. A line is complete at `\n`; a trailing `\r` is dropped. */
+/** The longest reply line the host holds: well above the worker's largest answer (its 16 MiB request limit, ASCII-escaped). */
+export const MAX_REPLY_CHARS = 128 * 1024 * 1024
+
+/** What the splitter hands on in place of a line that was too long: the worker's own error shape, so the request in flight fails at once. */
+export const TOO_LARGE_LINE_ERROR = 'reply_too_large'
+export const TOO_LARGE_LINE = JSON.stringify({ id: null, ok: false, error: TOO_LARGE_LINE_ERROR })
+
+/**
+ * Turns a byte stream into lines. A line is complete at `\n`; a trailing `\r` is dropped. A line longer than `maxChars` is never held
+ * in memory: it is discarded up to its newline and reported once as `TOO_LARGE_LINE`.
+ */
 export class LineSplitter {
   private readonly decoder = new TextDecoder('utf-8')
-  private rest = ''
+  private readonly maxChars: number
+  // the unfinished line, in the pieces it arrived in: only new text is searched, so a long line costs linear time
+  private parts: string[] = []
+  private length = 0
+  private discarding = false
+
+  constructor(maxChars: number = MAX_REPLY_CHARS) {
+    this.maxChars = maxChars
+  }
 
   push(chunk: Uint8Array | string, onLine: (line: string) => void): void {
-    this.rest += typeof chunk === 'string' ? chunk : this.decoder.decode(chunk, { stream: true })
-    let at = this.rest.indexOf('\n')
+    const text = typeof chunk === 'string' ? chunk : this.decoder.decode(chunk, { stream: true })
+    let from = 0
+    let at = text.indexOf('\n')
     while (at >= 0) {
-      const line = this.rest.slice(0, at).replace(/\r$/, '')
-      this.rest = this.rest.slice(at + 1)
-      if (line) onLine(line)
-      at = this.rest.indexOf('\n')
+      if (this.discarding) this.discarding = false
+      else if (this.length + at - from > this.maxChars) onLine(TOO_LARGE_LINE)
+      else {
+        this.parts.push(text.slice(from, at))
+        const line = this.parts.join('').replace(/\r$/, '')
+        if (line) onLine(line)
+      }
+      this.parts = []
+      this.length = 0
+      from = at + 1
+      at = text.indexOf('\n', from)
     }
+    if (this.discarding || from === text.length) return
+    if (this.length + text.length - from > this.maxChars) {
+      this.parts = []
+      this.length = 0
+      this.discarding = true
+      onLine(TOO_LARGE_LINE)
+      return
+    }
+    this.parts.push(text.slice(from))
+    this.length += text.length - from
   }
 }
 

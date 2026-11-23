@@ -2,7 +2,7 @@ import type { EngineClient } from './engine-client.ts'
 import type { CompressResult } from '../shared/protocol.ts'
 import { drainPending, type PendingOp } from './commands.ts'
 import type { TrailState } from './trail.ts'
-import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassEvent, type PassOutcome, type SessionLike, type ShortenOptions } from './shorten.ts'
+import { shortenPass, DEFAULT_SHORTEN, type MeterLike, type PassEvent, type PassOutcome, type ReadyAnswer, type SessionLike, type ShortenOptions } from './shorten.ts'
 import { planPass } from './plan.ts'
 import { STOCK_PRUNE_DEFAULTS } from './stub.ts'
 import { resolveEffective } from './settings.ts'
@@ -45,6 +45,8 @@ export interface ChatStats {
   declined: Set<string>
   /** Extracts asked of the background worker, by item key; the next pass's inline call consults them first. */
   extractCache: Map<string, Promise<CompressResult | undefined>>
+  /** Engine answers that came after their step's deadline, for the next step. */
+  ready: Map<string, ReadyAnswer>
   /** Keep, restore and unkeep requests made while the agent was working; applied at the next step boundary. */
   pending: PendingOp[]
   /** Where the Artifact Trail scan has got to in this chat's log, and a trail still owed to the chat. */
@@ -90,7 +92,7 @@ export interface StepDeps {
 
 export const chatStatsOf = (store: WeakMap<object, ChatStats>, session: object): ChatStats => {
   let stats = store.get(session)
-  if (!stats) store.set(session, (stats = { declined: new Set(), extractCache: new Map(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0, reasons: {} }))
+  if (!stats) store.set(session, (stats = { declined: new Set(), extractCache: new Map(), ready: new Map(), pending: [], trail: { scanned: 0 }, shortened: 0, freedTokens: 0, passes: 0, reasons: {} }))
   return stats
 }
 
@@ -204,6 +206,7 @@ export async function onPreStep(deps: StepDeps, agent: StepAgent, signal?: Abort
       reasons: stats.reasons,
       bgClient: deps.bgClient,
       extractCache: stats.extractCache,
+      ready: stats.ready,
       ...(effective.policy !== 'every-step' ? { trigger: { ...(deps.stockPruner ?? { thresholdChars: STOCK_PRUNE_THRESHOLD_CHARS, cutChars: STOCK_PRUNE_CUT_CHARS }), ...(effective.policy === 'hybrid' ? { hybrid: true } : {}) } } : {}),
       ...(deps.observe ? { observe: deps.observe } : {}),
       ...(signal ? { signal } : {}),

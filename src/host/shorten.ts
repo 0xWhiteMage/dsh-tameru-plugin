@@ -27,6 +27,17 @@ export interface SessionLike {
   eventAt(seq: number): SessionEvent | undefined
   deriveEventMessage(event: SessionEvent): Message | null
   append(type: string, data: unknown, options?: unknown): { seq: number }
+  /** Several events committed together: observers see none of them until all are in the log. */
+  append(inputs: ReadonlyArray<readonly [type: string, data: unknown, options?: unknown]>): ReadonlyArray<{ seq: number }>
+}
+
+/** A price event and the replacement it pays for, appended as one commit: no observer, abort or failure can land between the two. */
+export function appendPricedReplacement(session: SessionLike, prune: unknown, data: unknown, options: unknown): { seq: number } {
+  const [, written] = session.append([
+    ['compaction/prune', prune],
+    ['tool/result', data, options],
+  ])
+  return written!
 }
 
 export interface MeterLike {
@@ -267,6 +278,11 @@ export interface PassContext {
   bgClient?: PassClient
   /** Extract results by item key, filled by `bgClient` and consulted before the inline call. Shared with `planPass`. */
   extractCache?: Map<string, Promise<CompressResult | undefined>>
+  /**
+   * Answers that came after their step's deadline, used at a later step instead of asking the engine again: only for the exact text and
+   * question they were asked with, and kept until written or turned down. Kept small.
+   */
+  ready?: Map<string, ReadyAnswer>
 }
 
 /** How many candidates the background worker is asked about per pass (largest first). */
@@ -294,6 +310,19 @@ export function itemKey(seq: number, textLength: number): string {
   return `${seq}:${textLength}`
 }
 
+export interface ReadyAnswer {
+  text: string
+  query: string
+  result: CompressResult
+}
+
+const READY_LIMIT = 32
+
+/** Identifies one result and the question it was asked against. A changed question (after a compaction) is a new key. */
+export function declineKey(seq: number, textLength: number, query: string): string {
+  return `${seq}:${textLength}:${query.length}:${query.slice(0, 80)}`
+}
+
 export interface Applied {
   originalSeq: number
   replacementSeq: number
@@ -303,8 +332,29 @@ export interface Applied {
 }
 
 export type PassOutcome =
-  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'would_leave_cuts' | 'surface_changed' | 'aborted' }
+  | { kind: 'skipped'; reason: 'below_activation' | 'compaction_open' | 'no_candidates' | 'engine_unavailable' | 'not_confident' | 'not_worth_it' | 'would_leave_cuts' | 'surface_changed' | 'aborted' | 'over_budget' }
   | { kind: 'applied'; applied: Applied[]; freedTokens: number; candidates: number }
+
+export const LATE: unique symbol = Symbol('late')
+
+/** `work`'s value, or `LATE` once `ms` have passed or `signal` aborts, whichever is first. A rejection counts as no answer. */
+export function within<T>(work: Promise<T>, ms: number, signal?: AbortSignal): Promise<T | undefined | typeof LATE> {
+  if (signal?.aborted || ms <= 0) {
+    work.catch(() => {})
+    return Promise.resolve(LATE)
+  }
+  return new Promise(resolve => {
+    const finish = (value: T | undefined | typeof LATE): void => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', onAbort)
+      resolve(value)
+    }
+    const onAbort = (): void => finish(LATE)
+    const timer = setTimeout(onAbort, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+    work.then(finish, () => finish(undefined))
+  })
+}
 
 /**
  * One pass at a step boundary. It reads, asks the engine, decides, and only then writes. The writes are synchronous and are
@@ -363,15 +413,38 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     }
   }
   // One at a time, within a time budget: a step boundary must not wait long, and what is not reached now is reached at a later step.
-  const started = Date.now()
+  const deadline = Date.now() + PASS_BUDGET_MS
+  // two failures to answer stop a result being tried again, so one hard result cannot stall every step; an answer clears them
+  const strike = (key: string): void => {
+    const failedOnce = `${key}#failed`
+    if (pass.declined?.has(failedOnce)) pass.declined.add(key)
+    else pass.declined?.add(failedOnce)
+  }
+  const answeredFor = (key: string): void => void pass.declined?.delete(`${key}#failed`)
+  let calls = 0
+  let late = false
+  let waiting = false
+  const keys = new Map<number, string>()
   for (const candidate of candidates) {
-    if (Date.now() - started > PASS_BUDGET_MS || pass.signal?.aborted) break
+    if (late || calls >= options.maxPerPass || Date.now() > deadline || pass.signal?.aborted) break
     await (async () => {
       const key = itemKey(candidate.seq, candidate.text.length)
       if (pass.declined?.has(key)) {
         answered++
         return
       }
+      // protocol 2: the worker builds the query from the pieces and decides; protocol 1: this host builds the query (the fallback) and decides
+      const fallbackQuery = buildQuery(lookup, candidate.index, candidate.callId)
+      // kept answers and in-flight markers are bound to the exact text and question asked (a changed question is a new key)
+      const dKey = declineKey(candidate.seq, candidate.text.length, fallbackQuery)
+      // still with the engine from an earlier step: asking again would only queue behind it
+      if (pass.declined?.has(`${dKey}#asked`)) {
+        waiting = true
+        return
+      }
+      const kept = pass.ready?.get(dKey)
+      let result = kept && kept.text === candidate.text && kept.query === fallbackQuery ? kept.result : undefined
+      if (kept && !result) pass.ready!.delete(dKey)
       // a result the engine cannot analyse at all gets the header with its read-original reference, no engine call
       if (candidate.text.length > TOO_LARGE_CHARS) {
         note('too_large')
@@ -384,25 +457,46 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         return
       }
       const policy = policyOf(options)
-      // protocol 2: the worker builds the query from the pieces and decides; protocol 1: this host builds the query (the fallback) and decides
-      const fallbackQuery = buildQuery(lookup, candidate.index, candidate.callId)
       const request: CompressRequest = v2
         ? { text: candidate.text, query: fallbackQuery, preset: ENGINE_PRESET, anchorErrors: ANCHOR_ERRORS, redactSecrets: REDACT_SECRETS, queryParts: queryPartsFor(lookup, candidate.index, candidate.callId), policy }
         : { text: candidate.text, query: fallbackQuery, minSavingsRatio: LEGACY_MIN_SAVINGS }
-      // the pass budget is enforced inside the call: the remaining milliseconds cap the in-flight deadline, so a step
-      // boundary never waits past the budget; a killed request is retried at a later step like any engine miss
-      const remaining = () => Math.max(0, PASS_BUDGET_MS - (Date.now() - started))
+      const remaining = () => Math.max(0, deadline - Date.now())
       const cached = pass.extractCache?.get(key)
-      let result = cached !== undefined ? await Promise.race([cached, new Promise<undefined>(done => setTimeout(done, remaining()))]) : undefined
-      result ??= await client.compress(request, remaining())
+      result ??= cached !== undefined ? await Promise.race([cached, new Promise<undefined>(done => setTimeout(done, remaining()))]) : undefined
       if (!result) {
-        // the engine did not answer for this one: a second failure stops it being tried again, so one hard result cannot stall every step
-        const failedOnce = `${key}#failed`
-        if (pass.declined?.has(failedOnce)) pass.declined.add(key)
-        else pass.declined?.add(failedOnce)
+        calls++
+        // the step waits for this pass: a slow engine or an abort ends the wait at the budget, and a reply that comes
+        // later is kept for the next step so a slow result does not cost every step its budget
+        const work = client.compress(request)
+        const reply = await within(work, remaining(), pass.signal)
+        // a turn the user stopped says nothing about this result, whatever the engine said
+        if (pass.signal?.aborted) {
+          late = true
+          return
+        }
+        if (reply === LATE || Date.now() > deadline) {
+          // too late for this step; the engine's own answer or failure, when it comes, is what counts for this result, not the time it waited in the queue
+          late = true
+          pass.declined?.add(`${dKey}#asked`)
+          const settled = (answer: CompressResult | undefined): void => {
+            pass.declined?.delete(`${dKey}#asked`)
+            if (!answer) return strike(key)
+            answeredFor(key)
+            if (!pass.ready) return
+            if (pass.ready.size >= READY_LIMIT) pass.ready.delete(pass.ready.keys().next().value!)
+            pass.ready.set(dKey, { text: candidate.text, query: fallbackQuery, result: answer })
+          }
+          work.then(settled, () => settled(undefined))
+          return
+        }
+        result = reply
+      }
+      if (!result) {
+        strike(key)
         return
       }
       answered++
+      answeredFor(key)
       // the engine's decision; only a worker without `decide()` leaves it to the legacy rule, with the same policy
       const decision = result.decision ?? legacyDecision(result, candidate.text, policy)
       note(decision.reason)
@@ -410,6 +504,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       if (!decision.accept) {
         if (decision.reason === 'low_confidence') unsure++
         pass.declined?.add(key)
+        pass.ready?.delete(dKey)
         return
       }
       const newText = shortenedText(candidate.text, result.text, candidate.origin, result.dropped)
@@ -417,6 +512,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         note('longer_than_stock_cut')
         pass.observe?.({ kind: 'decline', key, reason: 'longer_than_stock_cut', event: eventType })
         pass.declined?.add(key)
+        pass.ready?.delete(dKey)
         return
       }
       const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
@@ -427,13 +523,16 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         note('not_enough_tokens')
         pass.observe?.({ kind: 'decline', key, reason: 'not_enough_tokens', event: eventType })
         pass.declined?.add(key)
+        pass.ready?.delete(dKey)
         return
       }
       planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
+      keys.set(candidate.seq, dKey)
     })()
   }
+  if (pass.signal?.aborted) return { kind: 'skipped', reason: 'aborted' }
   // `engine_unavailable` only when nothing was answered AND nothing was planned: a `too_large` header needs no engine
-  if (answered === 0 && planned.length === 0) return { kind: 'skipped', reason: 'engine_unavailable' }
+  if (answered === 0 && planned.length === 0) return { kind: 'skipped', reason: late || waiting ? 'over_budget' : 'engine_unavailable' }
   if (planned.length === 0) return { kind: 'skipped', reason: unsure > 0 ? 'not_confident' : 'no_candidates' }
   let batch: Planned[]
   if (pass.trigger?.hybrid) {
@@ -465,7 +564,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     }
   }
 
-  // The engine took time. Write only if nothing was replaced or compacted meanwhile.
+  // The engine took time. Write only if nothing was replaced or compacted meanwhile, and only within the step's budget.
   if (pass.signal?.aborted) {
     setAside(batch, 'aborted')
     return { kind: 'skipped', reason: 'aborted' }
@@ -474,29 +573,41 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     setAside(batch, 'surface_changed')
     return { kind: 'skipped', reason: 'surface_changed' }
   }
+  setAside([...batch].filter(item => !onSurface.has(item.candidate.seq)), 'surface_changed')
   const onSurface = new Set(session.surface.nodes)
+  const writes = [...batch]
+    .sort((a, b) => a.candidate.seq - b.candidate.seq)
+    .filter(item => onSurface.has(item.candidate.seq))
+    .map(item => {
+      const { seq, event, origin } = item.candidate
+      return {
+        item,
+        prune: { shadowedRange: { start: seq, end: seq }, shadowedSeqs: [seq], shadowedTokenCount: meter.estimateMessage(item.candidate.message) },
+        data: { ...event.data, message: item.replacement },
+        meta: { surfaceOp: { op: 'replace' as const, startSeq: seq, endSeq: seq }, sourceEventSeqs: origin === seq ? [seq] : [origin, seq] },
+      }
+    })
   const applied: Applied[] = []
-  for (const item of [...batch].sort((a, b) => a.candidate.seq - b.candidate.seq)) {
-    const { seq, event } = item.candidate
-    if (!onSurface.has(seq)) {
-      setAside([item], 'surface_changed')
-      continue
+  let stopped: 'aborted' | 'over_budget' | undefined
+  for (let i = 0; i < writes.length; i++) {
+    const { item, prune, data, meta } = writes[i]
+    // checked right before each pair, after everything slow is done
+    stopped = pass.signal?.aborted ? 'aborted' : Date.now() > deadline ? 'over_budget' : undefined
+    if (stopped) {
+      setAside(writes.slice(i).map(w => w.item), stopped)
+      break
     }
+    const seq = item.candidate.seq
     try {
       // The price event must sit immediately before its replacement: the Harness's meter subtracts it from the replaced node.
-      session.append('compaction/prune', {
-        shadowedRange: { start: seq, end: seq },
-        shadowedSeqs: [seq],
-        shadowedTokenCount: meter.estimateMessage(item.candidate.message),
-      })
-      const { origin } = item.candidate
-      const written = session.append('tool/result', { ...event.data, message: item.replacement }, { surfaceOp: { op: 'replace', startSeq: seq, endSeq: seq }, sourceEventSeqs: origin === seq ? [seq] : [origin, seq] })
-      pass.observe?.({ kind: 'applied', key: itemKey(seq, item.candidate.text.length), origin, event: eventType })
+      const written = appendPricedReplacement(session, prune, data, meta)
+      pass.ready?.delete(keys.get(seq)!)
+      pass.observe?.({ kind: 'applied', key: itemKey(seq, item.candidate.text.length), origin: item.candidate.origin, event: eventType })
       applied.push({ originalSeq: seq, replacementSeq: written.seq, toolName: item.candidate.toolName, beforeTokens: item.beforeTokens, afterTokens: item.afterTokens })
     } catch {
-      break // what was written is a complete pair; stop before anything half-written
+      break // a pair is committed whole or not at all; stop at the first one the session refused
     }
   }
-  if (applied.length === 0) return { kind: 'skipped', reason: 'surface_changed' }
-  return { kind: 'applied', applied, freedTokens: applied.reduce((sum, a) => sum + (a.beforeTokens - a.afterTokens), 0), candidates: candidates.length }
+  if (applied.length === 0) return { kind: 'skipped', reason: stopped ?? 'surface_changed' }
+  return { kind: 'applied', applied, freedTokens: applied.reduce((sum, a) => sum + (a.beforeTokens - a.afterTokens), 0), candidates: calls }
 }
