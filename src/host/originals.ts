@@ -194,18 +194,17 @@ export function hold(session: SessionLike, meter: MeterLike, ref: number, mode: 
   return replaceNode(session, meter, item, (mode === 'keep' ? keptHeader(ref) : restoredHeader(ref)) + original)
 }
 
-/** The shortened text behind a kept or restored node: its predecessor chain, followed past restored/kept hops (a restore kept and then let go still has its shortened version two hops back). Stock-cut nodes are unwrapped the way `previousSeq` already is. */
+/** The shortened text behind a kept or restored node: its predecessor chain, followed past restored/kept hops (a restore kept and then let go still has its shortened version two hops back). The node's own text is what goes back — a stock cut of the shortened node is the version Keep replaced — so the Tameru node it wraps is only used to find the next link. */
 function shortenedPredecessor(session: SessionLike, item: Item): string | undefined {
   let seq = item.previousSeq
   for (let hops = 0; seq !== undefined && hops < 8; hops++) {
-    const tameruSeq = tameruNodeOf(session, seq)
-    const node = session.eventAt(tameruSeq)
+    const node = session.eventAt(seq)
     const text = node?.data.message ? textOnly(node.data.message) : undefined
     if (text === undefined) return undefined
     const state = stateOf(text)
     if (state === 'shortened') return text
     if (state === undefined) return undefined
-    seq = sourcesOf(session, tameruSeq)?.[1]
+    seq = sourcesOf(session, tameruNodeOf(session, seq))?.[1]
   }
   return undefined
 }
