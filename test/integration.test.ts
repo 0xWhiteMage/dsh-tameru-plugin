@@ -7,7 +7,7 @@ import { findPython } from '../src/host/python.ts'
 import { alreadyShortened, textOnly } from '../src/host/messages.ts'
 import { bigOutput, load, recordCompaction, skip, world } from './helpers/harness.ts'
 
-const python = findPython()?.path ?? process.env.TAMERU_TEST_PYTHON ?? 'python'
+const python = process.env.TAMERU_TEST_PYTHON ?? findPython()?.path ?? 'python'
 
 /** Fire the event the way the agent loop does: a carrier first, the payload, and a terminal that admits the step. */
 const waterfall = (ctx: any, agent: unknown): Promise<unknown> =>

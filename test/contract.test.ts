@@ -15,7 +15,7 @@ const modules = join(root, 'dev', 'harness', 'node_modules')
 const available = existsSync(join(modules, '@deepseek-ai', 'cordis', 'lib', 'index.js'))
 const skip = available ? false : 'run `python scripts/extract_harness.py` to extract the Harness packages'
 const script = join(root, 'vendor', 'run_worker.py')
-const python = findPython()?.path ?? process.env.TAMERU_TEST_PYTHON ?? 'python'
+const python = process.env.TAMERU_TEST_PYTHON ?? findPython()?.path ?? 'python'
 
 const load = (pkg: string): Promise<any> => import(pathToFileURL(join(modules, pkg, 'lib', 'index.js')).href)
 
