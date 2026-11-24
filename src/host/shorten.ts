@@ -17,6 +17,7 @@ import {
   type SessionEvent,
 } from './messages.ts'
 import { RESTORE_REPLIES } from './originals.ts'
+import { codePointLength } from './stub.ts'
 import { INCUMBENT } from '../shared/settings-table.ts'
 
 /** The parts of the Harness's Session this pass uses. `eventAt` is deprecated for new code but is what the stock pruner uses too. */
@@ -69,6 +70,12 @@ export function setPassBudgetMs(ms: number): void {
 export const TOO_LARGE_CHARS = 8_000_000
 /** Largest text ever sent to the engine: the `too_large` boundary. */
 export const MAX_ENGINE_CHARS = TOO_LARGE_CHARS
+/** The worker's request-line cap (vendor/run_worker.py `MAX_REQUEST_BYTES`): a request over it is never answered. */
+export const MAX_REQUEST_BYTES = 16 * 1024 * 1024
+/** The `id`/`op` envelope and newline a serialized request travels inside. */
+const WIRE_OVERHEAD_BYTES = 1024
+/** True when the request's serialized line cannot reach the engine: it counts as `too_large` without a call. */
+const overWireCap = (request: CompressRequest): boolean => Buffer.byteLength(JSON.stringify(request), 'utf8') + WIRE_OVERHEAD_BYTES > MAX_REQUEST_BYTES
 
 /** The engine's named option set for this plugin's call (`tameru/presets.json`): extract strategy, no originals stored, 25% minimum saving. */
 export const ENGINE_PRESET = 'dsh-tool-result@1'
@@ -396,6 +403,16 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   const planned: Planned[] = []
   let answered = 0
   let unsure = 0
+  /** The header for a result the engine cannot see, whether over its own char limit or the worker's byte cap. */
+  const planTooLarge = (candidate: Candidate, key: string): void => {
+    note('too_large')
+    pass.observe?.({ kind: 'decline', key, reason: 'too_large', original: candidate.text, event: eventType })
+    const newText = tooLargeText(candidate.text, candidate.origin)
+    const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
+    const beforeTokens = tokensOf.get(candidate.seq) ?? meter.estimateMessage(candidate.message)
+    const afterTokens = meter.estimateMessage(replacement)
+    if (afterTokens < beforeTokens) planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
+  }
   // background extracts: the earliest this host sees a `tool/result` is the step boundary after it lands (the Harness
   // exposes no result event), so the candidates are asked of the second worker now; the loop prefers whatever finished
   if (pass.bgClient && pass.extractCache) {
@@ -404,10 +421,11 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     for (const candidate of candidates) {
       if (fired >= PRECOMPUTE_MAX) break
       const key = itemKey(candidate.seq, candidate.text.length)
-      if (candidate.text.length > TOO_LARGE_CHARS || pass.extractCache.has(key) || pass.declined?.has(key)) continue
+      if (codePointLength(candidate.text) > TOO_LARGE_CHARS || pass.extractCache.has(key) || pass.declined?.has(key)) continue
       const request: CompressRequest = v2
         ? { text: candidate.text, query: buildQuery(lookup, candidate.index, candidate.callId), preset: ENGINE_PRESET, anchorErrors: ANCHOR_ERRORS, redactSecrets: REDACT_SECRETS, queryParts: queryPartsFor(lookup, candidate.index, candidate.callId), policy: policyOf(options) }
         : { text: candidate.text, query: buildQuery(lookup, candidate.index, candidate.callId), minSavingsRatio: LEGACY_MIN_SAVINGS }
+      if (overWireCap(request)) continue // the inline pass writes the too_large header instead of a miss
       pass.extractCache.set(key, bg.compress(request))
       fired++
     }
@@ -446,20 +464,19 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       let result = kept && kept.text === candidate.text && kept.query === fallbackQuery ? kept.result : undefined
       if (kept && !result) pass.ready!.delete(dKey)
       // a result the engine cannot analyse at all gets the header with its read-original reference, no engine call
-      if (candidate.text.length > TOO_LARGE_CHARS) {
-        note('too_large')
-        pass.observe?.({ kind: 'decline', key, reason: 'too_large', original: candidate.text, event: eventType })
-        const newText = tooLargeText(candidate.text, candidate.origin)
-        const replacement: Message = { ...candidate.message, content: [{ type: 'text', text: newText }] }
-        const beforeTokens = tokensOf.get(candidate.seq) ?? meter.estimateMessage(candidate.message)
-        const afterTokens = meter.estimateMessage(replacement)
-        if (afterTokens < beforeTokens) planned.push({ candidate, replacement, newText, beforeTokens, afterTokens })
+      if (codePointLength(candidate.text) > TOO_LARGE_CHARS) {
+        planTooLarge(candidate, key)
         return
       }
       const policy = policyOf(options)
       const request: CompressRequest = v2
         ? { text: candidate.text, query: fallbackQuery, preset: ENGINE_PRESET, anchorErrors: ANCHOR_ERRORS, redactSecrets: REDACT_SECRETS, queryParts: queryPartsFor(lookup, candidate.index, candidate.callId), policy }
         : { text: candidate.text, query: fallbackQuery, minSavingsRatio: LEGACY_MIN_SAVINGS }
+      // a request the worker cannot hold (over its line cap) is never answered: it gets the header without a miss
+      if (overWireCap(request)) {
+        planTooLarge(candidate, key)
+        return
+      }
       const remaining = () => Math.max(0, deadline - Date.now())
       const cached = pass.extractCache?.get(key)
       result ??= cached !== undefined ? await Promise.race([cached, new Promise<undefined>(done => setTimeout(done, remaining()))]) : undefined
@@ -508,7 +525,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         return
       }
       const newText = shortenedText(candidate.text, result.text, candidate.origin, result.dropped)
-      if (pass.trigger && newText.length > pass.trigger.cutChars) {
+      if (pass.trigger && codePointLength(newText) > pass.trigger.cutChars) {
         note('longer_than_stock_cut')
         pass.observe?.({ kind: 'decline', key, reason: 'longer_than_stock_cut', event: eventType })
         pass.declined?.add(key)
@@ -538,8 +555,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (pass.trigger?.hybrid) {
     // what the stock pruner would cut is replaced without a pay-back test (the cut rewrites the prompt from there anyway); an item it would
     // not cut keeps the share rule, except after the first replaced cut, whose rewrite it shares
-    const cuts = planned.filter(item => item.candidate.text.length > pass.trigger!.thresholdChars)
-    const others = planned.filter(item => item.candidate.text.length <= pass.trigger!.thresholdChars)
+    const cuts = planned.filter(item => codePointLength(item.candidate.text) > pass.trigger!.thresholdChars)
+    const others = planned.filter(item => codePointLength(item.candidate.text) <= pass.trigger!.thresholdChars)
     const firstCut = cuts.length ? Math.min(...cuts.map(item => item.candidate.seq)) : Infinity
     batch = [...cuts, ...others.filter(item => item.candidate.seq > firstCut), ...chooseBatch(others.filter(item => item.candidate.seq < firstCut), tokensOf, session.surface.nodes, options.share)]
   } else batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)
