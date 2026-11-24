@@ -168,6 +168,10 @@ def _compress(request: dict) -> dict:
     parts = request.pop("query_parts", None)
     policy_field = request.pop("policy", None)
     _literal_pins_only(request)
+    ratio = request.get("min_savings_ratio")
+    if isinstance(ratio, (int, float)) and not isinstance(ratio, bool) and ratio >= 1:
+        # the engine's range is [0, 1); the schema's inclusive cap would let 1 through to a ValueError
+        raise RequestError("bad_min_savings_ratio")
     if parts is not None:
         if "query" in request:
             raise RequestError("query_and_parts")
@@ -257,11 +261,12 @@ def main() -> int:
         line = stdin.readline(MAX_REQUEST_BYTES + 1)
         if not line:
             return 0
-        if len(line) > MAX_REQUEST_BYTES and not line.endswith(b"\n"):
-            while True:                                   # discard the rest of the oversized line
-                rest = stdin.readline(1024 * 1024)
-                if not rest or rest.endswith(b"\n"):
-                    break
+        if len(line) > MAX_REQUEST_BYTES:
+            if not line.endswith(b"\n"):                  # discard the rest of the oversized line
+                while True:
+                    rest = stdin.readline(1024 * 1024)
+                    if not rest or rest.endswith(b"\n"):
+                        break
             _write({"id": None, "ok": False, "error": "too_large"})
             continue
         try:
