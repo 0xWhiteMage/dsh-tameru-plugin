@@ -162,11 +162,14 @@ function Viewer({ item, sessionId, t, act, notice, problem, onBack, onClose }: {
   const [pages, setPages] = useState<Json[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const sideRef = useRef(side)
+  sideRef.current = side
   const fetchPage = useCallback((offset: number, replace: boolean) => {
+    const which = side
     setLoading(true)
-    return call('view', { sessionId, ref: item.ref, which: side, offset }).then(
-      r => { if (r.ok) { setError(''); setPages(replace ? [r] : previous => [...previous, r]) } else setError(r.error); setLoading(false) },
-      () => { setError(t.unreachable); setLoading(false) },
+    return call('view', { sessionId, ref: item.ref, which, offset }).then(
+      r => { if (sideRef.current !== which) return; if (r.ok) { setError(''); setPages(replace ? [r] : previous => [...previous, r]) } else setError(r.error); setLoading(false) },
+      () => { if (sideRef.current !== which) return; setError(t.unreachable); setLoading(false) },
     )
   }, [sessionId, item.ref, side, t.unreachable])
   useEffect(() => { void fetchPage(0, true) }, [fetchPage, item.state])
