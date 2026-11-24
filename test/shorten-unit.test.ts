@@ -236,3 +236,19 @@ test('an extract within the stock cut in code points is not declined on its UTF-
   const text = events.at(-1)?.data.message?.content?.[0]?.text
   assert.ok(typeof text === 'string' && text.includes('🔥'))
 })
+
+test('a request over the worker\'s line cap gets the too_large header without an engine call', async () => {
+  // 6M code points (under the 8M engine limit) but ~18 MiB serialized: over the worker's 16 MiB line cap,
+  // so it is never answered — the pass must write the read-original header itself, not strike out.
+  let asked = 0
+  const { ctx, events } = pass(async () => { asked++; return { ...extract, confidence: DEFAULT_SHORTEN.minConfidence } })
+  ctx.options = { ...ctx.options, share: 0 }
+  ctx.reasons = {}
+  ctx.session.eventAt(2)!.data.message = tool('\u4e16'.repeat(6_000_000))
+  const outcome = await shortenPass(ctx)
+  assert.equal(outcome.kind, 'applied')
+  assert.equal(asked, 0)
+  assert.equal(ctx.reasons['too_large'], 1)
+  const text = events.at(-1)?.data.message?.content?.[0]?.text
+  assert.ok(typeof text === 'string' && text.includes('too large to analyse'))
+})
