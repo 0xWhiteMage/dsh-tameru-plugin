@@ -2,7 +2,7 @@
 
 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): shortens bulky tool output before it fills the context, keeps every error, and lets you pin, keep and restore. Local, deterministic, no extra model calls.
 
-> **Status: v0.2.0, Beta — engine 1.10.0 vendored (`d37fd43`).** The default is the incumbent behaviour (stable channel: `every-step`, gate 0.7, activation 0.75); the `at-trigger` candidate stays beta-only because its holdout look failed gate 8. Built and tested against the real Harness packages and exercised in the real web client, but **no real model has run through it yet**. The plugin's own measurements were run on engine 1.9.0 and not redone for 1.10.0 — read them before relying on it: [per output](docs/MEASURED-VS-STOCK.md) · [whole sessions](docs/REPLAY-VS-STOCK.md) (**cost-neutral at shipped settings**). Engine-1.10.0 replay numbers: [CHANGELOG.md](CHANGELOG.md).
+> **Status: v0.1.0, Beta — engine 1.10.0 vendored (`d37fd43`).** The default is the incumbent behaviour (stable channel: `every-step`, gate 0.7, activation 0.75); the `at-trigger` candidate stays beta-only because its holdout look failed gate 8. Built and tested against the real Harness packages and exercised in the real web client, but **no real model has run through it yet**. The plugin's own measurements were run on engine 1.9.0 and not redone for 1.10.0 — read them before relying on it: [per output](docs/MEASURED-VS-STOCK.md) · [whole sessions](docs/REPLAY-VS-STOCK.md) (**cost-neutral at shipped settings**). Engine-1.10.0 replay numbers: [CHANGELOG.md](CHANGELOG.md).
 
 [Install](#install) · [Features](#features) · [Settings](#settings) · [Docs](#documentation)
 
@@ -11,7 +11,7 @@
 Requires DeepSeek Harness **0.2.2-rc.5** (the version it is tested on; the Harness refuses other versions) and Python 3.10+ (bundled with the Harness).
 
 ```bash
-npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.2.0"     # then enable it in the Harness's plugin settings
+npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # then enable it in the Harness's plugin settings
 ```
 
 (A registry `npm install -g dsh-tameru` works once the package is published to npm; the git tag is the source of truth for now.)
