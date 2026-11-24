@@ -13,6 +13,7 @@ import {
   PRECOMPUTE_MAX,
   REDACT_SECRETS,
   TOO_LARGE_CHARS,
+  appendPricedReplacement,
   compactionOpen,
   itemKey,
   readSurface,
@@ -322,14 +323,15 @@ export async function planPass(pass: PlanPassContext): Promise<PassOutcome> {
     const beforeTokens = item.extract?.beforeTokens ?? tokensOf.get(item.seq) ?? meter.estimateMessage(item.message)
     const afterTokens = isExtract ? item.extract!.afterTokens : item.stubTokens!
     try {
-      // The price event must sit immediately before its replacement: the Harness's meter subtracts it from the replaced node.
-      session.append('compaction/prune', {
-        shadowedRange: { start: item.seq, end: item.seq },
-        shadowedSeqs: [item.seq],
-        shadowedTokenCount: meter.estimateMessage(item.message),
-      })
-      const written = session.append(
-        'tool/result',
+      // The price event and the replacement it pays for are one commit: no observer, abort or failure can land between
+      // the two, and the meter subtracts the price from the replaced node.
+      const written = appendPricedReplacement(
+        session,
+        {
+          shadowedRange: { start: item.seq, end: item.seq },
+          shadowedSeqs: [item.seq],
+          shadowedTokenCount: meter.estimateMessage(item.message),
+        },
         { ...(item.event as { data: unknown }).data, message: replacement },
         { surfaceOp: { op: 'replace', startSeq: item.seq, endSeq: item.seq }, sourceEventSeqs: isExtract ? (item.origin === item.seq ? [item.seq] : [item.origin, item.seq]) : [item.seq] },
       )
