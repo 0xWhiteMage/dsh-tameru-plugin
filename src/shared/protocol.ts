@@ -30,7 +30,7 @@ export interface QueryParts {
 }
 
 /** The closed reason codes of the engine's `decide()`. */
-export type DecisionReason = 'ok' | 'fail_open' | 'risk' | 'lost_fingerprint' | 'low_confidence' | 'no_gain' | 'sanitized' | 'not_enough_tokens' | 'negative_ev'
+export type DecisionReason = 'ok' | 'fail_open' | 'risk' | 'lost_fingerprint' | 'low_confidence' | 'no_gain' | 'sanitized' | 'not_enough_tokens' | 'negative_ev' | 'malformed'
 
 export interface Decision {
   accept: boolean
@@ -147,7 +147,7 @@ function queryPartsToWire(parts: QueryParts): Record<string, unknown> {
   return wire
 }
 
-const REASONS: readonly string[] = ['ok', 'fail_open', 'risk', 'lost_fingerprint', 'low_confidence', 'no_gain', 'sanitized', 'not_enough_tokens', 'negative_ev']
+const REASONS: readonly string[] = ['ok', 'fail_open', 'risk', 'lost_fingerprint', 'low_confidence', 'no_gain', 'sanitized', 'not_enough_tokens', 'negative_ev', 'malformed']
 
 function fromWireDecision(value: unknown): Decision | undefined {
   if (typeof value !== 'object' || value === null) return undefined

@@ -107,3 +107,8 @@ test('the engine\'s negative_ev decision reason survives the wire', () => {
   const result = fromWireResult({ text: 'x', fail_open: true, decision: { accept: false, reason: 'negative_ev', basis: 'p*V<L' } })
   assert.equal(result?.decision?.reason, 'negative_ev')
 })
+
+test('the engine\'s malformed decision reason survives the wire', () => {
+  const result = fromWireResult({ text: 'x', fail_open: true, decision: { accept: false, reason: 'malformed', basis: 'token counts not numeric' } })
+  assert.equal(result?.decision?.reason, 'malformed')
+})
