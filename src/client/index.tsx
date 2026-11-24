@@ -242,7 +242,8 @@ function StrengthMenu({ current, t, onPick }: { current: StrengthId | 'custom'; 
   useEffect(() => {
     if (!open || !anchored) return
     const items = [...(menu.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])]
-    ;(items.find(item => item.getAttribute('aria-checked') === 'true') ?? items[0])?.focus()
+    // the checked item may be disabled (Custom): then focus the first enabled one so arrow keys reach onMenuKey
+    ;(items.find(item => item.getAttribute('aria-checked') === 'true' && !item.hasAttribute('disabled')) ?? items.find(item => !item.hasAttribute('disabled')))?.focus()
   }, [open, !!anchored])
   const ids: Array<StrengthId | 'custom'> = ['off', 'less', 'normal', 'more', ...(current === 'custom' ? ['custom' as const] : [])]
   const onMenuKey = (e: any) => {
