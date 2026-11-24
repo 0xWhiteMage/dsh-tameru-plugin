@@ -19,13 +19,24 @@ function run(input: string | Buffer) {
 test('worker validates every numeric and boolean option and recovers for the next request', () => {
   const cases: Array<[string, unknown]> = [
     ['query', null], ['budget_ratio', true], ['budget_ratio', 0], ['budget_ratio', '0.3'],
-    ['min_savings_ratio', -0.1], ['min_savings_ratio', 1.1], ['min_savings_ratio', false],
+    ['min_savings_ratio', -0.1], ['min_savings_ratio', 1], ['min_savings_ratio', 1.1], ['min_savings_ratio', false],
     ['pin_recent', -1], ['pin_recent', 51], ['pin_recent', true],
     ['derive_query', 1], ['citations', 'false'],
   ]
   const replies = run([...cases.map(([field, value], id) => JSON.stringify({ id, op: 'compress', text: '', [field]: value })), '{"id":"alive","op":"ping"}'].join('\n'))
   assert.deepEqual(replies.slice(0, -1), cases.map(([field], id) => ({ id, ok: false, error: `bad_${field}` })))
   assert.deepEqual(replies.at(-1), { id: 'alive', ok: true, result: {} })
+})
+
+test('a request line over the byte cap is too_large even when newline-terminated', () => {
+  const base = JSON.stringify({ id: 'edge', op: 'ping', pad: '' }).length
+  const over = JSON.stringify({ id: 'over', op: 'ping', pad: 'x'.repeat(16 * 1024 * 1024 - base) })
+  const at = JSON.stringify({ id: 'at', op: 'ping', pad: 'x'.repeat(16 * 1024 * 1024 - base - 1) })
+  const replies = run(`${over}\n${at}\n`)
+  assert.deepEqual(replies, [
+    { id: null, ok: false, error: 'too_large' },
+    { id: 'at', ok: true, result: {} },
+  ])
 })
 
 test('worker normalizes invalid ids, rejects nonobjects, and preserves string ids', () => {
