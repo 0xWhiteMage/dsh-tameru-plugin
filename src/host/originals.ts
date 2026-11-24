@@ -194,15 +194,30 @@ export function hold(session: SessionLike, meter: MeterLike, ref: number, mode: 
   return replaceNode(session, meter, item, (mode === 'keep' ? keptHeader(ref) : restoredHeader(ref)) + original)
 }
 
+/** The shortened text behind a kept or restored node: its predecessor chain, followed past restored/kept hops (a restore kept and then let go still has its shortened version two hops back). Stock-cut nodes are unwrapped the way `previousSeq` already is. */
+function shortenedPredecessor(session: SessionLike, item: Item): string | undefined {
+  let seq = item.previousSeq
+  for (let hops = 0; seq !== undefined && hops < 8; hops++) {
+    const tameruSeq = tameruNodeOf(session, seq)
+    const node = session.eventAt(tameruSeq)
+    const text = node?.data.message ? textOnly(node.data.message) : undefined
+    if (text === undefined) return undefined
+    const state = stateOf(text)
+    if (state === 'shortened') return text
+    if (state === undefined) return undefined
+    seq = sourcesOf(session, tameruSeq)?.[1]
+  }
+  return undefined
+}
+
 /** Put a kept or restored result back to the shortened version it replaced. */
 export function unkeep(session: SessionLike, meter: MeterLike, ref: number): WriteResult {
   const item = listItems(session).find(candidate => candidate.ref === ref)
   if (!item) return { ok: false, reason: `no result shortened by Tameru has reference ${ref} in this chat` }
   if (item.state === 'shortened') return { ok: false, reason: `reference ${ref} is already shortened` }
   if (!item.onSurface) return { ok: false, reason: `reference ${ref} was summarised away by a compaction and is no longer in the model's view` }
-  const previous = item.previousSeq === undefined ? undefined : session.eventAt(item.previousSeq)
-  const text = previous?.data.message ? textOnly(previous.data.message) : undefined
-  if (text === undefined || stateOf(text) !== 'shortened') return { ok: false, reason: `the shortened version of reference ${ref} is not available` }
+  const text = shortenedPredecessor(session, item)
+  if (text === undefined) return { ok: false, reason: `the shortened version of reference ${ref} is not available` }
   return replaceNode(session, meter, item, text)
 }
 

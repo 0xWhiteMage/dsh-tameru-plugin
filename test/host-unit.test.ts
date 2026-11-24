@@ -200,7 +200,7 @@ test('a routed model lookup failure leaves the log untouched and records a skipp
   assert.deepEqual(session.surface.nodes, [0, 2])
 })
 
-test('unkeep finds the shortened output after converting a restore to a keep', { todo: 'unkeep currently only checks the immediate predecessor' }, async () => {
+test('unkeep finds the shortened output after converting a restore to a keep', async () => {
   const { request } = panel()
   assert.equal((await request('hold', { ref: 1, op: 'restore' })).ok, true)
   const restored = await request('view', { ref: 1, which: 'shown' })
