@@ -3404,12 +3404,12 @@ class ToolPayload:
     order: tuple[str, ...] = field(default=(), compare=False, repr=False)
 
 
-def unwrap_tool_payload(text: str) -> ToolPayload:
+def unwrap_tool_payload(text: str, min_field_chars: int = 200) -> ToolPayload:
     """Split a Hermes tool result into payload and envelope.
 
     Detection mirrors :func:`unwrap_hermes_tool`: a JSON object with a string
-    ``content`` or ``output`` longer than 200 chars (``content`` first).
-    Anything else comes back as ``ToolPayload(text, None, {}, False)``.
+    ``content`` or ``output`` longer than ``min_field_chars`` (``content``
+    first). Anything else comes back as ``ToolPayload(text, None, {}, False)``.
     A recognized report document (SARIF, notebook, GraphQL) is NOT a tool
     envelope even when it carries a long ``content``/``output`` property.
     """
@@ -3427,7 +3427,7 @@ def unwrap_tool_payload(text: str) -> ToolPayload:
         return unwrapped
     for key in ("content", "output"):
         val = parsed.get(key)
-        if isinstance(val, str) and len(val) > 200:
+        if isinstance(val, str) and len(val) > min_field_chars:
             meta = {
                 k: v
                 for k, v in parsed.items()
@@ -3492,7 +3492,14 @@ def _marker_tuple(markers: Iterable[str] | str | None) -> tuple[str, ...]:
         return ()
     if isinstance(markers, str):
         markers = (markers,)
-    return tuple(m for m in markers if isinstance(m, str) and m)
+    try:
+        return tuple(m for m in markers if isinstance(m, str) and m)
+    except TypeError:
+        # A scalar (``recursion_markers=42``) is not an iterable — name the
+        # option in the error instead of bubbling a bare TypeError up.
+        raise TypeError(
+            f"recursion_markers must be an iterable of str, got {type(markers).__name__}"
+        ) from None
 
 
 def _has_anchored_marker(text: str, markers: tuple[str, ...]) -> bool:
@@ -3519,10 +3526,24 @@ def _marker_in_tool_payload(text: str, markers: tuple[str, ...]) -> bool:
     escaped = [json.dumps(m, ensure_ascii=a)[1:-1] for m in markers for a in (False, True)]
     if not any(e in text for e in escaped):
         return False
-    inner = unwrap_tool_payload(text).inner
-    if inner is text:
+    # The escaped-marker precheck above already proves the JSON carries a
+    # marker, so unwrap without the usual 200-char field floor: a host that
+    # re-wraps a SHORT compacted output would otherwise lose the marker and
+    # compress it a second time.
+    if not unwrap_tool_payload(text, min_field_chars=0).wrapped:
         return False
-    return any(line.lstrip().startswith(markers) for line in inner.splitlines())
+    # The unwrap picks ONE field ("content" first); the guard must judge every
+    # payload field, otherwise a short `content` shadows a marked `output`
+    # (and a marked `content` is still evidence even when `output` is the
+    # payload).
+    parsed = loads_for_rewrite(text.strip())
+    for key in ("content", "output"):
+        val = parsed.get(key) if isinstance(parsed, dict) else None
+        if isinstance(val, str) and any(
+            line.lstrip().startswith(markers) for line in val.splitlines()
+        ):
+            return True
+    return False
 
 
 def preprocess(
@@ -6553,6 +6574,15 @@ def _window_oversized_line(
     emitted = head
     pos = head
     covered: dict[int, int] = {}
+    # Hits already emitted inside the head ARE covered — a term visible in
+    # the prefix must not still count as missing, or its repeats anchor the
+    # clip budget ahead of a term the line only shows once.
+    for idx, (_a, _b) in enumerate(spans):
+        if _a >= pos:
+            break
+        for ha, hb, ti in span_hits[idx]:
+            if hb <= pos:
+                covered[ti] = max(covered.get(ti, 0), span_qual[idx].get(ti, 0))
     for idx, (a, b) in enumerate(spans):
         if b <= pos:
             for ti, q in span_qual[idx].items():
@@ -6829,6 +6859,14 @@ def _render(
             m = re.match(r"(`{3,}|~{3,})", probe)
             return m.group(0) if m else None
 
+        def _fence_closer(ln: str) -> str | None:
+            # Only a line of nothing but the marker closes a fence — a
+            # "```python" inside a ``` block is content with an info
+            # string, not a closer (closing fences take no info string).
+            probe = _GUTTER_RE.sub("", ln, count=1).strip()
+            m = re.fullmatch(r"(`{3,}|~{3,})", probe)
+            return m.group(0) if m else None
+
         def _closes(marker: str, m: str | None) -> bool:
             return m is not None and m[0] == marker[0] and len(m) >= len(marker)
 
@@ -6838,12 +6876,12 @@ def _render(
             m = _fence_marker(ln)
             if open_marker is None:
                 open_marker = m
-            elif _closes(open_marker, m):
+            elif _closes(open_marker, _fence_closer(ln)):
                 open_marker = None
         if open_marker is not None:
             j = end + 1
             while j < len(lines):
-                if _closes(open_marker, _fence_marker(lines[j])):
+                if _closes(open_marker, _fence_closer(lines[j])):
                     end = j
                     break
                 j += 1
@@ -6858,7 +6896,7 @@ def _render(
             for ln in lines[start : end + 1]:
                 m = _fence_marker(ln)
                 if in_fence is not None:
-                    if _closes(in_fence, m):
+                    if _closes(in_fence, _fence_closer(ln)):
                         in_fence = None
                     parts.append(ln)
                 elif m is not None:
@@ -11516,16 +11554,67 @@ def compress_context(
         # generator form is materialised once so the joins below and the
         # impl's union-scoring both see the same terms. Space join keeps a
         # one-word step off line-start (tool-call misdetection).
+        # bytes/bytearray are iterables of ints: iterated they would score
+        # digit terms ("97 98 99") that match nothing useful, so they are
+        # rejected rather than coerced.
+        if isinstance(query, (bytes, bytearray)):
+            raise TypeError(
+                f"query must be str or an iterable of str, got {type(query).__name__}"
+            )
         try:
             _q_it = iter(query) if query is not None else iter(())
         except TypeError:
             query = str(query)
         else:
             query = " ".join(str(part) for part in _q_it if part)
-    if limits is not None and not isinstance(limits, IndustrialLimits):
+    if isinstance(limits, dict):
+        # A kwargs dict spells the same limits object — the dataclass
+        # constructor rejects unknown fields and __post_init__ the values.
+        limits = IndustrialLimits(**limits)
+    elif limits is not None and not isinstance(limits, IndustrialLimits):
         raise TypeError(
-            f"limits must be an IndustrialLimits instance, got {type(limits).__name__}"
+            f"limits must be an IndustrialLimits instance or dict, got {type(limits).__name__}"
         )
+    if mode is not None and not isinstance(mode, str):
+        # A non-str mode fell through to ``.strip()`` with AttributeError.
+        raise TypeError(f"mode must be a str, got {type(mode).__name__}")
+    if strategy is not None and not isinstance(strategy, str):
+        # Same crash family: ``(strategy or "extract").strip()`` raised
+        # AttributeError on a non-str; a falsy non-str silently became
+        # 'extract'.
+        raise TypeError(f"strategy must be a str, got {type(strategy).__name__}")
+    if budget_ratio is not None:
+        if not isinstance(budget_ratio, (int, float)) or isinstance(budget_ratio, bool):
+            # Fixed mode's ``float(budget_ratio)`` rejects late; adaptive recorded
+            # the raw value in the receipt. Reject non-numbers up front.
+            raise TypeError(
+                f"budget_ratio must be a number, got {type(budget_ratio).__name__}"
+            )
+        try:
+            ratio = float(budget_ratio)
+        except OverflowError:
+            # An int too big for float is out of range — the domain check's
+            # own ValueError, not a bare OverflowError callers won't catch.
+            ratio = float("inf")
+        if not 0 < ratio <= 1:
+            # Out-of-range ratios meant different things per mode: fixed
+            # raised mid-pipeline, adaptive silently kept everything (≥1) or
+            # nothing (≤0). The documented domain is (0, 1] on every path.
+            raise ValueError(
+                f"budget_ratio must be in (0, 1], got {budget_ratio!r}"
+            )
+    if selector_query is not None and not isinstance(selector_query, str):
+        raise TypeError(
+            f"selector_query must be a str, got {type(selector_query).__name__}"
+        )
+    if isinstance(pin_patterns, str):
+        # A bare string is ONE pattern (same convention as recursion_markers),
+        # not a sequence of characters to compile.
+        pin_patterns = [pin_patterns]
+    if not isinstance(pin_recent, int) or isinstance(pin_recent, bool) or pin_recent < 0:
+        # A negative count sliced ``scored[-n:]`` and silently pinned the whole
+        # document; a non-int raises TypeError deep inside _apply_pins.
+        raise ValueError(f"pin_recent must be a non-negative int, got {pin_recent!r}")
     if compile_pin_patterns(pin_patterns) is None:
         tokens = estimate_tokens(full_text)
         return _with_schema_fields(CompressResult(
