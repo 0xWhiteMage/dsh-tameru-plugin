@@ -200,7 +200,7 @@ test('a routed model lookup failure leaves the log untouched and records a skipp
   assert.deepEqual(session.surface.nodes, [0, 2])
 })
 
-test('unkeep finds the shortened output after converting a restore to a keep', { todo: 'unkeep currently only checks the immediate predecessor' }, async () => {
+test('unkeep finds the shortened output after converting a restore to a keep', async () => {
   const { request } = panel()
   assert.equal((await request('hold', { ref: 1, op: 'restore' })).ok, true)
   const restored = await request('view', { ref: 1, which: 'shown' })
@@ -212,4 +212,17 @@ test('unkeep finds the shortened output after converting a restore to a keep', {
   const shortened = await request('view', { ref: 1, which: 'shown' })
   assert.ok(shortened.ok)
   assert.equal(shortened.text, shown)
+})
+
+test('unkeep after a stock cut puts back the cut text, not the uncut extract', async () => {
+  const { session, request } = panel()
+  // the stock pruner cuts the shortened node itself: a replacement citing it, middle removed (its head keeps our header)
+  const cut = `${shown}\n\n[... tool result middle pruned ...]\n\ntail`
+  session.append('compaction/prune', { shadowedSeqs: [2] })
+  session.append('tool/result', { message: message(cut) }, { sourceEventSeqs: [2], surfaceOp: { op: 'replace', startSeq: 2 } })
+  assert.equal((await request('hold', { ref: 1, op: 'keep' })).ok, true)
+  assert.equal((await request('hold', { ref: 1, op: 'unkeep' })).ok, true)
+  const back = await request('view', { ref: 1, which: 'shown' })
+  assert.ok(back.ok)
+  assert.equal(back.text, cut, 'the version Keep replaced is the one unkeep puts back')
 })
