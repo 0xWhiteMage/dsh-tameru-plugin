@@ -244,7 +244,7 @@ function StrengthMenu({ current, t, onPick }: { current: StrengthId | 'custom'; 
     const items = [...(menu.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])]
     ;(items.find(item => item.getAttribute('aria-checked') === 'true') ?? items[0])?.focus()
   }, [open, !!anchored])
-  const ids: Array<StrengthId | 'custom'> = ['off', 'less', 'normal', 'more']
+  const ids: Array<StrengthId | 'custom'> = ['off', 'less', 'normal', 'more', ...(current === 'custom' ? ['custom' as const] : [])]
   const onMenuKey = (e: any) => {
     const items = [...(menu.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]:not([disabled])') ?? [])]
     const at = items.indexOf(document.activeElement as HTMLElement)

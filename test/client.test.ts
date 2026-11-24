@@ -311,8 +311,8 @@ test('the strength menu checks the current preset, and Off patches only shorteni
   assert.deepEqual(requests, [['api/tameru', 'POST', { endpoint: 'settings', payload: { patch: { shorten: false } } }]])
 })
 
-test('the strength menu shows a custom value as checked but disabled', { todo: 'Custom is in the filter but not the list of options' }, () => {
-  const state = { ...liveState, settings: { values: { shorten: true, minConfidence: 0.42 } } }
+test('the strength menu shows a custom value as checked but disabled', {}, () => {
+  const state = { ...liveState, effective: { ...liveState.effective, minConfidence: 0.42 } }
   const bar = renderBar({ primitives: {}, state, menuOpen: true })
   const [current] = find(bar, n => n.props?.role === 'menuitemradio' && n.props['aria-checked'])
   assert.ok(current, 'the Custom setting on the trigger has no checked item in the menu')
