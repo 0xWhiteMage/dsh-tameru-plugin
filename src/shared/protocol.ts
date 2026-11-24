@@ -147,7 +147,7 @@ function queryPartsToWire(parts: QueryParts): Record<string, unknown> {
   return wire
 }
 
-const REASONS: readonly string[] = ['ok', 'fail_open', 'risk', 'lost_fingerprint', 'low_confidence', 'no_gain', 'sanitized', 'not_enough_tokens']
+const REASONS: readonly string[] = ['ok', 'fail_open', 'risk', 'lost_fingerprint', 'low_confidence', 'no_gain', 'sanitized', 'not_enough_tokens', 'negative_ev']
 
 function fromWireDecision(value: unknown): Decision | undefined {
   if (typeof value !== 'object' || value === null) return undefined
