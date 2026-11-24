@@ -180,6 +180,11 @@ _SECRETS_RE = re.compile(
 # Recursion guard markers: output Tameru itself produced. Both wrapper tags
 # are listed: ``</compressed_context`` is not a substring of the open tag.
 _RECURSION_MARKERS = ("<compressed_context", "</compressed_context", "[CC-Retrieve:", "[tameru:report ")
+# Pointer verification: only a [CC-Retrieve: <hash>] whose record exists in
+# the CCR store is engine output. A forged pointer (no backing record) is
+# plain hostile input — treating it as engine output let any input disable
+# compaction by embedding the marker.
+_CCR_POINTER_RE = re.compile(r"\[CC-Retrieve: (?P<hash>[0-9a-f]{24})\]")
 
 # Already-elided standalone marker lines ([…] or the counted omitted form): a
 # conservative no-op check so previously compressed text short-circuits instead
@@ -4260,7 +4265,14 @@ def _term_test(term: str) -> Callable[[str], bool]:
             return term in lower
     else:
         if term.isdigit():
-            search = _compiled_term_pattern(rf"(?<!\d:)\b{re.escape(term)}\b(?!:\d)").search
+            # Clock-shaped digit:colondigit is not a hit, but a dotted-quad
+            # segment before the colon is ("127.0.0.1:8080" names the port).
+            # re lookbehind must be fixed-width, so the dotted exception is
+            # three alternatives: a 1-3 digit octet after the dot.
+            search = _compiled_term_pattern(
+                rf"(?:(?<!\d:)|(?<=\.\d:)|(?<=\.\d\d:)|(?<=\.\d\d\d:))"
+                rf"\b{re.escape(term)}\b(?!:\d)"
+            ).search
         elif term.isalpha():
             # Treat underscore as a boundary for short alphabetic terms
             # literal first so the regex engine can use its fast prefix scan
@@ -4289,18 +4301,29 @@ def _any_test(tests: list[Callable[[str], bool]], lower: str) -> bool:
 
 
 def _term_in_text(term: str, lower: str) -> bool:
-    """Substring for long / syllabic terms; word-boundary for short Latin."""
+    """Substring for long / syllabic terms; word-boundary for short Latin.
+
+    Branches mirror ``_term_test`` exactly: the two are documented and tested
+    as equivalent, and the clock-time and underscore-boundary exceptions the
+    compiled version learned apply here too.
+    """
     if not term:
         return False
     syllabic = _is_syllabic_ord(ord(term[0]))
-    if syllabic:
-        if len(term) > 5:
-            return term in lower
-        return re.search(rf"\b{re.escape(term)}\b", lower) is not None
-    if len(term) > 5:
+    if syllabic or len(term) > 5:
         base = term in lower
     else:
-        base = re.search(rf"\b{re.escape(term)}\b", lower) is not None
+        if term.isdigit():
+            base = re.search(
+                rf"(?:(?<!\d:)|(?<=\.\d:)|(?<=\.\d\d:)|(?<=\.\d\d\d:))"
+                rf"\b{re.escape(term)}\b(?!:\d)",
+                lower,
+            ) is not None
+        elif term.isalpha():
+            # Treat underscore as a boundary for short alphabetic terms
+            base = re.search(rf"{re.escape(term)}(?<![^\W_]{re.escape(term)})(?![^\W_])", lower) is not None
+        else:
+            base = re.search(rf"\b{re.escape(term)}\b", lower) is not None
     if not base:
         stem = _inflection_stem(term)
         if stem is not None and stem in lower and re.search(rf"\b{re.escape(stem)}{_INFLECT_RE_TAIL}\b", lower):
@@ -6490,6 +6513,25 @@ def _window_oversized_line(
 
     _hq: dict[tuple[int, int, int], int] = {}
 
+    def _hit_quality(h: list[int]) -> int:
+        # Quality is per HIT, not per window: an accent-folded variant
+        # ('café' for 'cafe') must not inherit the exact occurrence's
+        # rank, else clipping shows the variant and cuts the match.
+        # Memoized: thousands of hits re-scan for every clip position.
+        key = (h[0], h[1], h[2])
+        q = _hq.get(key)
+        if q is None:
+            term = _qual_terms[h[2]] if h[2] < len(_qual_terms) else ""
+            seg = line[h[0]:h[1]]
+            if term and term in seg:
+                q = 3
+            elif term and term.lower() in seg.lower():
+                q = 2
+            else:
+                q = 0
+            _hq[key] = q
+        return q
+
     def _clip_anchor(pos: int, b: int, room: int, hits: list[list[int]],
                      qual: dict[int, int], covered: dict[int, int]) -> int:
         """Where a clipped window begins: at the earliest hit for a
@@ -6500,27 +6542,11 @@ def _window_oversized_line(
         ties among repeats of already-covered terms: a verbatim hit
         outranks an earlier case variant."""
         pending = [h for h in hits if h[0] >= pos]
-        fresh = [h for h in pending if covered.get(h[2], 0) == 0]
+        # Fresh = a hit STRICTLY better than what was already emitted for
+        # its term: a verbatim hit counts fresh after a folded-variant
+        # emission, but a repeat at the same or weaker tier does not.
+        fresh = [h for h in pending if _hit_quality(h) > covered.get(h[2], 0)]
         pool = fresh or pending or [h for h in hits if h[1] > pos]
-
-        def _hit_quality(h: list[int]) -> int:
-            # Quality is per HIT, not per window: an accent-folded variant
-            # ('café' for 'cafe') must not inherit the exact occurrence's
-            # rank, else clipping shows the variant and cuts the match.
-            # Memoized: thousands of hits re-scan for every clip position.
-            key = (h[0], h[1], h[2])
-            q = _hq.get(key)
-            if q is None:
-                term = _qual_terms[h[2]] if h[2] < len(_qual_terms) else ""
-                seg = line[h[0]:h[1]]
-                if term and term in seg:
-                    q = 3
-                elif term and term.lower() in seg.lower():
-                    q = 2
-                else:
-                    q = 0
-                _hq[key] = q
-            return q
 
         def _best(hs: list[list[int]]) -> int:
             """Earliest position among ``hs``'s top-quality hits, one pass."""
@@ -6576,17 +6602,20 @@ def _window_oversized_line(
     covered: dict[int, int] = {}
     # Hits already emitted inside the head ARE covered — a term visible in
     # the prefix must not still count as missing, or its repeats anchor the
-    # clip budget ahead of a term the line only shows once.
+    # clip budget ahead of a term the line only shows once. Coverage is the
+    # hit's own quality: a folded variant ('café' for 'cafe') shown early
+    # must not displace the term's only verbatim match later.
     for idx, (_a, _b) in enumerate(spans):
         if _a >= pos:
             break
         for ha, hb, ti in span_hits[idx]:
             if hb <= pos:
-                covered[ti] = max(covered.get(ti, 0), span_qual[idx].get(ti, 0))
+                covered[ti] = max(covered.get(ti, 0), _hit_quality([ha, hb, ti]))
     for idx, (a, b) in enumerate(spans):
         if b <= pos:
-            for ti, q in span_qual[idx].items():
-                covered[ti] = max(covered.get(ti, 0), q)
+            for ha, hb, ti in span_hits[idx]:
+                if hb <= pos:
+                    covered[ti] = max(covered.get(ti, 0), _hit_quality([ha, hb, ti]))
             continue
         a = max(a, pos)
         seg_len = b - a
@@ -6595,7 +6624,7 @@ def _window_oversized_line(
             # already-covered term's match quality ('STRASSE' after 'Straße')
             # is emitted when room allows — but ranks with the duplicates
             # whenever a still-missing term needs the same budget.
-            fresh = any(covered.get(ti, 0) == 0 for ti in span_qual[idx])
+            fresh = any(_hit_quality(h) > covered.get(h[2], 0) for h in span_hits[idx])
             if not fresh:
                 # A window that only repeats terms already emitted must not
                 # fill the remaining budget ahead of a stronger-tier window
@@ -6610,7 +6639,7 @@ def _window_oversized_line(
                     if not pref[j]
                     and (q2[idx] or not q2[j])
                     and any(
-                        covered.get(ti, 0) == 0 for ti in span_qual[j]
+                        _hit_quality(h) > covered.get(h[2], 0) for h in span_hits[j]
                     )
                 )
                 if later_need and emitted + seg_len + later_need > cap:
@@ -6637,15 +6666,15 @@ def _window_oversized_line(
                     # still-missing term the clip never reached.
                     for ha, hb, ti in span_hits[idx]:
                         if ha >= clip_a and hb <= clip_b:
-                            covered[ti] = max(covered.get(ti, 0), span_qual[idx].get(ti, 0))
+                            covered[ti] = max(covered.get(ti, 0), _hit_quality([ha, hb, ti]))
                 continue
         if emitted + seg_len > cap:
             # A window that only repeats already-covered terms never eats
             # the tail of the budget while a later window still holds a
             # still-missing term's only match — skip it whole rather than
             # clipping it and breaking before that match is reached.
-            if not any(covered.get(ti, 0) == 0 for ti in span_qual[idx]) and any(
-                any(covered.get(ti, 0) == 0 for ti in span_qual[j])
+            if not any(_hit_quality(h) > covered.get(h[2], 0) for h in span_hits[idx]) and any(
+                any(_hit_quality(h) > covered.get(h[2], 0) for h in span_hits[j])
                 for j in range(idx + 1, len(spans))
                 if spans[j][1] > pos
             ):
@@ -6671,7 +6700,7 @@ def _window_oversized_line(
                 # still-missing term the clip never reached.
                 for ha, hb, ti in span_hits[idx]:
                     if ha >= clip_a and hb <= clip_b:
-                        covered[ti] = max(covered.get(ti, 0), span_qual[idx].get(ti, 0))
+                        covered[ti] = max(covered.get(ti, 0), _hit_quality([ha, hb, ti]))
             break
         # A window overlapping the kept prefix starts mid-match: nothing
         # was omitted between ``pos`` and ``a``, so no boundary marker —
@@ -6681,8 +6710,8 @@ def _window_oversized_line(
         segs.append(line[a:b])
         emitted += seg_len
         pos = b
-        for ti, q in span_qual[idx].items():
-            covered[ti] = max(covered.get(ti, 0), q)
+        for ha, hb, ti in span_hits[idx]:
+            covered[ti] = max(covered.get(ti, 0), _hit_quality([ha, hb, ti]))
     tail_a = max(pos, n - span)
     if emitted + (n - tail_a) <= cap and tail_a > pos:
         segs.append(mark(tail_a - pos))
@@ -6889,9 +6918,15 @@ def _render(
         # block must come back byte-for-byte (the pin gate compares exact
         # source), and rewriting text inside an intact fence presents altered
         # code as unaltered.
+        # A superseded block's orphaned section header rides on the first
+        # dependent as emit_prefix — rendered beside the lines that need
+        # it, since a mutation of this block's text never reaches output.
+        prefix_lines = b.get("emit_prefix") or ()
         if b.get("pinned"):
+            parts.extend(prefix_lines)
             parts.extend(lines[start : end + 1])
         else:
+            parts.extend(prefix_lines)
             in_fence: str | None = None
             for ln in lines[start : end + 1]:
                 m = _fence_marker(ln)
@@ -11025,12 +11060,39 @@ def _compress_context_impl(
     # JSON tool envelope a marker can hide behind a ``[`` escape and a
     # line-start credential behind a ``\n`` escape.
     unwrapped_payload = unwrap_tool_payload(caller_text).inner
+    _static_markers = tuple(m for m in _RECURSION_MARKERS if not m.startswith("[CC-Retrieve"))
+
+    def _engine_output(text: str) -> bool:
+        if any(m in text for m in _static_markers):
+            return True
+        # A [CC-Retrieve: <hash>] marker counts only when retrieve() could
+        # still recover it: a forged pointer, an expired record or an
+        # unreadable store is plain input, not our own output — and may not
+        # disable compaction.
+        root = Path(ccr_dir)
+        now = time.time()
+        for m in _CCR_POINTER_RE.finditer(text):
+            ccr_hash = m.group("hash")
+            fp = root / f"{ccr_hash}.json"
+            try:
+                data = _read_ccr_record(fp)
+            except (OSError, UnicodeError, ValueError, RecursionError):
+                # ValueError covers JSONDecodeError + the int-digit limit.
+                continue
+            if not isinstance(data, dict) or data.get("hash") != ccr_hash:
+                continue
+            metadata = _ccr_metadata(data)
+            if (
+                metadata is not None
+                and metadata[0] <= now + CCR_MAX_CLOCK_SKEW_SECONDS
+                and now - metadata[0] <= metadata[1]
+            ):
+                return True
+        return False
+
     if (
-        any(marker in caller_text for marker in _RECURSION_MARKERS)
-        or (
-            unwrapped_payload != caller_text
-            and any(marker in unwrapped_payload for marker in _RECURSION_MARKERS)
-        )
+        _engine_output(caller_text)
+        or (unwrapped_payload != caller_text and _engine_output(unwrapped_payload))
         or (_DEFAULT_ELISION_LINE.search(caller_text) is not None and not _internal_sample)
         or (_has_anchored_marker(caller_text, recursion_markers))
     ):
