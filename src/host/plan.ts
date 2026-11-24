@@ -154,7 +154,7 @@ export async function planPass(pass: PlanPassContext): Promise<PassOutcome> {
       if (fired >= PRECOMPUTE_MAX) break
       const key = itemKey(item.seq, item.chars)
       const text = item.text
-      if (text === undefined || text.length > TOO_LARGE_CHARS || alreadyShortened(text) || hasSpillNotice(text)) continue
+      if (text === undefined || codePointLength(text) > TOO_LARGE_CHARS || alreadyShortened(text) || hasSpillNotice(text)) continue
       if (item.message.isError === true || item.message.source?.name === READ_TOOL) continue
       if (pass.extractCache.has(key) || pass.declined?.has(key)) continue
       pass.extractCache.set(key, bg.compress({
@@ -175,7 +175,7 @@ export async function planPass(pass: PlanPassContext): Promise<PassOutcome> {
       const key = itemKey(item.seq, item.chars)
       const text = item.text
       if (text === undefined || alreadyShortened(text) || hasSpillNotice(text)) return
-      if (text.length > TOO_LARGE_CHARS) {
+      if (codePointLength(text) > TOO_LARGE_CHARS) {
         item.ask = 'too_large' // the header above carries it; no engine call is sent
         return
       }
