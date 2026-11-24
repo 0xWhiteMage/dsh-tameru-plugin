@@ -214,7 +214,7 @@ test('the viewer appends a page at the returned offset, then resets the offset a
   ])
 })
 
-test('a late AI-sees response cannot overwrite the selected Original view', { todo: 'Viewer does not guard an earlier request when the side changes' }, async t => {
+test('a late AI-sees response cannot overwrite the selected Original view', {}, async t => {
   const shown = Promise.withResolvers<Response>()
   const { actions, renderViewer } = await openViewer(t, request => request.payload.which === 'original' ? page('full original', 13) : shown.promise)
   requireNode(renderViewer(), button('Original')).props.onClick()
