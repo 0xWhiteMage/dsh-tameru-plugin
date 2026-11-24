@@ -17,6 +17,7 @@ import {
   type SessionEvent,
 } from './messages.ts'
 import { RESTORE_REPLIES } from './originals.ts'
+import { codePointLength } from './stub.ts'
 import { INCUMBENT } from '../shared/settings-table.ts'
 
 /** The parts of the Harness's Session this pass uses. `eventAt` is deprecated for new code but is what the stock pruner uses too. */
@@ -404,7 +405,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
     for (const candidate of candidates) {
       if (fired >= PRECOMPUTE_MAX) break
       const key = itemKey(candidate.seq, candidate.text.length)
-      if (candidate.text.length > TOO_LARGE_CHARS || pass.extractCache.has(key) || pass.declined?.has(key)) continue
+      if (codePointLength(candidate.text) > TOO_LARGE_CHARS || pass.extractCache.has(key) || pass.declined?.has(key)) continue
       const request: CompressRequest = v2
         ? { text: candidate.text, query: buildQuery(lookup, candidate.index, candidate.callId), preset: ENGINE_PRESET, anchorErrors: ANCHOR_ERRORS, redactSecrets: REDACT_SECRETS, queryParts: queryPartsFor(lookup, candidate.index, candidate.callId), policy: policyOf(options) }
         : { text: candidate.text, query: buildQuery(lookup, candidate.index, candidate.callId), minSavingsRatio: LEGACY_MIN_SAVINGS }
@@ -446,7 +447,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
       let result = kept && kept.text === candidate.text && kept.query === fallbackQuery ? kept.result : undefined
       if (kept && !result) pass.ready!.delete(dKey)
       // a result the engine cannot analyse at all gets the header with its read-original reference, no engine call
-      if (candidate.text.length > TOO_LARGE_CHARS) {
+      if (codePointLength(candidate.text) > TOO_LARGE_CHARS) {
         note('too_large')
         pass.observe?.({ kind: 'decline', key, reason: 'too_large', original: candidate.text, event: eventType })
         const newText = tooLargeText(candidate.text, candidate.origin)
@@ -508,7 +509,7 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
         return
       }
       const newText = shortenedText(candidate.text, result.text, candidate.origin, result.dropped)
-      if (pass.trigger && newText.length > pass.trigger.cutChars) {
+      if (pass.trigger && codePointLength(newText) > pass.trigger.cutChars) {
         note('longer_than_stock_cut')
         pass.observe?.({ kind: 'decline', key, reason: 'longer_than_stock_cut', event: eventType })
         pass.declined?.add(key)
@@ -538,8 +539,8 @@ export async function shortenPass(pass: PassContext): Promise<PassOutcome> {
   if (pass.trigger?.hybrid) {
     // what the stock pruner would cut is replaced without a pay-back test (the cut rewrites the prompt from there anyway); an item it would
     // not cut keeps the share rule, except after the first replaced cut, whose rewrite it shares
-    const cuts = planned.filter(item => item.candidate.text.length > pass.trigger!.thresholdChars)
-    const others = planned.filter(item => item.candidate.text.length <= pass.trigger!.thresholdChars)
+    const cuts = planned.filter(item => codePointLength(item.candidate.text) > pass.trigger!.thresholdChars)
+    const others = planned.filter(item => codePointLength(item.candidate.text) <= pass.trigger!.thresholdChars)
     const firstCut = cuts.length ? Math.min(...cuts.map(item => item.candidate.seq)) : Infinity
     batch = [...cuts, ...others.filter(item => item.candidate.seq > firstCut), ...chooseBatch(others.filter(item => item.candidate.seq < firstCut), tokensOf, session.surface.nodes, options.share)]
   } else batch = chooseBatch(planned, tokensOf, session.surface.nodes, options.share)

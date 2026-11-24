@@ -200,3 +200,39 @@ test('an acceptable extract at the activation boundary writes a price event befo
     applied: [{ originalSeq: result.seq, replacementSeq: replacement?.seq, toolName: 'bash', beforeTokens: 500, afterTokens }],
   })
 })
+
+test('hybrid: a row under the stock threshold in code points does not ride a cut\'s free pass', async () => {
+  // '💥' is one code point but two UTF-16 units: 800 of them read as 1600 `text.length`, over
+  // `thresholdChars` 1500, while the stock pruner (which measures code points) would never cut the row.
+  // Under the unit mix-up it sat in `cuts` — the rung that skips the pay-back rule — and anchored
+  // `firstCut`, sharing a rewrite the stock pruner does not perform.
+  const { ctx } = pass(async () => ({ ...extract, confidence: DEFAULT_SHORTEN.minConfidence }))
+  ctx.options = { ...ctx.options, share: 1 }
+  ctx.trigger = { thresholdChars: 1500, cutChars: 4000, hybrid: true }
+  const astral = '💥'.repeat(800)
+  ctx.session.append = ctx.session.append // (type stays implicit)
+  // replace the result's text in place: rebuild the log entry with the astral payload
+  const resultEvent = ctx.session.eventAt(2)!
+  resultEvent.data.message = tool(astral)
+  const outcome = await shortenPass(ctx)
+  assert.equal(outcome.kind, 'skipped')
+  if (outcome.kind === 'skipped') assert.equal(outcome.reason, 'not_worth_it')
+})
+
+test('an extract within the stock cut in code points is not declined on its UTF-16 length', async () => {
+  // The extract is 60 code points (fits `cutChars` 100) but 120 UTF-16 units; `cutChars` is a
+  // code-point figure, so the fit check must measure code points too.
+  const { ctx, events } = pass(async () => ({
+    ...extract, text: '🔥'.repeat(60), confidence: DEFAULT_SHORTEN.minConfidence,
+  }))
+  ctx.options = { ...ctx.options, share: 0 }
+  ctx.trigger = { thresholdChars: 10, cutChars: 170, hybrid: false }
+  ctx.reasons = {}
+  const astral = '💥'.repeat(600)
+  const resultEvent = ctx.session.eventAt(2)!
+  resultEvent.data.message = tool(astral)
+  const outcome = await shortenPass(ctx)
+  assert.equal(outcome.kind, 'applied', JSON.stringify({ outcome, reasons: ctx.reasons }))
+  const text = events.at(-1)?.data.message?.content?.[0]?.text
+  assert.ok(typeof text === 'string' && text.includes('🔥'))
+})
