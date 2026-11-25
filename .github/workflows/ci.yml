@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download the harness extract for the pinned Harness
+        run: |
+          pin="$(cat DSH_PIN)"
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/harness-$pin/harness-$pin.tar.gz"
+          curl -fsSL "$url" -o /tmp/harness.tar.gz
+          mkdir -p dev
+          tar -xzf /tmp/harness.tar.gz -C dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Vendored engine matches its recorded commit
+        run: |
+          git clone --quiet https://github.com/0xWhiteMage/tameru-compaction-system /tmp/engine
+          python scripts/check_vendored.py --engine /tmp/engine
