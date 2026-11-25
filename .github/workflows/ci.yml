@@ -22,10 +22,11 @@ jobs:
       - name: Download the harness extract for the pinned Harness
         run: |
           pin="$(cat DSH_PIN)"
-          url="https://github.com/$GITHUB_REPOSITORY/releases/download/harness-$pin/harness-$pin.tar.gz"
-          curl -fsSL "$url" -o /tmp/harness.tar.gz
+          gh release download "harness-$pin" --repo "$GITHUB_REPOSITORY" -p "harness-$pin.tar.gz" -O /tmp/harness.tar.gz --clobber
           mkdir -p dev
           tar -xzf /tmp/harness.tar.gz -C dev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: npm ci
