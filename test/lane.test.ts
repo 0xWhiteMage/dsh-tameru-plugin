@@ -52,6 +52,7 @@ test('python is found from the setting, then the Harness runtime, and never as a
   const env = { DSH_HOME: '/dsh' }
   assert.deepEqual(findPython({ configured: '/x/python', env, platform: 'win32', exists: exists(['/x/python']) }), { path: '/x/python', source: 'setting' })
   assert.equal(findPython({ configured: '/missing', env, platform: 'win32', exists: exists([bundled]) }), undefined, 'a wrong setting is not silently replaced')
+  assert.deepEqual(findPython({ configured: 'python3', env, platform: 'linux', exists: exists([]) }), { path: 'python3', source: 'setting' }, 'a bare command is resolved on PATH')
   assert.deepEqual(findPython({ env, platform: 'win32', exists: exists([bundled]) }), { path: bundled, source: 'harness-runtime' })
   assert.equal(findPython({ env, platform: 'win32', exists: exists([]) }), undefined)
   assert.deepEqual(findPython({ env, platform: 'linux', exists: exists([]) }), { path: 'python3', source: 'system' })
