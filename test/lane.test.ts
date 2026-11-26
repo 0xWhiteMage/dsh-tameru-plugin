@@ -17,11 +17,14 @@ test('the manifest declares what the Harness reads, and nothing it does not need
   assert.equal(pkg.dsh.manifestVersion, 1)
   assert.deepEqual(pkg.dsh.client, { platform: 'web' }, 'the browser half is declared')
   assert.equal(pkg.exports['./client'], './lib/client.js')
-  assert.equal(pkg.engines.dsh, readFileSync(join(root, 'DSH_PIN'), 'utf8').trim(), 'engines.dsh and DSH_PIN name the same tested version')
+  const pin = readFileSync(join(root, 'DSH_PIN'), 'utf8').trim()
+  assert.ok(pkg.engines.dsh.split('||').map((part: string) => part.trim()).includes(pin), 'engines.dsh includes the primary tested version named by DSH_PIN')
+  assert.ok(pkg.engines.dsh.includes('0.2.3-alpha.2'), 'the live-tested alpha is admitted')
   assert.equal(pkg.license, 'Apache-2.0')
   assert.equal(pkg.dependencies, undefined, 'the host half has no runtime dependencies')
   for (const file of pkg.files) assert.ok(!file.startsWith('src'), 'source is not shipped')
   assert.ok(pkg.files.includes('!**/__pycache__/**') && pkg.files.includes('!**/*.pyc'), 'compiled Python never ships')
+  assert.ok(pkg.files.includes('docs/images/'), 'the README images the plugin page renders are packed')
 })
 
 test('the patch inserts one row and disables, overrides or configures nothing else', () => {

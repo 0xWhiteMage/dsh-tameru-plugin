@@ -8,7 +8,7 @@
 
 ## Install
 
-Requires DeepSeek Harness **0.2.2-rc.5** (the version it is tested on; the Harness refuses other versions) and Python 3.10+ (bundled with the Harness).
+Requires DeepSeek Harness **0.2.2-rc.5** or **0.2.3-alpha.2** (the exact versions it is tested on; the Harness refuses other versions) and Python 3.10+ (bundled with the Harness).
 
 ```bash
 npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # then enable it in the Harness's plugin settings
