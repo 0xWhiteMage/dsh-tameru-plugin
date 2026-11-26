@@ -32,7 +32,11 @@ export function findPython(lookup: PythonLookup = {}): PythonChoice | undefined 
   const exists = lookup.exists ?? existsSync
   const platform = lookup.platform ?? process.platform
   const configured = lookup.configured?.trim()
-  if (configured) return exists(configured) ? { path: configured, source: 'setting' } : undefined
+  // A bare command name is resolved on PATH by the subprocess service; `existsSync` only understands filesystem paths.
+  if (configured) {
+    const bareCommand = !configured.includes('/') && !configured.includes('\\')
+    return bareCommand || exists(configured) ? { path: configured, source: 'setting' } : undefined
+  }
   const bundled =
     platform === 'win32'
       ? join(dshHome(lookup), 'dsh-runtimes', 'dsh-primary-runtime', 'dependencies', 'python', 'python.exe')
