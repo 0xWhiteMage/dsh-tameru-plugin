@@ -9,4 +9,4 @@ metadata and is not copied.
 from .compress_context import compress_context  # noqa: F401
 
 # Engine commit this directory matches (checked by scripts/check_vendored.py).
-VENDORED_FROM = "47224cc162bf7d17ca941057ac14c2bc2d54f075"  # Tameru 1.10.0 source (v1.10.0)
+VENDORED_FROM = "e012638db88be6e303c0b65c3ab549d5cc3d8b0e"  # Tameru 1.10.0 source (v1.10.0)
