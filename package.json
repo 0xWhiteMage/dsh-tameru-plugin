@@ -38,6 +38,7 @@
     "LICENSE",
     "NOTICE",
     "THIRD_PARTY_NOTICES.md",
+    "docs/images/",
     "!**/__pycache__/**",
     "!**/*.pyc"
   ],
@@ -49,7 +50,7 @@
   },
   "engines": {
     "node": ">=24",
-    "dsh": "0.2.2-rc.5"
+    "dsh": "0.2.2-rc.5 || 0.2.3-alpha.2"
   },
   "dsh": {
     "manifestVersion": 1,
