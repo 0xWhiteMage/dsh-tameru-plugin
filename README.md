@@ -29,9 +29,9 @@ Removing it leaves `<Harness home>/tameru/` (pins and settings) — `/tameru pur
 - **Fail-open** — the engine runs as an isolated worker (`python -I -B -P`) on the Harness's bundled Python; if Python is missing or the engine is slow or crashes, nothing in the chat changes.
 - `enabled: false` turns the host half off entirely. `/tameru` shows versions, engine state and this chat's cleanups.
 
-![The closed bar: star, Tameru (ためる), 3 outputs shortened, ring and 55%, Normal, results 3, pins 2](docs/images/bar-closed-sample-data.png)
+![A real Tameru interaction in DeepSeek Harness: typing a pin command, the pin count updating, the pins card opening and the strength menu opening](docs/images/real/dsh-tameru-ui.gif)
 
-*The bar and card in the Harness's own dark theme; more in [docs/](docs/) — the images show sample data because the screenshot model cannot run tools.*
+*A real capture in a throwaway Harness 0.2.2-rc.5 web client with the plugin installed. It exercises local pin and strength UI only — no model or tools ran, so the shortened-result count is zero. Individual frames: [bar](docs/images/real/bar-after-pin.png), [pins card](docs/images/real/pins-card.png), [strength menu](docs/images/real/strength-menu.png). The older sample-data images remain in [docs/images/](docs/images/) to illustrate the shortened-results card and viewer.*
 
 ## Settings
 

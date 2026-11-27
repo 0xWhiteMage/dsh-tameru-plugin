@@ -12,6 +12,10 @@
 npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # 然后在 Harness 插件设置中启用
 ```
 
+![在 DeepSeek Harness 中真实操作 Tameru：输入 pin 命令、更新数量、打开固定卡片和强度菜单](docs/images/real/dsh-tameru-ui.gif)
+
+*这是在一次性 Harness 0.2.2-rc.5 网页客户端中的真实捕获，只操作本地固定和强度界面；没有运行模型或工具，因此缩短结果为 0。*
+
 ## 功能
 
 - **缩短**：超过 Harness 自身压缩触发点 75% 后，只在引擎接受且重写值得时，用查询感知摘录替换较大的旧工具结果；形似凭据的内容不会被应用。
