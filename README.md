@@ -1,5 +1,15 @@
 # dsh-tameru
 
+<p align="center">
+  <img src="docs/assets/hero.png" alt="Tameru (ためる): big tool outputs, kept small." width="100%"><br><br>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v0.1.0-blue.svg" alt="Version 0.1.0"></a>
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/Harness-0.2%2F0.3-8A2BE2.svg" alt="Tested on DeepSeek Harness 0.2.2-rc.5 and 0.2.3-alpha.2"></a>
+  <a href="https://github.com/0xWhiteMage/tameru-compaction-system"><img src="https://img.shields.io/badge/engine-tameru_1.10.0-orange.svg" alt="Tameru engine 1.10.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache 2.0 licence"></a>
+  <a href="https://x.com/0xWhiteMage"><img src="https://img.shields.io/badge/X-@0xWhiteMage-000000?logo=x&logoColor=white" alt="Follow 0xWhiteMage on X"></a>
+  <a href="https://ko-fi.com/0xwhitemage"><img src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white" alt="Support on Ko-fi"></a>
+</p>
+
 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): shortens bulky tool output before it fills the context, keeps every error, and lets you pin, keep and restore. Local, deterministic, no extra model calls.
 
 > **Status: v0.1.0, Beta — the tag vendors engine v1.10.0 (`d37fd43`); `main` tracks later 1.10.0-line fixes (`6ea331c`).** The GitHub release is still a draft evaluation release. The default is the incumbent behaviour (stable channel: `every-step`, gate 0.7, activation 0.75); the `at-trigger` candidate stays beta-only because its holdout look failed gate 8. Built and tested against the real Harness packages and exercised in the real web client, but **no real model has run through it yet**. The plugin's own measurements were run on engine 1.9.0 and not redone for 1.10.0 — read them before relying on it: [per output](docs/MEASURED-VS-STOCK.md) · [whole sessions](docs/REPLAY-VS-STOCK.md) (**cost-neutral at shipped settings**). Engine-1.10.0 replay numbers: [CHANGELOG.md](CHANGELOG.md).

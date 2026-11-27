@@ -1,5 +1,15 @@
 # dsh-tameru
 
+<p align="center">
+  <img src="docs/assets/hero.png" alt="Tameru (ためる): big tool outputs, kept small." width="100%"><br><br>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v0.1.0-blue.svg" alt="Version 0.1.0"></a>
+  <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/Harness-0.2%2F0.3-8A2BE2.svg" alt="Tested on DeepSeek Harness 0.2.2-rc.5 and 0.2.3-alpha.2"></a>
+  <a href="https://github.com/0xWhiteMage/tameru-compaction-system"><img src="https://img.shields.io/badge/engine-tameru_1.10.0-orange.svg" alt="Tameru engine 1.10.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache 2.0 licence"></a>
+  <a href="https://x.com/0xWhiteMage"><img src="https://img.shields.io/badge/X-@0xWhiteMage-000000?logo=x&logoColor=white" alt="Follow 0xWhiteMage on X"></a>
+  <a href="https://ko-fi.com/0xwhitemage"><img src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white" alt="Support on Ko-fi"></a>
+</p>
+
 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) 的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件：在庞大的工具输出占满上下文之前将其缩短，保留错误信息，并支持固定、保留和恢复。全程本地运行、结果确定、不额外调用模型。
 
 > **状态：v0.1.0 Beta — 标签内置引擎 v1.10.0（`d37fd43`）；当前 `main` 跟踪后续 1.10.0 修复（`6ea331c`）。** GitHub Release 仍是草稿评估版本。默认使用稳定通道的既有策略（`every-step`、置信度 0.7、激活点 0.75）；`at-trigger` 因保留事实指标的守门检查未通过而只留在 Beta 通道。已用真实 Harness 包和真实网页客户端检查，但**尚未用真实模型验证**。完整说明、限制和测量口径见[英文 README](README.md)。
@@ -14,7 +24,7 @@ npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # 然后在 Har
 
 ![在 DeepSeek Harness 中真实操作 Tameru：输入 pin 命令、更新数量、打开固定卡片和强度菜单](docs/images/real/dsh-tameru-ui.gif)
 
-*这是在一次性 Harness 0.2.2-rc.5 网页客户端中的真实捕获，只操作本地固定和强度界面；没有运行模型或工具，因此缩短结果为 0。*
+*这是在一次性 Harness 0.2.2-rc.5 网页客户端中的真实捕获。固定和强度画面只操作本地界面；下面的压缩画面由本机确定性 OpenAI 兼容 mock 模型驱动真实的 Harness `pwsh` 工具结果，并经真实插件和引擎压缩。未使用外部模型或凭据。为了让短演示适应窗口，捕获配置使用 `activation: 0.3` 和 `protectRecent: 1`，并非出厂默认值。*
 
 ## 功能
 
@@ -31,10 +41,6 @@ npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # 然后在 Har
 引擎 1.10.0 的数字是回放结果，不是真实模型、账单或回答质量测量。插件自身针对引擎 1.9.0 的测量没有按 1.10.0 重做；请阅读[每次输出测量](docs/MEASURED-VS-STOCK.md)、[整会话回放](docs/REPLAY-VS-STOCK.md)和[兼容性说明](docs/COMPATIBILITY.md)。不要把这些数字理解为降低成本或提升回答质量的承诺。
 
 ## 缩短结果界面
-
-真实捕获没有运行模型或工具，因此缩短数量为 0。下面两张图使用示例数据展示缩短结果卡片和查看器：
-
-下面的压缩画面来自同一个一次性 Harness，但由本机确定性 OpenAI 兼容 mock 模型驱动真实的 `pwsh` 工具结果；压缩由真实插件和引擎完成，没有调用外部模型或凭据。为了让短演示适应窗口，捕获配置使用 `activation: 0.3` 和 `protectRecent: 1`，并非出厂默认值。
 
 ![真实缩短结果卡片：六个被压缩的工具输出、字符缩减和 Keep 控件](docs/images/real/compaction-card.png)
 
