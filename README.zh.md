@@ -30,4 +30,12 @@ npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # 然后在 Har
 
 引擎 1.10.0 的数字是回放结果，不是真实模型、账单或回答质量测量。插件自身针对引擎 1.9.0 的测量没有按 1.10.0 重做；请阅读[每次输出测量](docs/MEASURED-VS-STOCK.md)、[整会话回放](docs/REPLAY-VS-STOCK.md)和[兼容性说明](docs/COMPATIBILITY.md)。不要把这些数字理解为降低成本或提升回答质量的承诺。
 
+## 缩短结果界面
+
+真实捕获没有运行模型或工具，因此缩短数量为 0。下面两张图使用示例数据展示缩短结果卡片和查看器：
+
+![缩短结果卡片：三个被压缩的输出、字符缩减和 Keep 控件](docs/images/bar-card-sample-data.png)
+
+![查看器：模型实际看到的压缩文本，包括保留的错误行和原文引用编号](docs/images/bar-viewer-sample-data.png)
+
 许可证：Apache-2.0。
