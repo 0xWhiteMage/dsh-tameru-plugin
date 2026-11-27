@@ -1,21 +1,29 @@
 # dsh-tameru
 
-适用于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system)：在工具输出占满上下文之前将其缩短，保留每一条错误，并支持固定、保留与恢复。本地、确定性，不额外调用模型。
+[Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) 的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件：在庞大的工具输出占满上下文之前将其缩短，保留错误信息，并支持固定、保留和恢复。全程本地运行、结果确定、不额外调用模型。
 
-> **状态：早期开发（0.2.0，未发布；引擎 1.10.0）。** 完整说明与已验证范围见[英文 README](README.md)。**尚未证明能降低成本**（以下测量基于引擎 1.9.0，未针对 1.10.0 重做；1.10.0 的引擎回放数据仅为回放结果，见 [CHANGELOG](CHANGELOG.md)）：在模拟会话中，默认设置下成本持平，放宽置信度门槛后约高 3%，同时多保留约 0.7/5 个所需事实（见 [docs/REPLAY-VS-STOCK.md](docs/REPLAY-VS-STOCK.md)）。
+> **状态：v0.1.0 Beta — 标签内置引擎 v1.10.0（`d37fd43`）；当前 `main` 跟踪后续 1.10.0 修复（`6ea331c`）。** GitHub Release 仍是草稿评估版本。默认使用稳定通道的既有策略（`every-step`、置信度 0.7、激活点 0.75）；`at-trigger` 因保留事实指标的守门检查未通过而只留在 Beta 通道。已用真实 Harness 包和真实网页客户端检查，但**尚未用真实模型验证**。完整说明、限制和测量口径见[英文 README](README.md)。
+
+## 安装
+
+需要 DeepSeek Harness **0.2.2-rc.5** 或 **0.2.3-alpha.2**（只接受这两个已测试版本）以及 Python 3.10+（通常使用 Harness 自带版本）：
+
+```bash
+npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # 然后在 Harness 插件设置中启用
+```
 
 ## 功能
 
-- **缩短**：当上下文超过 Harness 自身压缩触发点的 75% 时，用引擎的查询式摘录替换较大的旧工具结果；错误、最新几条、模型尚未读到的结果不会被改动。原文保留在对话日志中。是否采用摘录由引擎自己的 `decide()` 规则决定；摘录中形似凭据的内容会被替换为 `[tameru:redacted]`（引擎放弃缩短时返回的原文不做脱敏，但插件不会使用它）。
-- **读回原文**：每条被缩短的结果都带有引用编号（`ref=N`）和被省略内容的概要（`dropped: …`）；模型可用 `tameru_read_original` 读回，也可用 `grep` 只取匹配的行（带行号），你可用 `/tameru view N` 查看。
-- **保留与恢复**：`/tameru keep N`、`/tameru restore N`、`/tameru unkeep N`。
-- **固定**：`/tameru pin 文字` 将你写的话逐字放进系统提示，任何压缩都不会替换它（最多 5 条、每条 300 字符；形似凭据的内容会被拒绝）。
-- **Artifact Trail**：Harness 压缩之后补充一条简短记录：涉及的文件、运行的命令、不同的错误。
-- **一条栏**：位于输入框上方，是一行实心的 **Tameru (ためる)**，样式与 Harness 自带的目标栏一致，与输入框对齐。从左到右：状态星标（颜色即状态）、名称、一句简短状态（如 `已缩短 3 项输出`、`Off`）、上下文圆环与 `已用 55%`，然后是三个控件：**强度**菜单（关闭 · 较少 · 正常 · 较多）、带数量的**结果**按钮、带数量的**固定**按钮。没有暂停按钮（关闭即暂停）。与 Hermes 插件使用同一条栏、同样的图标和用词。
-- **卡片**：点击结果或固定按钮会在栏上方浮出卡片，聊天和输入框不会移动；按 Esc、点击别处或点关闭即可收起。两个标签：已缩短、固定。每行写明运行了什么（如 `bash  npm test -- checkout`）、`52K → 2K` 字符，以及一个**保留**按钮（锁图标）：保留会让 AI 在你释放之前看到该输出的完整内容。点击行可在卡片内查看 **AI 所见** 或 **原文**。支持中英文、明暗主题与键盘操作。
+- **缩短**：超过 Harness 自身压缩触发点 75% 后，只在引擎接受且重写值得时，用查询感知摘录替换较大的旧工具结果；形似凭据的内容不会被应用。
+- **读回原文**：每条被缩短的结果都有 `ref=N`；模型可用 `tameru_read_original` 读回或用 `grep` 取匹配行，你可用 `/tameru view N` 查看。
+- **保留与恢复**：`/tameru keep N` 让模型持续看到完整原文；`/tameru restore N` 让它在接下来的 3 次回复中看到完整原文。
+- **固定**：`/tameru pin 文字` 将你写的话逐字放在系统提示中（最多 5 条）；形似凭据的内容会被拒绝。
+- **Artifact Trail**：压缩后列出涉及文件、运行命令和不同错误，帮助代理避免重复工作。
+- **统一栏**：与 Hermes 插件共享图标和用词，支持中英文、明暗主题和键盘操作。
+- **失败时保持原状**：引擎在隔离的 Python worker 中运行；Python 缺失、引擎超时或崩溃时，聊天内容不变。
 
-## 约束
+## 限制与测量
 
-仅在 DeepSeek Harness **0.2.2-rc.1** 上测试；需要 Python（使用 Harness 自带的）。它不替换、不禁用、不包装 Harness 或其他插件的任何部分；`enabled: false` 时什么都不做。
+引擎 1.10.0 的数字是回放结果，不是真实模型、账单或回答质量测量。插件自身针对引擎 1.9.0 的测量没有按 1.10.0 重做；请阅读[每次输出测量](docs/MEASURED-VS-STOCK.md)、[整会话回放](docs/REPLAY-VS-STOCK.md)和[兼容性说明](docs/COMPATIBILITY.md)。不要把这些数字理解为降低成本或提升回答质量的承诺。
 
 许可证：Apache-2.0。

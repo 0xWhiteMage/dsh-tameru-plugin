@@ -2,7 +2,7 @@
 
 [Tameru](https://github.com/0xWhiteMage/tameru-compaction-system) for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): shortens bulky tool output before it fills the context, keeps every error, and lets you pin, keep and restore. Local, deterministic, no extra model calls.
 
-> **Status: v0.1.0, Beta — engine 1.10.0 vendored (`d37fd43`).** The default is the incumbent behaviour (stable channel: `every-step`, gate 0.7, activation 0.75); the `at-trigger` candidate stays beta-only because its holdout look failed gate 8. Built and tested against the real Harness packages and exercised in the real web client, but **no real model has run through it yet**. The plugin's own measurements were run on engine 1.9.0 and not redone for 1.10.0 — read them before relying on it: [per output](docs/MEASURED-VS-STOCK.md) · [whole sessions](docs/REPLAY-VS-STOCK.md) (**cost-neutral at shipped settings**). Engine-1.10.0 replay numbers: [CHANGELOG.md](CHANGELOG.md).
+> **Status: v0.1.0, Beta — the tag vendors engine v1.10.0 (`d37fd43`); `main` tracks later 1.10.0-line fixes (`6ea331c`).** The GitHub release is still a draft evaluation release. The default is the incumbent behaviour (stable channel: `every-step`, gate 0.7, activation 0.75); the `at-trigger` candidate stays beta-only because its holdout look failed gate 8. Built and tested against the real Harness packages and exercised in the real web client, but **no real model has run through it yet**. The plugin's own measurements were run on engine 1.9.0 and not redone for 1.10.0 — read them before relying on it: [per output](docs/MEASURED-VS-STOCK.md) · [whole sessions](docs/REPLAY-VS-STOCK.md) (**cost-neutral at shipped settings**). Engine-1.10.0 replay numbers: [CHANGELOG.md](CHANGELOG.md).
 
 [Install](#install) · [Features](#features) · [Settings](#settings) · [Docs](#documentation)
 
@@ -83,7 +83,7 @@ npm run build            # bundles src/host to lib/host.js
 python scripts/check_vendored.py --engine <path to tameru-compaction-system>
 ```
 
-`vendor/tameru/` is the engine byte for byte; `VENDORED_FROM` names the commit (`d37fd43`, engine v1.10.0) and `check_vendored.py` proves the copy is identical. Release checklist: [docs/RELEASING.md](docs/RELEASING.md).
+`vendor/tameru/` is the engine byte for byte; `VENDORED_FROM` names the exact commit (`6ea331c` on current `main`, `d37fd43` in the `v0.1.0` tag) and `check_vendored.py` proves the copy is identical. Release checklist: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Licence
 
