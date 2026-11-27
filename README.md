@@ -31,11 +31,11 @@ Removing it leaves `<Harness home>/tameru/` (pins and settings) — `/tameru pur
 
 ![A real Tameru interaction in DeepSeek Harness: typing a pin command, the pin count updating, the pins card opening and the strength menu opening](docs/images/real/dsh-tameru-ui.gif)
 
-*A real capture in a throwaway Harness 0.2.2-rc.5 web client with the plugin installed. It exercises local pin and strength UI only — no model or tools ran, so the shortened-result count is zero. Individual frames: [bar](docs/images/real/bar-after-pin.png), [pins card](docs/images/real/pins-card.png), [strength menu](docs/images/real/strength-menu.png). The shortened-results card and viewer below use sample data because no model or tools ran in the capture environment:*
+*A real capture in a throwaway Harness 0.2.2-rc.5 web client with the plugin installed. The pin and strength frames exercise local UI only; the compaction frames below come from a deterministic localhost OpenAI-compatible mock model driving real Harness `pwsh` tool results through the real plugin and engine. No external model or credentials were used. To make the short demonstration fit the window, the capture profile set `activation: 0.3` and `protectRecent: 1` rather than the shipped defaults. Individual pin/strength frames: [bar](docs/images/real/bar-after-pin.png), [pins card](docs/images/real/pins-card.png), [strength menu](docs/images/real/strength-menu.png).*
 
-![Shortened-results card with three compacted outputs, character reductions and Keep controls](docs/images/bar-card-sample-data.png)
+![Real shortened-results card with six compacted tool outputs, character reductions and Keep controls](docs/images/real/compaction-card.png)
 
-![Viewer showing the compacted text the model sees, including the retained failure lines and the original-reference header](docs/images/bar-viewer-sample-data.png)
+![Real viewer showing the compacted text the model sees, including the retained database-error lines and the original-reference header](docs/images/real/compaction-viewer.png)
 
 ## Settings
 

@@ -34,8 +34,10 @@ npm install -g "github:0xWhiteMage/dsh-tameru-plugin#v0.1.0"     # 然后在 Har
 
 真实捕获没有运行模型或工具，因此缩短数量为 0。下面两张图使用示例数据展示缩短结果卡片和查看器：
 
-![缩短结果卡片：三个被压缩的输出、字符缩减和 Keep 控件](docs/images/bar-card-sample-data.png)
+下面的压缩画面来自同一个一次性 Harness，但由本机确定性 OpenAI 兼容 mock 模型驱动真实的 `pwsh` 工具结果；压缩由真实插件和引擎完成，没有调用外部模型或凭据。为了让短演示适应窗口，捕获配置使用 `activation: 0.3` 和 `protectRecent: 1`，并非出厂默认值。
 
-![查看器：模型实际看到的压缩文本，包括保留的错误行和原文引用编号](docs/images/bar-viewer-sample-data.png)
+![真实缩短结果卡片：六个被压缩的工具输出、字符缩减和 Keep 控件](docs/images/real/compaction-card.png)
+
+![真实查看器：模型实际看到的压缩文本，包括保留的数据库错误行和原文引用编号](docs/images/real/compaction-viewer.png)
 
 许可证：Apache-2.0。
